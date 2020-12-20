@@ -461,6 +461,7 @@ div#menu li a {
 
 .blog .carousel-indicators .active {
 	background: #fff;
+	color:#2e2e2e;
 	opacity: 0.5;
 }
 
