@@ -85,6 +85,11 @@ body a:focus {
 	filter: alpha(opacity=0);
 }
 
+.btn-primary {
+    background-color: #212529;
+    border-color: #212529;
+}
+
 /*-- //bottom-to-top --*/
 /*--/navbar--*/
 .navbar {
