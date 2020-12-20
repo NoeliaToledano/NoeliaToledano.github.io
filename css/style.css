@@ -109,6 +109,19 @@ h1.wthree-logo a {
 	color: #fff;
 }
 
+h3.w3l_head {
+    text-align: center;
+    color: #111;
+    font-size: 3.5em;
+    letter-spacing: 2px;
+}
+p.w3ls_head_para {
+    color: #ea7e72;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 7px;
+}
+
 h1.wthree-logo a span {
 	background: #FFC107;
 	width: 40px;
