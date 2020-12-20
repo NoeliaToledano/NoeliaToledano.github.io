@@ -108,6 +108,7 @@ h1.wthree-logo a {
 	font-weight: 400;
 	color: #fff;
 }
+
 h3.w3l_head {
     text-align: center;
     color: #111;
@@ -120,9 +121,6 @@ p.w3ls_head_para {
     text-transform: uppercase;
     letter-spacing: 7px;
 }
-
-
-
 
 h1.wthree-logo a span {
 	background: #ea7e72;
@@ -173,13 +171,11 @@ a.scroll.bnr-btn:hover {
 	/*text-transform: capitalize;*/
 }
 
-
 .bnr-w3pvt-txt {
 	margin-left: 5em;
 }
 
 nav.navbar.fixed-top.navbar-expand-lg.navbar-light.navbar-fixed-top.top-nav-collapse {
-	background: -webkit-linear-gradient(TO top right, #242727, #363738);
 	background-color: #fff;
 	padding: 0.8em 0;
 	box-shadow: 0 3px 5px -1px rgba(0, 0, 0, .2), 0 5px 8px 0 rgba(0, 0, 0, .14), 0 1px 14px 0 rgba(0, 0, 0, .12);
@@ -191,6 +187,13 @@ nav.navbar.fixed-top.navbar-expand-lg.navbar-light.navbar-fixed-top.top-nav-coll
 
 nav.navbar.fixed-top.navbar-expand-lg.navbar-light.navbar-fixed-top.top-nav-collapse h1.wthree-logo a span {
 	width: 34px;
+}
+
+/* Important styles */
+#toggle {
+	display: block;
+	width: 28px;
+	margin: 15px auto 10px;
 }
 
 .accordion-section-title.active, .accordion-section-title:hover, .accordion-section-title.focus {
@@ -295,13 +298,6 @@ a.accordion-section-title span {
 }
 
 
-/* Important styles */
-#toggle {
-	display: block;
-	width: 28px;
-	margin: 15px auto 10px;
-}
-
 #toggle span:after,
 #toggle span:before {
 	content: "";
@@ -375,7 +371,7 @@ a.accordion-section-title span {
 }
 
 div#menu li a {
-	color:  #fff;
+	color: #fff;
 	font-weight: 600;
 }
 
@@ -411,7 +407,6 @@ div#menu li a {
 .cliptop-portfolio-wthree {
 	-webkit-clip-path: polygon(0 15%, 100% 0, 100% 85%, 0 100%);
 	clip-path: polygon(0 15%, 100% 0, 100% 85%, 0 100%);
-	background: -webkit-linear-gradient(TO top right, #242727, #363738);
 	background: #2e2e2e;
 	padding: 12em 0;
 }
@@ -437,7 +432,6 @@ div#menu li a {
 	height: 100%;
 	top: 0;
 	left: 0;
-	/*background: #817f7f;*/
 	background-size: cover;
 	min-height: 100vh;
 	opacity: 0.9;
@@ -478,7 +472,7 @@ h4.w3layouts_pvt-head {
 	/*text-transform: capitalize;*/
 	font-weight: bold;
 	font-size: 2em;
-	/*color: #0068b7;*/
+	
 }
 
 span.title-icon-wthree {
@@ -490,8 +484,6 @@ span.title-icon-wthree {
 	color: #333;
 }
 
-
-
 .w3ls-agile-left-info {
     padding: 1em 0;
     border-bottom: 1px dashed #ea7e72;
@@ -501,13 +493,11 @@ span.title-icon-wthree {
 	border-left: 5px #bdbdbd solid;
 	padding-left: 1em;
 	margin-bottom: 3em;
-	
 }
 
 h4.feed-title {
 	color: #0068b7;
 	font-size: 1.2em;
-	/*text-transform: capitalize;*/
 	font-weight: 600;
 }
 
@@ -748,7 +738,7 @@ a.btn-w3layouts_pvt {
 	font-size: 1.5em;
 	font-weight: 600;
 	letter-spacing: 1px;
-	/*text-transform: capitalize;*/
+
 }
 
 .p-mask p {
@@ -853,6 +843,7 @@ ul.callbacks_tabs {
 .callbacks_here a:after {
 	background: #333;
 }
+
 
 #slider-pager a {
 	display: inline-block;
@@ -1023,7 +1014,7 @@ form.contact-wthree {
 }
 
 .contact-title {
-	/*text-transform: capitalize;*/
+/*text-transform: capitalize;*/
 	font-size: 1.3em;
 	font-weight: 600;
 	color: #131313;
@@ -1306,7 +1297,7 @@ footer {
 
 .box20 .post {
 	margin-top: 5px;
-	/*text-transform: capitalize;*/
+/*text-transform: capitalize;*/
 }
 
 .box20 .icon {
@@ -1322,6 +1313,7 @@ footer {
 .box20 .icon li {
 	display: inline-block
 }
+
 
 .box20 .icon li a {
 	width: 35px;
@@ -1354,9 +1346,9 @@ footer {
 
 .w3-slide-grid h5 a {
 	color: #fff;
-	font-weight:700;
 	margin-bottom: 1em;
 	font-size: 1em;
+	font-weight:700;
 	display: block;
 	letter-spacing: 1px;
 }
@@ -1469,7 +1461,6 @@ span.field-icon {
 		clip-path: polygon(0 10%, 100% 0, 100% 90%, 0 100%);
 	}
 }
-
 
 @media screen and (max-width: 991px) {
 	.ab-pvtw3 p {
@@ -1644,7 +1635,6 @@ span.field-icon {
 		font-size: 2em;
 	}
 }
-
 
 @media screen and (max-width: 640px) {
 	.banner-w3pvt img {
@@ -1845,5 +1835,5 @@ span.field-icon {
 		font-size: 14px;
 	}
 }
-}
+
 /* -- //Responsive code -- */
