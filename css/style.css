@@ -248,7 +248,7 @@ nav.navbar.fixed-top.navbar-expand-lg.navbar-light.navbar-fixed-top.top-nav-coll
 }
 
 .accordion-section h6 {
-    font-size: 18px;
+    font-size: 20px;
     margin-bottom: 15px;
     color: #000;
     font-weight: 600;
@@ -257,14 +257,14 @@ nav.navbar.fixed-top.navbar-expand-lg.navbar-light.navbar-fixed-top.top-nav-coll
 .accordion-section ul li {
     list-style-type: none;
     line-height: 2em;
-    font-size: 17px;
+    font-size: 14px;
     color: #464646;
 }
 
 .accordion-section ul li a {
     color: #464646;
     text-decoration: none;
-    font-size: 16px;
+    font-size: 15px;
 }
 
 .accordion-section ul li span {
