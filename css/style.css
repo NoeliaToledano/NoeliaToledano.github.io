@@ -257,14 +257,14 @@ nav.navbar.fixed-top.navbar-expand-lg.navbar-light.navbar-fixed-top.top-nav-coll
 .accordion-section ul li {
     list-style-type: none;
     line-height: 2em;
-    font-size: 14px;
+    font-size: 17px;
     color: #464646;
 }
 
 .accordion-section ul li a {
     color: #464646;
     text-decoration: none;
-    font-size: 15px;
+    font-size: 16px;
 }
 
 .accordion-section ul li span {
