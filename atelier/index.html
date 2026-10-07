@@ -97,9 +97,9 @@ small{color:#77716a}
     <h2 style="margin:8px 0 6px">¿Quién va a usar el armario?</h2>
     <p style="margin:0 0 18px;color:#77716a">Elige tu perfil mientras Atelier termina de cargar.</p>
     <div class="instant-profile-list">
-      <button type="button" data-preprofile="noelia"><b>N</b><span><strong>Noelia</strong><small>Armario privado</small></span></button>
-      <button type="button" data-preprofile="ana-maria"><b>A</b><span><strong>Ana María</strong><small>Armario privado</small></span></button>
-      <button type="button" data-preprofile="irene"><b>I</b><span><strong>Irene</strong><small>Armario privado</small></span></button>
+      <button type="button" data-preprofile="noelia" onclick="atelierPickProfile(this)"><b>N</b><span><strong>Noelia</strong><small>Armario privado</small></span></button>
+      <button type="button" data-preprofile="ana-maria" onclick="atelierPickProfile(this)"><b>A</b><span><strong>Ana María</strong><small>Armario privado</small></span></button>
+      <button type="button" data-preprofile="irene" onclick="atelierPickProfile(this)"><b>I</b><span><strong>Irene</strong><small>Armario privado</small></span></button>
     </div>
     <div id="preprofileSelected" class="instant-password" hidden>
       <button id="preprofileBack" class="instant-back" type="button">← Cambiar perfil</button>
@@ -112,7 +112,7 @@ small{color:#77716a}
     <small id="preloadStatus" style="display:block;margin-top:14px"></small>
   </div>
 </div>
-<script src="./profile-fix.js?v=1"></script>
+<script>function atelierPickProfile(b){window.__atelierPreselectedProfile=b.getAttribute("data-preprofile")||"";var l=document.querySelector(".instant-profile-list"),s=document.getElementById("preprofileSelected"),n=document.getElementById("preprofileSelectedName"),i=document.getElementById("preprofilePassword");if(l)l.style.display="none";if(s){s.hidden=false;s.style.display="grid"}if(n)n.textContent=(b.querySelector("strong")||{}).textContent||"Perfil";if(i){i.value="";setTimeout(function(){i.focus()},10)}return false}</script>
 <script>
 window.__atelierPreselectedProfile="";
 document.addEventListener("click",function(e){
