@@ -112,6 +112,7 @@ small{color:#77716a}
     <small id="preloadStatus" style="display:block;margin-top:14px"></small>
   </div>
 </div>
+<script src="./payload.js?v=8"></script>
 <script>function atelierPreEnter(){var i=document.getElementById("preprofilePassword"),e=document.getElementById("preprofileError"),b=document.getElementById("preprofileEnter");window.__atelierPendingPassword=i?i.value:"";if(!window.__atelierPendingPassword){if(e){e.textContent="Introduce la contraseña.";e.hidden=false}return false}if(e)e.hidden=true;if(b){b.disabled=true;b.textContent="Entrando…"}return false}function atelierBackToProfiles(){window.__atelierPreselectedProfile="";window.__atelierPendingPassword="";var l=document.querySelector(".instant-profile-list"),s=document.getElementById("preprofileSelected"),i=document.getElementById("preprofilePassword"),e=document.getElementById("preprofileError");if(l){l.hidden=false;l.style.display="grid"}if(s){s.hidden=true;s.style.display="none"}if(i)i.value="";if(e)e.hidden=true;return false}function atelierPickProfile(b){window.__atelierPreselectedProfile=b.getAttribute("data-preprofile")||"";var l=document.querySelector(".instant-profile-list"),s=document.getElementById("preprofileSelected"),n=document.getElementById("preprofileSelectedName"),i=document.getElementById("preprofilePassword");if(l)l.style.display="none";if(s){s.hidden=false;s.style.display="grid"}if(n)n.textContent=(b.querySelector("strong")||{}).textContent||"Perfil";if(i){i.value="";setTimeout(function(){i.focus()},10)}return false}</script>
 <script>
 window.__atelierPreselectedProfile="";
@@ -148,9 +149,8 @@ document.addEventListener("click",function(e){
 });
 (async()=>{
   try{
-    const names=["chunk00.txt","chunk01.txt","chunk02.txt","chunk03.txt","chunk04.txt","chunk05.txt"];
-    const parts=await Promise.all(names.map(n=>fetch(n,{cache:"force-cache"}).then(r=>{if(!r.ok)throw new Error(n);return r.text();})));
-    const b64=parts.join("").trim();
+    const b64=(window.__ATELIER_B64||"").trim();
+    if(!b64)throw new Error("PAYLOAD_MISSING");
     const status=document.getElementById("preloadStatus");
     if(status)status.textContent="";
     const bytes=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
