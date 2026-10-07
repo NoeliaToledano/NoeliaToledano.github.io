@@ -1,0 +1,10 @@
+{
+  "name": "Atelier · Mi Armario",
+  "short_name": "Atelier",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f1ec",
+  "theme_color": "#f4f1ec",
+  "description": "Armario y estilista privado"
+}
