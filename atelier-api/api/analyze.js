@@ -62,15 +62,15 @@ export default async function handler(req, res) {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: process.env.OPENAI_VISION_MODEL || "gpt-4.1-mini",
+        model: process.env.OPENAI_VISION_MODEL || "gpt-4o-mini",
         input: [{
           role: "user",
           content: [
             { type: "input_text", text: prompt },
-            { type: "input_image", image_url: image, detail: "high" }
+            { type: "input_image", image_url: image, detail: "low" }
           ]
         }],
-        max_output_tokens: 700
+        max_output_tokens: 300
       })
     });
 
