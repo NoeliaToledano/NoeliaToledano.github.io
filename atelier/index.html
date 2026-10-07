@@ -90,7 +90,7 @@ small{color:#77716a}
 .ai-look-panel{max-width:680px;margin:14px auto;background:#fffdf9;border:1px solid var(--line,#ded8d0);border-radius:24px;padding:16px}.ai-look-panel h3{margin:0 0 4px}.ai-look-controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}.ai-look-controls select,.ai-look-controls button{min-height:46px;border-radius:14px;border:1px solid var(--line,#ded8d0);background:#fff;padding:9px;font:inherit}.ai-look-controls button{grid-column:1/-1;background:#171717;color:#fff;font-weight:800}.ai-look-results{display:grid;gap:10px}.ai-look-result{border-radius:20px;background:#f4f1ec;padding:10px}.ai-look-pics{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.ai-look-pics img{width:100%;aspect-ratio:3/4;object-fit:contain;background:#fff;border-radius:12px}.ai-look-result small{display:block;padding:8px 3px 2px;color:#706a63}
 </style>
 </head>
-<body>
+<body>\n<div id="atelierDebug" style="position:fixed;z-index:2147483647;left:8px;right:8px;bottom:8px;max-height:34vh;overflow:auto;background:rgba(0,0,0,.88);color:#b9ffbd;padding:10px;border-radius:12px;font:11px/1.35 ui-monospace,monospace;white-space:pre-wrap;display:none"></div>
 <div id="loading">
   <div class="card instant-profile-card">
     <small style="letter-spacing:.14em;font-weight:800">ATELIER</small>
@@ -113,6 +113,20 @@ small{color:#77716a}
   </div>
 </div>
 <script>
+const ATELIER_DEBUG=true;
+window.__atelierDebugLog=[];
+function atelierDebug(stage,data){
+  if(!ATELIER_DEBUG)return;
+  const row={t:Math.round(performance.now()),stage,data:data==null?"":String(data)};
+  window.__atelierDebugLog.push(row);
+  try{localStorage.setItem("atelier-debug-log",JSON.stringify(window.__atelierDebugLog.slice(-120)))}catch(_){}
+  console.log("[ATELIER]",row.t,stage,row.data);
+  const box=document.getElementById("atelierDebug");
+  if(box){box.style.display="block";box.textContent=window.__atelierDebugLog.map(x=>x.t+"ms  "+x.stage+(x.data?"  "+x.data:"")).join("\n");box.scrollTop=box.scrollHeight}
+}
+window.addEventListener("error",e=>atelierDebug("WINDOW_ERROR",(e.message||"error")+" @ "+(e.filename||"")+":"+(e.lineno||"")));
+window.addEventListener("unhandledrejection",e=>atelierDebug("PROMISE_REJECTION",e.reason?.stack||e.reason?.message||e.reason||"unknown"));
+atelierDebug("BOOT","prelogin script running");
 window.__atelierPreselectedProfile="";
 window.__atelierPendingPassword="";
 window.__atelierPreAuthToken="";
@@ -161,7 +175,7 @@ async function atelierPreEnter(){
   if(!profileId){if(error){error.textContent="Selecciona un perfil.";error.hidden=false}return}
   if(!password){if(error){error.textContent="Introduce la contraseña.";error.hidden=false}return}
   if(error)error.hidden=true;
-  if(btn){btn.disabled=true;btn.textContent="Entrando…"}
+  if(btn){btn.disabled=true;btn.textContent="Entrando…"}\n  atelierDebug("LOGIN_START",profileId);
   const ctrl=new AbortController();
   const timer=setTimeout(()=>ctrl.abort(),12000);
   let response,data;
@@ -183,7 +197,7 @@ async function atelierPreEnter(){
     if(btn){btn.disabled=false;btn.textContent="Entrar en el armario"}
     return;
   }
-  window.__atelierPendingPassword=password;
+  atelierDebug("LOGIN_OK",profileId);\n  window.__atelierPendingPassword=password;
   window.__atelierPreAuthToken=data.token||"";
   window.__atelierPreAuthProfile=profileId;
   if(btn)btn.textContent="Abriendo Atelier…";
@@ -208,13 +222,13 @@ document.getElementById("preprofilePassword")?.addEventListener("keydown",e=>{if
 async function atelierLoadApp(){
   try{
     const b64=(window.__ATELIER_B64||"").trim();
-    if(!b64)throw new Error("PAYLOAD_MISSING");
+    if(!b64)throw new Error("PAYLOAD_MISSING");\n    atelierDebug("PAYLOAD_READY",b64.length+" chars");
     const status=document.getElementById("preloadStatus");
     if(status)status.textContent="";
-    const bytes=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
+    const bytes=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));\n    atelierDebug("BASE64_DECODED",bytes.length+" bytes");
     let html="";
-    if(window.fflate&&fflate.gunzipSync){html=new TextDecoder().decode(fflate.gunzipSync(bytes));}
-    else{const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));html=await new Response(stream).text();}
+    if(window.fflate&&fflate.gunzipSync){atelierDebug("GUNZIP","fflate");html=new TextDecoder().decode(fflate.gunzipSync(bytes));}
+    else{atelierDebug("GUNZIP","DecompressionStream fallback");const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));html=await new Response(stream).text();}\n    atelierDebug("HTML_DECOMPRESSED",html.length+" chars");
 
     const gateHtml=`
 <div id="profileGate" class="profile-gate" hidden>
@@ -408,7 +422,7 @@ document.addEventListener("keydown",e=>{if(e.key==="Enter"&&document.activeEleme
     window.__atelierPreparedHtml=html;
     return html;
   }catch(e){
-    window.__atelierPrepareError=e;
+    window.__atelierPrepareError=e;\n    atelierDebug("PREPARE_ERROR",e?.stack||e?.message||e);
     const er=document.getElementById("preprofileError");
     if(er){er.textContent="No he podido preparar Atelier. Recarga la página.";er.hidden=false}
     throw e;
@@ -416,10 +430,10 @@ document.addEventListener("keydown",e=>{if(e.key==="Enter"&&document.activeEleme
 }
 function atelierInstallPreparedApp(){
   const html=window.__atelierPreparedHtml;
-  if(!html)return false;
+  if(!html){atelierDebug("INSTALL_NO_HTML");return false;}
   const preselected=window.__atelierPreAuthProfile||window.__atelierPreselectedProfile||"";
   const pretoken=window.__atelierPreAuthToken||"";
-  document.open();document.write(html);document.close();
+  atelierDebug("DOCUMENT_WRITE_START");\n  document.open();document.write(html);document.close();\n  try{localStorage.setItem("atelier-debug-last","DOCUMENT_WRITE_DONE "+Date.now())}catch(_){}
   if("serviceWorker" in navigator){navigator.serviceWorker.register("./sw.js").catch(()=>{})}
   const boot=()=>{
     try{
