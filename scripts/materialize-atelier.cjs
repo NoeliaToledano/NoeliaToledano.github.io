@@ -23,3 +23,5 @@ window.addEventListener("DOMContentLoaded",function(){
 html=html.replace("</body>",boot+"</body>");
 fs.writeFileSync("atelier/app.html",html);
 console.log("Materialized Atelier:",html.length,"bytes");
+
+// build trigger 2026-10-07
