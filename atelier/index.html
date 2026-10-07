@@ -1,443 +1,71 @@
 <!doctype html>
 <html lang="es">
-<head><link rel="manifest" href="./manifest.json"><meta name="theme-color" content="#f4f1ec"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Atelier">
+<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#111111">
+<meta name="theme-color" content="#f7f5f2">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Atelier">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Atelier · Mi Armario</title>
-<!-- redeploy: 2026-10-07 -->
-<style>
-html,body{margin:0;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f4f1ec;color:#171717}
-#loading{min-height:100vh;display:grid;place-items:center;padding:24px;text-align:center}
-.card{max-width:420px;background:#fffdf9;padding:28px;border-radius:24px;box-shadow:0 10px 35px rgba(30,24,17,.08)}
-small{color:#77716a}
-.instant-profile-card{width:min(100%,420px);box-sizing:border-box}
-.instant-profile-list{display:grid;gap:10px}
-.instant-profile-list button{width:100%;border:1px solid #ded8d0;background:#fff;border-radius:18px;padding:12px 14px;display:flex;align-items:center;gap:12px;text-align:left;font:inherit}
-.instant-profile-list b{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:#171717;color:#fff}
-.instant-profile-list span{display:grid;gap:2px}.instant-profile-list strong{font-size:16px}
-.instant-profile-list button:active{transform:scale(.99)}
-.instant-profile-list button[disabled]{opacity:.55}
-.instant-password{display:grid;gap:10px;text-align:left}.instant-password[hidden]{display:none}
-.instant-password .instant-back{border:0;background:transparent;padding:0 0 4px;font:inherit;font-weight:700;text-align:left}
-.instant-password .instant-name{font-size:22px;font-weight:800}
-.instant-password label{font-size:13px;font-weight:700;color:#77716a}
-.instant-password-row{display:flex;gap:8px}.instant-password-row input{min-width:0;flex:1;border:1px solid #ded8d0;border-radius:14px;padding:13px 14px;font:inherit;font-size:16px;background:#fff}.instant-password-row button{border:1px solid #ded8d0;background:#fff;border-radius:14px;padding:0 13px;font:inherit;font-weight:700}
-.instant-enter{border:0!important;background:#171717!important;color:#fff;border-radius:14px!important;padding:14px!important;font:inherit!important;font-weight:800!important;text-align:center!important;justify-content:center!important}
-.instant-error{color:#a12d2d;font-size:13px;margin:0}
-
-/* Atelier mobile UX */
-.atelier-help{display:inline-grid;place-items:center;width:20px;height:20px;margin-left:5px;border:1px solid #cfc8bf;border-radius:50%;background:#fff;color:#6f6962;font-size:12px;font-weight:800;line-height:1;vertical-align:1px;cursor:pointer;padding:0}
-.atelier-help-pop{position:fixed;z-index:10020;left:16px;right:16px;bottom:calc(18px + env(safe-area-inset-bottom));max-width:430px;margin:auto;background:#171717;color:#fff;border-radius:20px;padding:18px 20px;box-shadow:0 18px 55px rgba(0,0,0,.24);font-size:14px;line-height:1.45}
-.atelier-help-pop strong{display:block;font-size:16px;margin-bottom:5px}.atelier-help-pop button{position:absolute;right:10px;top:9px;border:0;background:transparent;color:#fff;font-size:22px;padding:4px 8px}
-.mobile-filter-trigger{display:none}
-@media(max-width:700px){
-  body{overflow-x:hidden}
-  .view{padding-left:16px!important;padding-right:16px!important}
-  .view-title{gap:10px;align-items:center}
-  .view-title h2{font-size:clamp(28px,8vw,36px)}
-  .card{border-radius:22px}
-  .two-col{grid-template-columns:1fr!important}
-  input,select,textarea,button{font-size:16px}
-  .wardrobe-toolbar{display:none!important}
-  .wardrobe-toolbar.mobile-open{display:block!important;position:fixed;z-index:10010;inset:auto 0 0 0;max-height:82dvh;overflow:auto;border-radius:26px 26px 0 0!important;padding:20px 16px calc(22px + env(safe-area-inset-bottom))!important;margin:0!important;box-shadow:0 -18px 55px rgba(0,0,0,.18)}
-  body.atelier-filter-open:before{content:"";position:fixed;z-index:10000;inset:0;background:rgba(20,18,16,.34);backdrop-filter:blur(3px)}
-  .wardrobe-toolbar.mobile-open:before{content:"Filtrar armario";display:block;font-size:21px;font-weight:800;margin:0 44px 16px 2px}
-  .wardrobe-toolbar .filter-row{grid-template-columns:1fr 1fr!important;gap:10px!important}
-  .wardrobe-toolbar label{font-size:12px}
-  .wardrobe-toolbar select,.wardrobe-toolbar input{min-height:46px}
-  .wardrobe-toolbar .filter-actions{position:sticky;bottom:-22px;background:#fffdf9;padding:12px 0 4px;margin-top:6px}
-  .mobile-filter-trigger{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;margin:0 0 10px;padding:12px 14px;border:1px solid var(--line,#ded8d0);border-radius:16px;background:#fffdf9;font:inherit;font-weight:750}
-  .mobile-filter-trigger .mf-left{display:flex;align-items:center;gap:9px}.mobile-filter-trigger .mf-icon{font-size:18px}.mobile-filter-trigger .mf-count{font-size:12px;background:#171717;color:#fff;border-radius:999px;padding:4px 8px;min-width:18px;text-align:center}
-  .mobile-filter-close{position:absolute;right:14px;top:13px;width:36px;height:36px;border:1px solid var(--line,#ded8d0);border-radius:50%;background:#fff;font-size:22px;line-height:1}
-  #activeFilters{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px}
-  #activeFilters::-webkit-scrollbar{display:none}
-  .garment-grid{gap:10px!important}
-  .garment-card{border-radius:18px!important}
-  .profile-switch-button{top:calc(8px + env(safe-area-inset-top));right:10px}
-  .profile-switch-button span:last-child{max-width:86px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-}
-
-/* Atelier UX v2 */
-.atelier-smart-card{background:#fffdf9;border:1px solid var(--line,#e1dbd3);border-radius:22px;padding:16px;margin:12px 0}
-.atelier-smart-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.atelier-smart-head strong{font-size:18px}
-.atelier-chip-row{display:flex;gap:8px;overflow-x:auto;padding:3px 0 5px;scrollbar-width:none}.atelier-chip-row::-webkit-scrollbar{display:none}
-.atelier-chip{white-space:nowrap;border:1px solid var(--line,#ded8d0);background:#fff;border-radius:999px;padding:9px 12px;font:inherit;font-size:13px;font-weight:700}
-.atelier-ai-meter{font-size:12px;color:var(--muted,#77716a);margin-top:8px}
-.atelier-feedback{display:flex;gap:7px}.atelier-feedback button{border:1px solid var(--line,#ded8d0);background:#fff;border-radius:999px;padding:7px 10px}
-@media(max-width:700px){
- .atelier-smart-card{padding:14px;border-radius:20px}
- .atelier-chip{min-height:40px}
- .garment-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
- .garment-card img{aspect-ratio:3/4!important;object-fit:cover}
- .garment-card .meta,.garment-card small{font-size:12px}
-}
-
-/* Atelier Manual Looks v1 */
-.manual-look-fab{position:fixed;z-index:75;right:16px;bottom:calc(82px + env(safe-area-inset-bottom));border:0;background:#171717;color:#fff;border-radius:999px;padding:12px 16px;font:inherit;font-weight:800;box-shadow:0 10px 30px rgba(0,0,0,.18)}
-.manual-look-builder{position:fixed;z-index:10030;inset:0;background:#f4f1ec;overflow:auto;padding:calc(18px + env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom))}
-.manual-look-top{max-width:680px;margin:auto;display:flex;align-items:center;justify-content:space-between}.manual-look-top h2{margin:0;font-size:27px}.manual-look-close{border:1px solid var(--line,#ddd);background:#fff;width:40px;height:40px;border-radius:50%;font-size:22px}
-.manual-look-canvas{max-width:680px;margin:18px auto;background:#fffdf9;border:1px solid var(--line,#ddd);border-radius:26px;padding:14px;min-height:270px}
-.manual-look-stage{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.manual-look-slot{position:relative;border-radius:18px;background:#f4f1ec;min-height:150px;display:grid;place-items:center;overflow:hidden}.manual-look-slot img{width:100%;height:100%;position:absolute;inset:0;object-fit:contain}.manual-look-slot span{font-size:13px;color:#817a72;text-align:center;padding:12px}.manual-look-slot button{position:absolute;right:6px;top:6px;border:0;background:rgba(255,255,255,.9);width:28px;height:28px;border-radius:50%;z-index:2}
-.manual-look-picker{max-width:680px;margin:auto}.manual-look-tabs{display:flex;gap:7px;overflow:auto;scrollbar-width:none;padding:2px 0 10px}.manual-look-tabs button{white-space:nowrap;border:1px solid var(--line,#ddd);background:#fff;border-radius:999px;padding:8px 11px;font:inherit;font-size:13px}.manual-look-tabs button.active{background:#171717;color:#fff}
-.manual-look-items{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.manual-look-item{border:0;background:#fff;border-radius:15px;padding:0;overflow:hidden;aspect-ratio:3/4}.manual-look-item img{width:100%;height:100%;object-fit:cover}.manual-look-save{max-width:680px;margin:16px auto 0;width:100%;border:0;border-radius:16px;background:#171717;color:#fff;padding:14px;font:inherit;font-weight:800}
-@media(min-width:600px){.manual-look-stage{grid-template-columns:repeat(4,1fr)}.manual-look-items{grid-template-columns:repeat(6,1fr)}}
-
-/* Atelier AI Looks UI v1 */
-.ai-look-panel{max-width:680px;margin:14px auto;background:#fffdf9;border:1px solid var(--line,#ded8d0);border-radius:24px;padding:16px}.ai-look-panel h3{margin:0 0 4px}.ai-look-controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}.ai-look-controls select,.ai-look-controls button{min-height:46px;border-radius:14px;border:1px solid var(--line,#ded8d0);background:#fff;padding:9px;font:inherit}.ai-look-controls button{grid-column:1/-1;background:#171717;color:#fff;font-weight:800}.ai-look-results{display:grid;gap:10px}.ai-look-result{border-radius:20px;background:#f4f1ec;padding:10px}.ai-look-pics{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.ai-look-pics img{width:100%;aspect-ratio:3/4;object-fit:contain;background:#fff;border-radius:12px}.ai-look-result small{display:block;padding:8px 3px 2px;color:#706a63}
-</style>
+<link rel="manifest" href="./manifest.json">
+<link rel="stylesheet" href="./styles-v2.css">
+<script src="./app-v2.js" defer></script>
 </head>
 <body>
-<div id="loading">
-  <div class="card instant-profile-card">
-    <small style="letter-spacing:.14em;font-weight:800">ATELIER</small>
-    <h2 style="margin:8px 0 6px">¿Quién va a usar el armario?</h2>
-    <p style="margin:0 0 18px;color:#77716a">Elige tu perfil para abrir tu armario.</p>
-    <div class="instant-profile-list">
-      <button type="button" data-preprofile="noelia"><b>N</b><span><strong>Noelia</strong><small>Armario privado</small></span></button>
-      <button type="button" data-preprofile="ana-maria"><b>A</b><span><strong>Ana María</strong><small>Armario privado</small></span></button>
-      <button type="button" data-preprofile="irene"><b>I</b><span><strong>Irene</strong><small>Armario privado</small></span></button>
+<section id="auth" class="auth">
+  <div class="auth-card">
+    <p class="muted">MI ARMARIO</p><h1>Atelier</h1>
+    <p class="muted">Elige tu perfil para entrar.</p>
+    <div class="profiles">
+      <button class="profile-option" data-profile="noelia">Noelia</button>
+      <button class="profile-option" data-profile="ana-maria">Ana María</button>
+      <button class="profile-option" data-profile="irene">Irene</button>
     </div>
-    <div id="preprofileSelected" class="instant-password" hidden>
-      <button id="preprofileBack" class="instant-back" type="button">← Cambiar perfil</button>
-      <div id="preprofileSelectedName" class="instant-name"></div>
-      <label for="preprofilePassword">Contraseña</label>
-      <div class="instant-password-row"><input id="preprofilePassword" type="password" autocomplete="current-password" placeholder="Introduce la contraseña"><button id="preprofileToggle" type="button" aria-label="Mostrar contraseña">Ver</button></div>
-      <button id="preprofileEnter" class="instant-enter" type="button">Entrar en el armario</button>
-      <p id="preprofileError" class="instant-error" hidden></p>
+    <div id="passwordStep" class="hidden">
+      <div class="field"><label for="password">Contraseña</label><input id="password" type="password" autocomplete="current-password"></div>
+      <button id="loginBtn" class="primary" style="width:100%">Entrar</button>
+      <div id="authError" class="error" role="alert" aria-live="polite"></div>
     </div>
-    <small id="preloadStatus" style="display:block;margin-top:14px"></small>
   </div>
+</section>
+
+<div id="app" class="hidden">
+<header class="topbar"><div class="brand">Atelier</div><button id="profileName" class="profile-pill"></button></header>
+<main id="content" class="content"></main>
+<nav class="bottom-nav" aria-label="Navegación principal">
+<button class="nav-btn active" data-view="wardrobe"><span>◇</span>Armario</button>
+<button class="nav-btn" data-view="looks"><span>✦</span>Looks</button>
+<button class="nav-btn" data-view="settings"><span>○</span>Ajustes</button>
+</nav>
 </div>
-<script>
-window.__atelierPreselectedProfile="";
-window.__atelierPendingPassword="";
-window.__atelierPreAuthToken="";
-window.__atelierPreAuthProfile="";
 
-function atelierTogglePassword(){
-  const input=document.getElementById("preprofilePassword");
-  const btn=document.getElementById("preprofileToggle");
-  if(!input||!btn)return;
-  const reveal=input.type==="password";
-  input.type=reveal?"text":"password";
-  btn.textContent=reveal?"Ocultar":"Ver";
-  btn.setAttribute("aria-label",reveal?"Ocultar contraseña":"Mostrar contraseña");
-}
-function atelierBackToProfiles(){
-  window.__atelierPreselectedProfile="";
-  window.__atelierPendingPassword="";
-  const list=document.querySelector(".instant-profile-list");
-  const selected=document.getElementById("preprofileSelected");
-  const input=document.getElementById("preprofilePassword");
-  const error=document.getElementById("preprofileError");
-  if(list){list.hidden=false;list.style.display="grid"}
-  if(selected){selected.hidden=true;selected.style.display="none"}
-  if(input){input.value="";input.type="password"}
-  if(error)error.hidden=true;
-}
-function atelierPickProfile(btn){
-  window.__atelierPreselectedProfile=btn.dataset.preprofile||"";
-  const list=document.querySelector(".instant-profile-list");
-  const selected=document.getElementById("preprofileSelected");
-  const name=document.getElementById("preprofileSelectedName");
-  const input=document.getElementById("preprofilePassword");
-  const error=document.getElementById("preprofileError");
-  if(list){list.hidden=true;list.style.display="none"}
-  if(selected){selected.hidden=false;selected.style.display="grid"}
-  if(name)name.textContent=btn.querySelector("strong")?.textContent||"Perfil";
-  if(error)error.hidden=true;
-  if(input){input.value="";input.type="password";setTimeout(()=>input.focus(),10)}
-}
-async function atelierPreEnter(){
-  const input=document.getElementById("preprofilePassword");
-  const error=document.getElementById("preprofileError");
-  const btn=document.getElementById("preprofileEnter");
-  const profileId=window.__atelierPreselectedProfile||"";
-  const password=input?.value||"";
-  if(!profileId){if(error){error.textContent="Selecciona un perfil.";error.hidden=false}return}
-  if(!password){if(error){error.textContent="Introduce la contraseña.";error.hidden=false}return}
-  if(error)error.hidden=true;
-  if(btn){btn.disabled=true;btn.textContent="Entrando…"}
-  const ctrl=new AbortController();
-  const timer=setTimeout(()=>ctrl.abort(),12000);
-  let response,data;
-  try{
-    response=await fetch("https://atelier-ai-backend-pi.vercel.app/api/login",{
-      method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({profileId,password}),signal:ctrl.signal
-    });
-    data=await response.json().catch(()=>({}));
-  }catch(ex){
-    clearTimeout(timer);
-    if(error){error.textContent=ex?.name==="AbortError"?"Atelier está tardando demasiado en responder.":"No se puede contactar con el servidor de acceso.";error.hidden=false}
-    if(btn){btn.disabled=false;btn.textContent="Entrar en el armario"}
-    return;
-  }
-  clearTimeout(timer);
-  if(!response.ok){
-    if(error){error.textContent=data.error||("Error de acceso ("+response.status+").");error.hidden=false}
-    if(btn){btn.disabled=false;btn.textContent="Entrar en el armario"}
-    return;
-  }
-  window.__atelierPendingPassword=password;
-  window.__atelierPreAuthToken=data.token||"";
-  window.__atelierPreAuthProfile=profileId;
-  if(btn)btn.textContent="Abriendo Atelier…";
-  try{
-    await window.__atelierPreparePromise;
-    if(!atelierInstallPreparedApp())throw new Error("APP_NOT_READY");
-  }catch(ex){
-    if(error){error.textContent="El acceso es correcto, pero la aplicación no ha podido cargarse"+(window.__atelierPrepareError?.message?" ("+window.__atelierPrepareError.message+")":"")+". ";error.hidden=false}
-    if(btn){btn.disabled=false;btn.textContent="Entrar en el armario"}
-  }
-}
-document.getElementById("preprofileToggle")?.addEventListener("click",atelierTogglePassword);
-document.getElementById("preprofileBack")?.addEventListener("click",atelierBackToProfiles);
-document.getElementById("preprofileEnter")?.addEventListener("click",atelierPreEnter);
-document.querySelectorAll("[data-preprofile]").forEach(btn=>btn.addEventListener("click",()=>atelierPickProfile(btn)));
-document.getElementById("preprofilePassword")?.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();atelierPreEnter()}});
-</script>
-<script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
-<script src="./payload.js?v=9"></script>
+<div id="garmentSheet" class="overlay hidden">
+<section class="sheet" role="dialog" aria-modal="true" aria-labelledby="garmentTitle">
+<form id="garmentForm">
+<div class="section-head"><h2 id="garmentTitle">Nueva prenda</h2><button type="button" id="closeGarment" class="secondary">Cerrar</button></div>
+<input type="hidden" id="garmentId">
+<div class="field"><label for="garmentImage">Foto</label><input id="garmentImage" type="file" accept="image/*"><button id="analyzeBtn" type="button" class="secondary">✨ Analizar foto</button></div>
+<div class="field"><label for="garmentName">Nombre</label><input id="garmentName" maxlength="80" required></div>
+<div class="field"><label for="garmentCategory">Categoría</label><select id="garmentCategory"><option value="">Sin categoría</option><option>Arriba</option><option>Abajo</option><option>Vestidos</option><option>Capas</option><option>Zapatos</option><option>Bolsos</option><option>Accesorios</option></select></div>
+<div class="field"><label for="garmentColor">Color</label><input id="garmentColor" maxlength="60"></div>
+<div class="field"><label for="garmentNotes">Notas</label><textarea id="garmentNotes" rows="3" maxlength="500"></textarea></div>
+<div class="actions"><button id="deleteGarment" type="button" class="danger hidden">Eliminar</button><button type="submit" class="primary">Guardar</button></div>
+</form>
+</section>
+</div>
 
-<script>
-async function atelierLoadApp(){
-  try{
-    const b64=(window.__ATELIER_B64||"").trim();
-    if(!b64)throw new Error("PAYLOAD_MISSING");
-    const status=document.getElementById("preloadStatus");
-    if(status)status.textContent="";
-    const bytes=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
-    let html="";
-    if(window.fflate&&fflate.gunzipSync){html=new TextDecoder().decode(fflate.gunzipSync(bytes));}
-    else{const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));html=await new Response(stream).text();}
-
-    const gateHtml=`
-<div id="profileGate" class="profile-gate" hidden>
-  <div class="profile-gate-card">
-    <span class="eyebrow">ATELIER</span>
-    <h1>¿Quién va a usar el armario?</h1>
-    <p class="meta">Cada perfil tiene sus propias prendas, looks, favoritos, wishlist e historial.</p>
-    <div id="profileChoices" class="profile-choices"></div>
-    <div id="profilePasswordBox" class="profile-password-box" hidden>
-      <button id="profileBackBtn" class="profile-back" type="button">← Cambiar perfil</button>
-      <div class="profile-selected" id="profileSelectedName"></div>
-      <p id="profilePasswordHelp" class="meta"></p>
-      <label for="profilePasswordInput">Contraseña</label>
-      <div class="profile-password-row">
-        <input id="profilePasswordInput" type="password" autocomplete="current-password" placeholder="Introduce la contraseña">
-        <button id="profilePasswordToggle" type="button" aria-label="Mostrar contraseña">Ver</button>
-      </div>
-      <button id="profileUnlockBtn" class="profile-unlock" type="button">Entrar en el armario</button>
-      <p id="profilePasswordError" class="profile-password-error" hidden></p>
-    </div>
-  </div>
-</div>`;
-    html=html.replace("<body>","<body>"+gateHtml);
-
-    const profileCss=`
-.profile-gate{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:24px;background:rgba(244,241,236,.96);backdrop-filter:blur(16px)}
-.profile-gate[hidden]{display:none}
-.profile-gate-card{width:min(100%,460px);background:#fffdf9;border:1px solid var(--line);border-radius:28px;padding:26px;box-shadow:0 22px 70px rgba(30,24,17,.12)}
-.profile-gate-card h1{margin:6px 0 8px}.profile-choices{display:grid;gap:12px;margin-top:20px}
-.profile-choice{width:100%;border:1px solid var(--line);background:#fff;border-radius:20px;padding:14px 16px;display:flex;align-items:center;gap:14px;text-align:left;cursor:pointer}
-.profile-avatar{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;background:#171717;color:#fff;font-weight:800;flex:0 0 auto}
-.profile-choice strong{display:block}.profile-choice small{display:block;color:var(--muted);margin-top:2px}
-.profile-switch-button{position:fixed;top:14px;right:14px;z-index:80;border:1px solid var(--line);background:#fffdf9;border-radius:999px;padding:6px 10px 6px 6px;display:inline-flex;align-items:center;gap:8px;font-weight:700;cursor:pointer}
-.profile-switch-button .pi{width:28px;height:28px;border-radius:50%;background:#171717;color:#fff;display:grid;place-items:center;font-size:12px}
-.profile-password-box{margin-top:18px}.profile-password-box[hidden]{display:none}.profile-choices[hidden]{display:none!important}
-.profile-back{border:0;background:transparent;padding:0;margin-bottom:16px;font-weight:700;cursor:pointer}
-.profile-selected{font-size:22px;font-weight:800;margin-bottom:8px}
-.profile-password-box label{display:block;font-size:13px;font-weight:700;margin:16px 0 7px}
-.profile-password-row{display:flex;gap:8px}
-.profile-password-row input{flex:1;min-width:0;border:1px solid var(--line);border-radius:14px;padding:13px 14px;font:inherit;background:#fff}
-.profile-password-row button{border:1px solid var(--line);border-radius:14px;background:#fff;padding:0 14px;font-weight:700}
-.profile-unlock{width:100%;margin-top:12px;border:0;border-radius:14px;background:#171717;color:#fff;padding:14px 16px;font-weight:800;font:inherit}
-.profile-password-error{color:#a22626;font-weight:700;font-size:13px;margin:10px 0 0}
-`;
-    html=html.replace("</style>",profileCss+"</style>");
-
-    html=html.replace("<main",'<button class="profile-switch-button" id="profileSwitchBtn" type="button"><span class="pi" id="activeProfileInitial">N</span><span id="activeProfileName">Noelia</span></button><main');
-
-    const profileJs=`
-const ATELIER_API_BASE="https://atelier-ai-backend-pi.vercel.app";
-const PROFILES=[{id:"noelia",name:"Noelia"},{id:"ana-maria",name:"Ana María"},{id:"irene",name:"Irene"}];
-let activeProfileId="";
-let pendingProfileId="";
-let atelierSessionToken="";
-let lastActivityAt=Date.now();
-let backgroundAt=0;
-const AUTO_LOCK_MS=10*60*1000;
-const BACKGROUND_LOCK_MS=60*1000;
-
-function profileStateKey(id){return "state:"+id}
-function getActiveProfile(){return PROFILES.find(p=>p.id===activeProfileId)||PROFILES[0]}
-function updateProfileUI(){
-  const p=getActiveProfile(),n=document.getElementById("activeProfileName"),i=document.getElementById("activeProfileInitial");
-  if(n)n.textContent=p.name;if(i)i.textContent=(p.name[0]||"?").toUpperCase()
-}
-function resetPasswordView(){
-  pendingProfileId="";
-  const box=document.getElementById("profilePasswordBox"),choices=document.getElementById("profileChoices"),input=document.getElementById("profilePasswordInput"),err=document.getElementById("profilePasswordError");
-  if(box){box.hidden=true;box.style.display="none"}if(choices){choices.hidden=false;choices.style.display="grid"}
-  if(input){input.value="";input.type="password";input.disabled=false}
-  if(err)err.hidden=true
-}
-function renderProfileChoices(){
-  const w=document.getElementById("profileChoices");if(!w)return;
-  w.hidden=false;
-  w.innerHTML=PROFILES.map(p=>'<button type="button" class="profile-choice" data-profile="'+p.id+'"><span class="profile-avatar">'+p.name[0].toUpperCase()+'</span><span><strong>'+p.name+'</strong><small>Armario privado de '+p.name+'</small></span></button>').join("");
-  w.querySelectorAll("[data-profile]").forEach(b=>b.addEventListener("click",()=>requestProfilePassword(b.dataset.profile)))
-}
-function showProfileGate(){
-  activeProfileId="";
-  atelierSessionToken="";
-  resetPasswordView();renderProfileChoices();
-  document.getElementById("profileGate")?.removeAttribute("hidden")
-}
-function lockAtelier(){
-  atelierSessionToken="";
-  activeProfileId="";
-  showProfileGate()
-}
-function requestProfilePassword(id){
-  const p=PROFILES.find(x=>x.id===id);if(!p)return;
-  pendingProfileId=id;
-  const choices=document.getElementById("profileChoices"),box=document.getElementById("profilePasswordBox"),name=document.getElementById("profileSelectedName"),input=document.getElementById("profilePasswordInput"),help=document.getElementById("profilePasswordHelp"),btn=document.getElementById("profileUnlockBtn"),err=document.getElementById("profilePasswordError");
-  if(choices){choices.hidden=true;choices.style.display="none"}if(box){box.hidden=false;box.style.display="block"}if(name)name.textContent=p.name;
-  if(help)help.textContent="Introduce la contraseña para acceder.";
-  if(btn){btn.textContent="Entrar en el armario";btn.disabled=false}
-  if(err)err.hidden=true;
-  if(input){input.value="";input.disabled=false;setTimeout(()=>input.focus(),50)}
-}
-async function unlockProfile(){
-  const p=PROFILES.find(x=>x.id===pendingProfileId),input=document.getElementById("profilePasswordInput"),err=document.getElementById("profilePasswordError"),btn=document.getElementById("profileUnlockBtn");
-  if(!p||!input)return;
-  if(!input.value){if(err){err.textContent="Introduce la contraseña.";err.hidden=false}return}
-  if(btn)btn.disabled=true;
-  try{
-    const response=await fetch(ATELIER_API_BASE+"/api/login",{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({profileId:p.id,password:input.value})
-    });
-    const data=await response.json().catch(()=>({}));
-    if(!response.ok){
-      if(err){err.textContent=data.error||"No se ha podido iniciar sesión.";err.hidden=false}
-      input.value="";input.focus();return;
-    }
-    atelierSessionToken=data.token;
-    activeProfileId=p.id;
-    lastActivityAt=Date.now();
-    state=await loadStateAsync();updateProfileUI();
-    document.getElementById("profileGate")?.setAttribute("hidden","");
-    input.value="";
-    renderAll();renderWishlistSaved();renderAnalytics();try{renderSavedOutfits()}catch(e){}
-  }catch(ex){
-    if(err){err.textContent="No puedo conectar con el servidor de Atelier. Inténtalo de nuevo.";err.hidden=false}
-  }finally{if(btn)btn.disabled=false}
-}
-async function atelierAuthedFetch(path,options={}){
-  if(!atelierSessionToken)throw new Error("NO_SESSION");
-  const headers=new Headers(options.headers||{});
-  headers.set("Authorization","Bearer "+atelierSessionToken);
-  return fetch(ATELIER_API_BASE+path,{...options,headers});
-}
-
-["pointerdown","touchstart","keydown","scroll"].forEach(evt=>document.addEventListener(evt,()=>{lastActivityAt=Date.now()},{passive:true}));
-setInterval(()=>{if(activeProfileId&&Date.now()-lastActivityAt>AUTO_LOCK_MS)lockAtelier()},30000);
-document.addEventListener("visibilitychange",()=>{
-  if(document.hidden){backgroundAt=Date.now()}
-  else if(activeProfileId&&backgroundAt&&Date.now()-backgroundAt>BACKGROUND_LOCK_MS){lockAtelier()}
-});
-window.addEventListener("pageshow",e=>{if(e.persisted)lockAtelier()});
-document.addEventListener("click",e=>{
-  if(e.target.closest("#profileSwitchBtn"))showProfileGate();
-  if(e.target.closest("#profileBackBtn"))resetPasswordView();
-  if(e.target.closest("#profileUnlockBtn"))unlockProfile();
-  if(e.target.closest("#profilePasswordToggle")){
-    const i=document.getElementById("profilePasswordInput");
-    if(i){i.type=i.type==="password"?"text":"password";e.target.textContent=i.type==="password"?"Ver":"Ocultar"}
-  }
-});
-document.addEventListener("keydown",e=>{if(e.key==="Enter"&&document.activeElement?.id==="profilePasswordInput")unlockProfile()});
-`;
-    html=html.replace('const DB_NAME = "atelier-armario-db";',profileJs+'const DB_NAME = "atelier-armario-db";');
-    html=html.replace('idbGet("state")','idbGet(profileStateKey(activeProfileId))');
-    html=html.replaceAll('idbSet("state",state)','idbSet(profileStateKey(activeProfileId),state)');
-    html=html.replace('const legacy=localStorage.getItem(STORAGE_KEY);','const legacy=(activeProfileId==="noelia")?localStorage.getItem(STORAGE_KEY):null;');
-    html=html.replace('idbSet("state",migrated)','idbSet(profileStateKey(activeProfileId),migrated)');
-    html=html.replace("</body>","\n<script>\n(function(){\n  function setSelect(id,value){\n    const el=document.getElementById(id);if(!el||value==null)return;\n    const v=String(value);\n    if([...el.options].some(o=>o.value===v)){el.value=v;el.dispatchEvent(new Event(\"change\",{bubbles:true}));return}\n    const norm=s=>s.normalize(\"NFD\").replace(/[\\\\u0300-\\\\u036f]/g,\"\").toLowerCase();\n    const match=[...el.options].find(o=>norm(o.textContent.trim())===norm(v));\n    if(match){el.value=match.value;el.dispatchEvent(new Event(\"change\",{bubbles:true}))}\n  }\n  function setInput(id,value){\n    const el=document.getElementById(id);if(!el||value==null)return;\n    el.value=String(value);el.dispatchEvent(new Event(\"input\",{bubbles:true}));el.dispatchEvent(new Event(\"change\",{bubbles:true}))\n  }\n  async function imageForAI(file){\n    const bitmap=await createImageBitmap(file);\n    const max=900,scale=Math.min(1,max/Math.max(bitmap.width,bitmap.height));\n    const w=Math.max(1,Math.round(bitmap.width*scale)),h=Math.max(1,Math.round(bitmap.height*scale));\n    const canvas=document.createElement(\"canvas\");canvas.width=w;canvas.height=h;\n    canvas.getContext(\"2d\").drawImage(bitmap,0,0,w,h);\n    if(bitmap.close)bitmap.close();\n    return canvas.toDataURL(\"image/jpeg\",0.86)\n  }\n  function applyGarment(g){\n    setInput(\"nameInput\",g.name);\n    setSelect(\"typeInput\",g.type);\n    setSelect(\"colorInput\",g.color);\n    setSelect(\"styleInput\",g.style);\n    setSelect(\"seasonInput\",g.season);\n    setSelect(\"fabricInput\",g.fabric);\n    setSelect(\"patternInput\",g.pattern);\n    setSelect(\"lengthInput\",g.length);\n    setSelect(\"formalityInput\",g.formality);\n    if(Array.isArray(g.occasions)){\n      const el=document.getElementById(\"occasionTagsInput\");\n      if(el)[...el.options].forEach(o=>o.selected=g.occasions.includes(o.value));\n    }\n    if(g.notes)setInput(\"notesInput\",g.notes);\n  }\n  async function analyzeWithAI(){\n    const btn=document.getElementById(\"analyzePhotoBtn\"),status=document.getElementById(\"aiStatus\"),input=document.getElementById(\"photoInput\");\n    const file=input?.files?.[0];\n    if(!file){if(status)status.textContent=\"Primero añade una foto.\";return}\n    if(!window.atelierAuthedFetch&&typeof atelierAuthedFetch!==\"function\"){if(status)status.textContent=\"Vuelve a iniciar sesión.\";return}\n    if(btn){btn.disabled=true;btn.textContent=\"Analizando con IA…\"}\n    if(status)status.textContent=\"La IA está identificando la prenda y sus atributos…\";\n    try{\n      const image=await imageForAI(file);\n      const response=await atelierAuthedFetch(\"/api/analyze\",{\n        method:\"POST\",\n        headers:{\"Content-Type\":\"application/json\"},\n        body:JSON.stringify({image})\n      });\n      const data=await response.json().catch(()=>({}));\n      if(response.status===401){lockAtelier();throw new Error(\"Tu sesión ha caducado. Vuelve a entrar.\")}\n      if(!response.ok)throw new Error(data.error||\"No se ha podido analizar la prenda.\");\n      applyGarment(data.garment||{});\n      if(status)status.textContent=\"✓ IA completada. Revisa los campos y guarda la prenda.\";\n    }catch(err){\n      if(status)status.textContent=err.message||\"No se ha podido analizar la foto.\";\n    }finally{\n      if(btn){btn.disabled=!input?.files?.[0];btn.textContent=\"✦ Analizar foto con IA\"}\n    }\n  }\n  document.addEventListener(\"click\",function(e){\n    const btn=e.target.closest(\"#analyzePhotoBtn\");\n    if(!btn)return;\n    e.preventDefault();e.stopImmediatePropagation();analyzeWithAI();\n  },true);\n  document.addEventListener(\"change\",function(e){\n    if(e.target?.id===\"photoInput\"){\n      const btn=document.getElementById(\"analyzePhotoBtn\");\n      if(btn){btn.disabled=!e.target.files?.length;btn.textContent=\"✦ Analizar foto con IA\"}\n      const status=document.getElementById(\"aiStatus\");\n      if(status&&e.target.files?.length)status.textContent=\"Foto lista. Pulsa “Analizar foto con IA”.\";\n    }\n  },true);\n})();\n<\/script>"+"</body>");
-
-    html=html.replace(
-`async function bootstrapApp(){
-  state = await loadStateAsync();
-  renderAll();
-  renderWishlistSaved();
-  renderAnalytics();
-}`,
-`async function bootstrapApp(){
-  renderProfileChoices();
-  showProfileGate();
-  const pre=window.__atelierPreselectedProfile||"";
-  if(pre&&PROFILES.some(p=>p.id===pre))requestProfilePassword(pre);
-}`
-    );
-
-    html=html.replace("</body>","\n<script>\n(function(){\n  const PHOTO_KEYS=[\"image\",\"imageUrl\",\"photo\",\"photoUrl\",\"photoData\",\"processedImage\",\"processedPhoto\",\"originalImage\",\"originalPhoto\",\"dataUrl\",\"src\"];\n  function itemHasPhoto(item){\n    if(!item||typeof item!==\"object\")return false;\n    return PHOTO_KEYS.some(k=>typeof item[k]===\"string\"&&item[k].trim().length>20);\n  }\n  async function purgeNoeliaWithoutPhotos(){\n    if(typeof activeProfileId===\"undefined\"||activeProfileId!==\"noelia\"||typeof state===\"undefined\"||!state)return;\n    let changed=false;\n    for(const key of [\"garments\",\"wardrobe\",\"items\",\"clothes\"]){\n      if(Array.isArray(state[key])){\n        const filtered=state[key].filter(item=>itemHasPhoto(item));\n        if(filtered.length!==state[key].length){state[key]=filtered;changed=true}\n      }\n    }\n    if(changed){\n      try{await saveStateAsync()}catch(e){try{await idbSet(profileStateKey(activeProfileId),state)}catch(_){}}\n      try{renderAll();renderAnalytics()}catch(e){}\n    }\n  }\n  document.addEventListener(\"click\",function(e){\n    const save=e.target.closest(\"#saveGarmentBtn,button[type='submit']\");\n    if(!save)return;\n    const form=save.closest(\"form\");\n    if(form&&!form.querySelector(\"#photoInput\"))return;\n    const input=document.getElementById(\"photoInput\");\n    const preview=document.querySelector(\"#photoPreview img,.photo-preview img,[data-photo-preview] img\");\n    const hasPhoto=!!input?.files?.length||!!(preview&&preview.getAttribute(\"src\")&&preview.getAttribute(\"src\").length>20);\n    if(!hasPhoto){\n      e.preventDefault();e.stopImmediatePropagation();\n      const status=document.getElementById(\"aiStatus\");\n      if(status)status.textContent=\"La foto es obligatoria para guardar una prenda.\";\n      input?.scrollIntoView({behavior:\"smooth\",block:\"center\"});\n    }\n  },true);\n  document.addEventListener(\"click\",function(e){\n    if(e.target.closest(\"#profileUnlockBtn\")){\n      setTimeout(()=>{if(typeof activeProfileId!==\"undefined\"&&activeProfileId===\"noelia\")purgeNoeliaWithoutPhotos()},1500);\n    }\n  },true);\n})();\n<\/script>"+"</body>");
-
-    html=html.replace("</body>","\n<script>\n(function(){\n  function removeLegacyChatGPT(){\n    const all=[...document.querySelectorAll(\"section,.card,article,div\")];\n    const target=all.find(el=>{\n      const t=(el.textContent||\"\").replace(/\\s+/g,\" \").trim();\n      return t.includes(\"Generar looks con ChatGPT\") && t.includes(\"Preparar para ChatGPT\");\n    });\n    if(target){\n      let node=target;\n      while(node.parentElement && node.parentElement!==document.body){\n        const pt=(node.parentElement.textContent||\"\");\n        if(pt.includes(\"Generar looks con ChatGPT\") && pt.length<5000) node=node.parentElement;\n        else break;\n      }\n      node.remove();\n    }\n    [...document.querySelectorAll(\"*\")].forEach(el=>{\n      const t=(el.textContent||\"\").trim();\n      if(t===\"ChatGPT sin API\"||t===\"CHATGPT SIN API\"||t===\"Sin coste API\") el.style.display=\"none\";\n    });\n  }\n  if(document.readyState===\"loading\")document.addEventListener(\"DOMContentLoaded\",removeLegacyChatGPT);\n  else removeLegacyChatGPT();\n  setTimeout(removeLegacyChatGPT,300);\n})();\n<\/script>"+"</body>");
-
-    html=html.replace("</body>","\n<script>\n(function(){\n const HELP={\n  \"Diversidad\":[\"Diversidad de looks\",\"Controla cuánto cambian las propuestas entre sí. Alta intenta repetir menos prendas, siluetas y combinaciones; Media mantiene más coherencia y puede reutilizar piezas que funcionan bien.\"],\n  \"Formalidad\":[\"Formalidad\",\"Indica lo arreglada que es una prenda o el contexto en el que encaja: casual, smart casual, formal, fiesta o deportivo.\"],\n  \"Temporada\":[\"Temporada\",\"Ayuda a Atelier a evitar prendas poco adecuadas para la época del año. “Todo el año” permite usarla en cualquier estación.\"],\n  \"Ocasión\":[\"Ocasión\",\"Define para qué situaciones encaja mejor: diario, trabajo, cena, evento o viaje.\"]\n };\n function addHelp(){\n  document.querySelectorAll(\"label\").forEach(label=>{\n   if(label.querySelector(\".atelier-help\"))return;\n   const text=[...label.childNodes].filter(n=>n.nodeType===3).map(n=>n.textContent).join(\" \").trim();\n   const key=Object.keys(HELP).find(k=>text===k||text.startsWith(k));\n   if(!key)return;\n   const b=document.createElement(\"button\");b.type=\"button\";b.className=\"atelier-help\";b.textContent=\"?\";b.setAttribute(\"aria-label\",\"¿Qué significa \"+key+\"?\");b.dataset.help=key;\n   label.insertBefore(b,label.querySelector(\"select,input,textarea\"));\n  });\n }\n function showHelp(key){\n  document.querySelector(\".atelier-help-pop\")?.remove();\n  const data=HELP[key];if(!data)return;\n  const p=document.createElement(\"div\");p.className=\"atelier-help-pop\";\n  p.innerHTML=\"<button type='button' aria-label='Cerrar'>×</button><strong>\"+data[0]+\"</strong><span>\"+data[1]+\"</span>\";\n  p.querySelector(\"button\").onclick=()=>p.remove();document.body.appendChild(p);\n }\n function setupMobileFilters(){\n  const toolbar=document.querySelector(\".wardrobe-toolbar\");if(!toolbar||document.querySelector(\".mobile-filter-trigger\"))return;\n  const trigger=document.createElement(\"button\");trigger.type=\"button\";trigger.className=\"mobile-filter-trigger\";\n  trigger.innerHTML=\"<span class='mf-left'><span class='mf-icon'>☷</span><span>Filtros y orden</span></span><span class='mf-count'>0</span>\";\n  toolbar.parentNode.insertBefore(trigger,toolbar);\n  const close=document.createElement(\"button\");close.type=\"button\";close.className=\"mobile-filter-close\";close.setAttribute(\"aria-label\",\"Cerrar filtros\");close.textContent=\"×\";toolbar.prepend(close);\n  const closeFilters=()=>{toolbar.classList.remove(\"mobile-open\");document.body.classList.remove(\"atelier-filter-open\")};\n  trigger.onclick=()=>{toolbar.classList.add(\"mobile-open\");document.body.classList.add(\"atelier-filter-open\")};\n  close.onclick=closeFilters;\n  document.addEventListener(\"click\",e=>{if(document.body.classList.contains(\"atelier-filter-open\")&&!toolbar.contains(e.target)&&!trigger.contains(e.target))closeFilters()});\n  function count(){\n   let n=0;\n   toolbar.querySelectorAll(\"select\").forEach(s=>{if(s.id!==\"filterSort\"&&s.value&&s.value!==\"all\")n++});\n   toolbar.querySelectorAll(\"input\").forEach(i=>{if(i.value.trim())n++});\n   const badge=trigger.querySelector(\".mf-count\");badge.textContent=n;badge.style.display=n?\"inline-block\":\"none\";\n  }\n  toolbar.addEventListener(\"change\",count);toolbar.addEventListener(\"input\",count);count();\n }\n function init(){addHelp();setupMobileFilters()}\n document.addEventListener(\"click\",e=>{const b=e.target.closest(\".atelier-help\");if(b){e.preventDefault();e.stopPropagation();showHelp(b.dataset.help)}});\n if(document.readyState===\"loading\")document.addEventListener(\"DOMContentLoaded\",init);else init();\n setTimeout(init,500);\n})();\n<\/script>"+"</body>");
-
-    html=html.replace("</body>","\n<script>\n(function(){\n const AIKEY=\"atelier-ai-usage-v1\",PREFKEY=\"atelier-look-preferences-v1\",RECENTKEY=\"atelier-recent-look-items-v1\";\n function profileKey(k){return k+\":\"+(typeof activeProfileId!==\"undefined\"&&activeProfileId?activeProfileId:\"default\")}\n function getJSON(k,f){try{return JSON.parse(localStorage.getItem(profileKey(k)))||f}catch(e){return f}}\n function setJSON(k,v){localStorage.setItem(profileKey(k),JSON.stringify(v))}\n function aiUsage(){return getJSON(AIKEY,{vision:0,looks:0,cacheHits:0})}\n window.atelierTrackAI=function(kind){const u=aiUsage();u[kind]=(u[kind]||0)+1;setJSON(AIKEY,u);renderAIMeter()}\n function renderAIMeter(){\n   const el=document.getElementById(\"atelierAiMeter\");if(!el)return;const u=aiUsage();\n   el.textContent=\"IA este dispositivo · \"+(u.vision||0)+\" análisis · \"+(u.looks||0)+\" generaciones · \"+(u.cacheHits||0)+\" reutilizados\";\n }\n function injectSmartHome(){\n   const view=document.querySelector(\"#view-home,.view[data-view='home'],.view.home\");if(!view||view.querySelector(\".atelier-smart-card\"))return;\n   const card=document.createElement(\"div\");card.className=\"atelier-smart-card\";\n   card.innerHTML=\"<div class='atelier-smart-head'><strong>Atajos</strong><span>✦</span></div><div class='atelier-chip-row' style='margin-top:10px'><button class='atelier-chip' data-smart-nav='wardrobe'>Ver armario</button><button class='atelier-chip' data-smart-nav='today'>Crear look</button><button class='atelier-chip' data-smart-nav='shopping'>Qué me falta</button></div><div id='atelierAiMeter' class='atelier-ai-meter'></div>\";\n   view.prepend(card);renderAIMeter();\n }\n function quickWardrobeFilters(){\n   const toolbar=document.querySelector(\".wardrobe-toolbar\"),trigger=document.querySelector(\".mobile-filter-trigger\");if(!toolbar||!trigger||document.getElementById(\"atelierQuickFilters\"))return;\n   const row=document.createElement(\"div\");row.id=\"atelierQuickFilters\";row.className=\"atelier-chip-row\";\n   const opts=[[\"Todo\",\"\"],[\"Arriba\",\"top\"],[\"Abajo\",\"bottom\"],[\"Vestidos\",\"dress\"],[\"Zapatos\",\"shoes\"],[\"Abrigos\",\"outerwear\"]];\n   opts.forEach(([label,val])=>{const b=document.createElement(\"button\");b.type=\"button\";b.className=\"atelier-chip\";b.textContent=label;b.onclick=()=>{\n      const sel=toolbar.querySelector(\"#filterType,select[name*='type'],select[id*='Type']\");\n      if(sel){sel.value=val||\"all\";sel.dispatchEvent(new Event(\"change\",{bubbles:true}))}\n   };row.appendChild(b)});\n   trigger.parentNode.insertBefore(row,trigger.nextSibling);\n }\n function feedback(){\n   document.querySelectorAll(\"[data-outfit-id],.outfit-card,.look-card\").forEach((card,i)=>{\n     if(card.querySelector(\".atelier-feedback\"))return;\n     const box=document.createElement(\"div\");box.className=\"atelier-feedback\";box.innerHTML=\"<button type='button' title='Me gusta'>👍</button><button type='button' title='No me gusta'>👎</button>\";\n     box.onclick=e=>{const b=e.target.closest(\"button\");if(!b)return;const prefs=getJSON(PREFKEY,{up:0,down:0});b.textContent.includes(\"👍\")?prefs.up++:prefs.down++;setJSON(PREFKEY,prefs);b.disabled=true};\n     card.appendChild(box);\n   });\n }\n function smartNav(target){\n   const candidates=[...document.querySelectorAll(\"[data-view],nav button,.bottom-nav button,a\")];\n   const aliases={wardrobe:[\"wardrobe\",\"armario\"],today:[\"today\",\"hoy\"],shopping:[\"shopping\",\"comprar\"]}[target]||[target];\n   const hit=candidates.find(x=>aliases.some(a=>(x.dataset.view||x.textContent||\"\").toLowerCase().includes(a)));\n   hit?.click();\n }\n document.addEventListener(\"click\",e=>{const b=e.target.closest(\"[data-smart-nav]\");if(b)smartNav(b.dataset.smartNav)});\n function observe(){injectSmartHome();quickWardrobeFilters();feedback()}\n if(document.readyState===\"loading\")document.addEventListener(\"DOMContentLoaded\",observe);else observe();\n new MutationObserver(()=>observe()).observe(document.documentElement,{childList:true,subtree:true});\n})();\n<\/script>"+"</body>");
-
-
-    html=html.replace("</body>","\n<script>\n(function(){\n const STORE=\"atelier-manual-looks-v1\";let chosen=[],filter=\"all\";\n function wardrobe(){try{const a=state.garments||state.items||state.wardrobe||state.clothes;return Array.isArray(a)?a:[]}catch(_){return[]}}\n function pid(){try{return activeProfileId||\"default\"}catch(_){return\"default\"}}\n function photo(g){return g.image||g.imageUrl||g.photo||g.photoUrl||g.photoData||g.processedImage||g.processedPhoto||g.originalImage||g.originalPhoto||g.dataUrl||g.src||\"\"}\n function gid(g){return g.id||g.uid||g._id}\n function typ(g){return String(g.type||g.category||\"other\").toLowerCase()}\n function label(g){return g.name||g.type||g.category||\"Prenda\"}\n function open(){\n   chosen=[];filter=\"all\";document.querySelector(\".manual-look-builder\")?.remove();\n   const el=document.createElement(\"div\");el.className=\"manual-look-builder\";\n   el.innerHTML=\"<div class='manual-look-top'><div><small>ATELIER</small><h2>Crear look</h2></div><button class='manual-look-close' aria-label='Cerrar'>×</button></div><div class='manual-look-canvas'><div class='manual-look-stage'></div></div><div class='manual-look-picker'><div class='manual-look-tabs'></div><div class='manual-look-items'></div></div><button class='manual-look-save' type='button'>Guardar look</button>\";\n   document.body.appendChild(el);render();\n }\n function render(){\n   const el=document.querySelector(\".manual-look-builder\");if(!el)return;\n   const stage=el.querySelector(\".manual-look-stage\");stage.innerHTML=\"\";\n   if(!chosen.length)stage.innerHTML=\"<div class='manual-look-slot' style='grid-column:1/-1'><span>Toca prendas de tu armario para montar el look ✦</span></div>\";\n   chosen.forEach((g,i)=>{const d=document.createElement(\"div\");d.className=\"manual-look-slot\";d.innerHTML=(photo(g)?\"<img src='\"+photo(g)+\"' alt=''>\":\"<span>\"+label(g)+\"</span>\")+\"<button data-remove='\"+i+\"' aria-label='Quitar'>×</button>\";stage.appendChild(d)});\n   const tabs=[[\"all\",\"Todo\"],[\"top\",\"Arriba\"],[\"bottom\",\"Abajo\"],[\"dress\",\"Vestidos\"],[\"outerwear\",\"Capas\"],[\"shoes\",\"Zapatos\"],[\"bag\",\"Bolsos\"],[\"accessory\",\"Accesorios\"]];\n   el.querySelector(\".manual-look-tabs\").innerHTML=tabs.map(([v,l])=>\"<button data-mfilter='\"+v+\"' class='\"+(filter===v?\"active\":\"\")+\"'>\"+l+\"</button>\").join(\"\");\n   const items=wardrobe().filter(g=>filter===\"all\"||typ(g)===filter).filter(g=>photo(g));\n   el.querySelector(\".manual-look-items\").innerHTML=items.map(g=>\"<button class='manual-look-item' data-add='\"+gid(g)+\"' title='\"+label(g).replace(/'/g,\"\")+\"'><img src='\"+photo(g)+\"' alt='\"+label(g).replace(/'/g,\"\")+\"'></button>\").join(\"\");\n }\n function save(){\n   if(chosen.length<2){alert(\"Añade al menos dos prendas al look.\");return}\n   const k=STORE+\":\"+pid();let a=[];try{a=JSON.parse(localStorage.getItem(k))||[]}catch(_){}\n   a.unshift({id:\"manual-\"+Date.now(),createdAt:new Date().toISOString(),itemIds:chosen.map(gid)});localStorage.setItem(k,JSON.stringify(a.slice(0,60)));\n   try{if(typeof state!==\"undefined\"){state.savedOutfits=state.savedOutfits||[];state.savedOutfits.unshift({id:\"manual-\"+Date.now(),name:\"Look manual\",items:chosen.map(gid),createdAt:new Date().toISOString()});if(typeof saveStateAsync===\"function\")saveStateAsync();if(typeof renderSavedOutfits===\"function\")renderSavedOutfits()}}catch(_){}\n   document.querySelector(\".manual-look-builder\")?.remove();\n }\n function addButton(){\n   if(document.querySelector(\".manual-look-fab\"))return;\n   const b=document.createElement(\"button\");b.className=\"manual-look-fab\";b.type=\"button\";b.textContent=\"＋ Crear look\";document.body.appendChild(b);b.onclick=open;\n }\n document.addEventListener(\"click\",e=>{\n   if(e.target.closest(\".manual-look-close\"))document.querySelector(\".manual-look-builder\")?.remove();\n   const t=e.target.closest(\"[data-mfilter]\");if(t){filter=t.dataset.mfilter;render()}\n   const r=e.target.closest(\"[data-remove]\");if(r){chosen.splice(+r.dataset.remove,1);render()}\n   const a=e.target.closest(\"[data-add]\");if(a){const g=wardrobe().find(x=>String(gid(x))===String(a.dataset.add));if(g&&!chosen.some(x=>String(gid(x))===String(gid(g)))){chosen.push(g);render()}}\n   if(e.target.closest(\".manual-look-save\"))save();\n });\n if(document.readyState===\"loading\")document.addEventListener(\"DOMContentLoaded\",addButton);else addButton();\n setTimeout(addButton,500);\n})();\n<\/script>"+"</body>");
-
-    html=html.replace("</body>","\n<script>\n(function(){\n function wardrobe(){try{const a=state.garments||state.items||state.wardrobe||state.clothes;return Array.isArray(a)?a:[]}catch(_){return[]}}\n function gid(g){return String(g.id||g.uid||g._id||\"\")} function photo(g){return g.image||g.imageUrl||g.photo||g.photoUrl||g.photoData||g.processedImage||g.processedPhoto||g.originalImage||g.originalPhoto||g.dataUrl||g.src||\"\"}\n function home(){return document.querySelector(\"#view-home,.view[data-view='home'],.view.home\")}\n function add(){\n   const v=home();if(!v||v.querySelector(\".ai-look-panel\"))return;\n   const p=document.createElement(\"div\");p.className=\"ai-look-panel\";p.innerHTML=\"<h3>Looks con Atelier ✦</h3><div class='meta'>La IA recibe solo una selección compacta de tu armario.</div><div class='ai-look-controls'><select id='aiOcc'><option value='daily'>Diario</option><option value='work'>Trabajo</option><option value='dinner'>Cena</option><option value='event'>Evento</option><option value='travel'>Viaje</option></select><select id='aiSeason'><option value=''>Cualquier temporada</option><option value='warm'>Calor</option><option value='cold'>Frío</option><option value='all'>Todo el año</option></select><button id='aiMakeLooks'>Crear 3 looks</button></div><div id='aiLookStatus' class='meta'></div><div id='aiLookResults' class='ai-look-results'></div>\";v.prepend(p)\n }\n function render(looks){\n   const box=document.getElementById(\"aiLookResults\");if(!box)return;const all=wardrobe();box.innerHTML=\"\";\n   (looks||[]).forEach((l,i)=>{const d=document.createElement(\"div\");d.className=\"ai-look-result\";const gs=(l.ids||l.itemIds||[]).map(id=>all.find(g=>gid(g)===String(id))).filter(Boolean);d.innerHTML=\"<strong>Look \"+(i+1)+\"</strong><div class='ai-look-pics'>\"+gs.map(g=>photo(g)?\"<img src='\"+photo(g)+\"' alt=''>\":\"\").join(\"\")+\"</div>\"+(l.why?\"<small>\"+l.why+\"</small>\":\"\");box.appendChild(d)})\n }\n async function make(){\n   const st=document.getElementById(\"aiLookStatus\"),btn=document.getElementById(\"aiMakeLooks\");if(!window.atelierBuildCompactLookRequest)return;\n   const context={occasion:document.getElementById(\"aiOcc\")?.value||\"\",season:document.getElementById(\"aiSeason\")?.value||\"\",count:3};\n   const built=atelierBuildCompactLookRequest(context);\n   if(built.cached){st.textContent=\"Reutilizado · 0 tokens\";try{atelierTrackAI(\"cacheHits\")}catch(_){}render(built.cached.result.looks||built.cached.result);return}\n   if(!built.payload.items.length){st.textContent=\"Añade prendas al armario primero.\";return}\n   btn.disabled=true;st.textContent=\"Creando looks…\";\n   try{\n     atelierMarkLookGeneration();\n     const r=await atelierAuthedFetch(\"/api/looks\",{method:\"POST\",headers:{\"Content-Type\":\"application/json\"},body:JSON.stringify(built.payload)});\n     const data=await r.json();if(!r.ok)throw new Error(data.error||\"Error\");\n     atelierRememberAILooks(built.key,data);render(data.looks);st.textContent=\"Listo · contexto optimizado\";\n   }catch(e){st.textContent=e.message||\"No se han podido crear los looks.\"}finally{btn.disabled=false}\n }\n document.addEventListener(\"click\",e=>{if(e.target.closest(\"#aiMakeLooks\"))make()});\n function init(){add()} if(document.readyState===\"loading\")document.addEventListener(\"DOMContentLoaded\",init);else init();new MutationObserver(init).observe(document.documentElement,{childList:true,subtree:true})\n})();\n<\/script>"+"</body>");
-
-    if(!html||html.length<10000)throw new Error("APP_HTML_INVALID");
-    if(!html.includes("profileStateKey(activeProfileId)"))throw new Error("PROFILE_STORAGE_PATCH_MISSING");
-    if(!html.includes("ATELIER_API_BASE"))throw new Error("AUTH_PATCH_MISSING");
-    window.__atelierPreparedHtml=html;
-    return html;
-  }catch(e){
-    window.__atelierPrepareError=e;
-    const er=document.getElementById("preprofileError");
-    if(er){er.textContent="No he podido preparar Atelier. Recarga la página.";er.hidden=false}
-    throw e;
-  }
-}
-function atelierInstallPreparedApp(){
-  const html=window.__atelierPreparedHtml;
-  if(!html)return false;
-  const preselected=window.__atelierPreAuthProfile||window.__atelierPreselectedProfile||"";
-  const pretoken=window.__atelierPreAuthToken||"";
-  document.open();document.write(html);document.close();
-  if("serviceWorker" in navigator){navigator.serviceWorker.register("./sw.js").catch(()=>{})}
-  const boot=()=>{
-    try{
-      document.getElementById("instantProfileGate")?.remove();
-      if(typeof renderProfileChoices==="function")renderProfileChoices();
-      if(preselected&&pretoken){
-        atelierSessionToken=pretoken;activeProfileId=preselected;lastActivityAt=Date.now();
-        Promise.resolve(loadStateAsync()).then(x=>{
-          state=x;updateProfileUI();
-          document.getElementById("profileGate")?.setAttribute("hidden","");
-          renderAll();renderWishlistSaved();renderAnalytics();try{renderSavedOutfits()}catch(e){}
-        }).catch(()=>{if(typeof showProfileGate==="function")showProfileGate()});
-      }else if(typeof showProfileGate==="function")showProfileGate();
-    }catch(e){console.error("Atelier boot",e)}
-  };
-  setTimeout(boot,0);setTimeout(boot,150);
-  return true;
-}
-window.__atelierPreparePromise=atelierLoadApp();
-</script>
+<div id="lookSheet" class="overlay hidden">
+<section class="sheet" role="dialog" aria-modal="true" aria-labelledby="lookTitle">
+<form id="lookForm">
+<div class="section-head"><h2 id="lookTitle">Nuevo look</h2><button type="button" id="closeLook" class="secondary">Cerrar</button></div>
+<input type="hidden" id="lookId">
+<div class="field"><label for="lookName">Nombre</label><input id="lookName" maxlength="80" required></div>
+<div class="field"><label>Prendas</label><div id="lookGarments"></div></div>
+<div class="actions"><button id="deleteLook" type="button" class="danger hidden">Eliminar</button><button type="submit" class="primary">Guardar look</button></div>
+</form>
+</section>
+</div>
+<div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+<noscript>Atelier necesita JavaScript para funcionar.</noscript>
 </body>
 </html>

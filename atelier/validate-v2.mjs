@@ -1,0 +1,13 @@
+import fs from "node:fs";
+const html=fs.readFileSync(new URL("./index.html",import.meta.url),"utf8");
+const js=fs.readFileSync(new URL("./app-v2.js",import.meta.url),"utf8");
+const css=fs.readFileSync(new URL("./styles-v2.css",import.meta.url),"utf8");\nconst sw=fs.readFileSync(new URL("./sw.js",import.meta.url),"utf8");
+const mustHtml=["styles-v2.css","app-v2.js",'id="auth"','id="app"','id="garmentForm"','id="lookForm"'];
+const mustJs=["/api/login","/api/analyze","/api/looks","indexedDB.open","state:"];
+const forbidden=["document.write(","document.open(","__ATELIER_B64","payload.js","fflate"];
+for(const x of mustHtml)if(!html.includes(x))throw new Error("HTML missing: "+x);
+for(const x of mustJs)if(!js.includes(x))throw new Error("JS missing: "+x);
+for(const x of forbidden)if(html.includes(x)||js.includes(x))throw new Error("Forbidden legacy runtime: "+x);
+if(css.length<3000)throw new Error("CSS unexpectedly small");
+new Function(js);\nnew Function(sw);\nfor(const asset of ["./styles-v2.css","./app-v2.js","./manifest.json"])if(!sw.includes(asset))throw new Error("SW missing asset: "+asset);
+console.log("Atelier v2 validation OK");
