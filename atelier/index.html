@@ -97,16 +97,16 @@ small{color:#77716a}
     <h2 style="margin:8px 0 6px">¿Quién va a usar el armario?</h2>
     <p style="margin:0 0 18px;color:#77716a">Elige tu perfil para abrir tu armario.</p>
     <div class="instant-profile-list">
-      <button type="button" data-preprofile="noelia" onclick="atelierPickProfile(this)"><b>N</b><span><strong>Noelia</strong><small>Armario privado</small></span></button>
-      <button type="button" data-preprofile="ana-maria" onclick="atelierPickProfile(this)"><b>A</b><span><strong>Ana María</strong><small>Armario privado</small></span></button>
-      <button type="button" data-preprofile="irene" onclick="atelierPickProfile(this)"><b>I</b><span><strong>Irene</strong><small>Armario privado</small></span></button>
+      <button type="button" data-preprofile="noelia"><b>N</b><span><strong>Noelia</strong><small>Armario privado</small></span></button>
+      <button type="button" data-preprofile="ana-maria"><b>A</b><span><strong>Ana María</strong><small>Armario privado</small></span></button>
+      <button type="button" data-preprofile="irene"><b>I</b><span><strong>Irene</strong><small>Armario privado</small></span></button>
     </div>
     <div id="preprofileSelected" class="instant-password" hidden>
-      <button id="preprofileBack" class="instant-back" type="button" onclick="return atelierBackToProfiles()">← Cambiar perfil</button>
+      <button id="preprofileBack" class="instant-back" type="button">← Cambiar perfil</button>
       <div id="preprofileSelectedName" class="instant-name"></div>
       <label for="preprofilePassword">Contraseña</label>
       <div class="instant-password-row"><input id="preprofilePassword" type="password" autocomplete="current-password" placeholder="Introduce la contraseña"><button id="preprofileToggle" type="button" aria-label="Mostrar contraseña">Ver</button></div>
-      <button id="preprofileEnter" class="instant-enter" type="button" onclick="return atelierPreEnter()">Entrar en el armario</button>
+      <button id="preprofileEnter" class="instant-enter" type="button">Entrar en el armario</button>
       <p id="preprofileError" class="instant-error" hidden></p>
     </div>
     <small id="preloadStatus" style="display:block;margin-top:14px"></small>
@@ -114,41 +114,96 @@ small{color:#77716a}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
 <script src="./payload.js?v=9"></script>
-<script>function atelierTogglePassword(btn){var i=document.getElementById("preprofilePassword");if(!i)return false;var show=i.type==="password";i.type=show?"text":"password";btn.textContent=show?"Ocultar":"Ver";btn.setAttribute("aria-label",show?"Ocultar contraseña":"Mostrar contraseña");return false}\nasync function atelierPreEnter(){var i=document.getElementById("preprofilePassword"),e=document.getElementById("preprofileError"),b=document.getElementById("preprofileEnter"),p=window.__atelierPreselectedProfile||"",pw=i?i.value:"";if(!pw){if(e){e.textContent="Introduce la contraseña.";e.hidden=false}return false}if(e)e.hidden=true;if(b){b.disabled=true;b.textContent="Entrando…"}var ctrl=new AbortController(),timer=setTimeout(function(){ctrl.abort()},12000),r,d;try{r=await fetch("https://atelier-ai-backend-pi.vercel.app/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({profileId:p,password:pw}),signal:ctrl.signal});d=await r.json().catch(function(){return {}})}catch(x){clearTimeout(timer);if(e){e.textContent=x&&x.name==="AbortError"?"Atelier está tardando demasiado en responder.":"No se puede contactar con el servidor de acceso.";e.hidden=false}if(b){b.disabled=false;b.textContent="Entrar en el armario"}return false}clearTimeout(timer);if(!r.ok){if(e){e.textContent=d.error||("Error de acceso ("+r.status+").");e.hidden=false}if(b){b.disabled=false;b.textContent="Entrar en el armario"}return false}window.__atelierPendingPassword=pw;window.__atelierPreAuthToken=d.token||"";window.__atelierPreAuthProfile=p;if(b)b.textContent="Abriendo Atelier…";try{await window.__atelierPreparePromise;if(!atelierInstallPreparedApp())throw new Error("APP_NOT_READY")}catch(x){if(e){e.textContent="El acceso es correcto, pero la aplicación no ha podido cargarse.";e.hidden=false}if(b){b.disabled=false;b.textContent="Entrar en el armario"}return false}return false}
-function atelierBackToProfiles(){window.__atelierPreselectedProfile="";\ndocument.addEventListener("click",function(e){var t=e.target.closest("#preprofileToggle");if(!t)return;atelierTogglePassword(t)});\nwindow.__atelierPendingPassword="";var l=document.querySelector(".instant-profile-list"),s=document.getElementById("preprofileSelected"),i=document.getElementById("preprofilePassword"),e=document.getElementById("preprofileError");if(l){l.hidden=false;l.style.display="grid"}if(s){s.hidden=true;s.style.display="none"}if(i)i.value="";if(e)e.hidden=true;return false}function atelierPickProfile(b){window.__atelierPreselectedProfile=b.getAttribute("data-preprofile")||"";var l=document.querySelector(".instant-profile-list"),s=document.getElementById("preprofileSelected"),n=document.getElementById("preprofileSelectedName"),i=document.getElementById("preprofilePassword");if(l)l.style.display="none";if(s){s.hidden=false;s.style.display="grid"}if(n)n.textContent=(b.querySelector("strong")||{}).textContent||"Perfil";if(i){i.value="";setTimeout(function(){i.focus()},10)}return false}</script>
 <script>
 window.__atelierPreselectedProfile="";
-document.addEventListener("click",function(e){
-  const toggle=e.target.closest("#preprofileToggle");
-  if(toggle){const i=document.getElementById("preprofilePassword");if(i){i.type=i.type==="password"?"text":"password";toggle.textContent=i.type==="password"?"Ver":"Ocultar"}return}
-  const enter=e.target.closest("#preprofileEnter");
-  if(enter)return;
-  const back=e.target.closest("#preprofileBack");
-  if(back){
-    window.__atelierPreselectedProfile="";
-    const list=document.querySelector(".instant-profile-list");
-    const selected=document.getElementById("preprofileSelected");
-    const s=document.getElementById("preloadStatus");
-    if(list)list.hidden=false;
-    if(selected)selected.hidden=true;
-    if(s)s.textContent="";
-    return;
-  }
-  const b=e.target.closest("[data-preprofile]");
-  if(!b)return;
-  window.__atelierPreselectedProfile=b.dataset.preprofile||"";
+window.__atelierPendingPassword="";
+window.__atelierPreAuthToken="";
+window.__atelierPreAuthProfile="";
+
+function atelierTogglePassword(){
+  const input=document.getElementById("preprofilePassword");
+  const btn=document.getElementById("preprofileToggle");
+  if(!input||!btn)return;
+  const reveal=input.type==="password";
+  input.type=reveal?"text":"password";
+  btn.textContent=reveal?"Ocultar":"Ver";
+  btn.setAttribute("aria-label",reveal?"Ocultar contraseña":"Mostrar contraseña");
+}
+function atelierBackToProfiles(){
+  window.__atelierPreselectedProfile="";
+  window.__atelierPendingPassword="";
   const list=document.querySelector(".instant-profile-list");
   const selected=document.getElementById("preprofileSelected");
-  const selectedName=document.getElementById("preprofileSelectedName");
-  const label=b.querySelector("strong")?.textContent||"Perfil";
-  if(list)list.hidden=true;
-  if(selected)selected.hidden=false;
-  if(selectedName)selectedName.textContent=label;
-  const inp=document.getElementById("preprofilePassword");if(inp){inp.value="";setTimeout(()=>inp.focus(),0)}
-  const er=document.getElementById("preprofileError");if(er)er.hidden=true;
-  const s=document.getElementById("preloadStatus");
-  if(s)s.textContent="";
-});
+  const input=document.getElementById("preprofilePassword");
+  const error=document.getElementById("preprofileError");
+  if(list){list.hidden=false;list.style.display="grid"}
+  if(selected){selected.hidden=true;selected.style.display="none"}
+  if(input){input.value="";input.type="password"}
+  if(error)error.hidden=true;
+}
+function atelierPickProfile(btn){
+  window.__atelierPreselectedProfile=btn.dataset.preprofile||"";
+  const list=document.querySelector(".instant-profile-list");
+  const selected=document.getElementById("preprofileSelected");
+  const name=document.getElementById("preprofileSelectedName");
+  const input=document.getElementById("preprofilePassword");
+  const error=document.getElementById("preprofileError");
+  if(list){list.hidden=true;list.style.display="none"}
+  if(selected){selected.hidden=false;selected.style.display="grid"}
+  if(name)name.textContent=btn.querySelector("strong")?.textContent||"Perfil";
+  if(error)error.hidden=true;
+  if(input){input.value="";input.type="password";setTimeout(()=>input.focus(),10)}
+}
+async function atelierPreEnter(){
+  const input=document.getElementById("preprofilePassword");
+  const error=document.getElementById("preprofileError");
+  const btn=document.getElementById("preprofileEnter");
+  const profileId=window.__atelierPreselectedProfile||"";
+  const password=input?.value||"";
+  if(!profileId){if(error){error.textContent="Selecciona un perfil.";error.hidden=false}return}
+  if(!password){if(error){error.textContent="Introduce la contraseña.";error.hidden=false}return}
+  if(error)error.hidden=true;
+  if(btn){btn.disabled=true;btn.textContent="Entrando…"}
+  const ctrl=new AbortController();
+  const timer=setTimeout(()=>ctrl.abort(),12000);
+  let response,data;
+  try{
+    response=await fetch("https://atelier-ai-backend-pi.vercel.app/api/login",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({profileId,password}),signal:ctrl.signal
+    });
+    data=await response.json().catch(()=>({}));
+  }catch(ex){
+    clearTimeout(timer);
+    if(error){error.textContent=ex?.name==="AbortError"?"Atelier está tardando demasiado en responder.":"No se puede contactar con el servidor de acceso.";error.hidden=false}
+    if(btn){btn.disabled=false;btn.textContent="Entrar en el armario"}
+    return;
+  }
+  clearTimeout(timer);
+  if(!response.ok){
+    if(error){error.textContent=data.error||("Error de acceso ("+response.status+").");error.hidden=false}
+    if(btn){btn.disabled=false;btn.textContent="Entrar en el armario"}
+    return;
+  }
+  window.__atelierPendingPassword=password;
+  window.__atelierPreAuthToken=data.token||"";
+  window.__atelierPreAuthProfile=profileId;
+  if(btn)btn.textContent="Abriendo Atelier…";
+  try{
+    await window.__atelierPreparePromise;
+    if(!atelierInstallPreparedApp())throw new Error("APP_NOT_READY");
+  }catch(ex){
+    if(error){error.textContent="El acceso es correcto, pero la aplicación no ha podido cargarse.";error.hidden=false}
+    if(btn){btn.disabled=false;btn.textContent="Entrar en el armario"}
+  }
+}
+document.getElementById("preprofileToggle")?.addEventListener("click",atelierTogglePassword);
+document.getElementById("preprofileBack")?.addEventListener("click",atelierBackToProfiles);
+document.getElementById("preprofileEnter")?.addEventListener("click",atelierPreEnter);
+document.querySelectorAll("[data-preprofile]").forEach(btn=>btn.addEventListener("click",()=>atelierPickProfile(btn)));
+document.getElementById("preprofilePassword")?.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();atelierPreEnter()}});
+</script>
+<script>
 async function atelierLoadApp(){
   try{
     const b64=(window.__ATELIER_B64||"").trim();
