@@ -79,21 +79,159 @@ small{color:#77716a}
 const PROFILES=[{id:"noelia",name:"Noelia"},{id:"ana-maria",name:"Ana María"},{id:"irene",name:"Irene"}];
 let activeProfileId="";
 let pendingProfileId="";
+let lastActivityAt=Date.now();
+let backgroundAt=0;
+const AUTO_LOCK_MS=10*60*1000;
+const BACKGROUND_LOCK_MS=60*1000;
+const MAX_ATTEMPTS=5;
+const LOCKOUT_MS=5*60*1000;
+const PBKDF2_ITERATIONS=210000;
+
 function profileStateKey(id){return "state:"+id}
 function passwordKey(id){return "atelier-profile-password:"+id}
+function securityKey(id){return "atelier-profile-security:"+id}
 function getActiveProfile(){return PROFILES.find(p=>p.id===activeProfileId)||PROFILES[0]}
-async function hashPassword(value){
-  const bytes=new TextEncoder().encode(value);
-  const digest=await crypto.subtle.digest("SHA-256",bytes);
-  return Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,"0")).join("");
+
+function bytesToHex(bytes){return Array.from(bytes).map(b=>b.toString(16).padStart(2,"0")).join("")}
+function hexToBytes(hex){const out=new Uint8Array(hex.length/2);for(let i=0;i<out.length;i++)out[i]=parseInt(hex.slice(i*2,i*2+2),16);return out}
+function randomHex(len=16){const b=new Uint8Array(len);crypto.getRandomValues(b);return bytesToHex(b)}
+
+async function sha256(value){
+  const digest=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(value));
+  return bytesToHex(new Uint8Array(digest));
 }
-function updateProfileUI(){const p=getActiveProfile();const n=document.getElementById("activeProfileName"),i=document.getElementById("activeProfileInitial");if(n)n.textContent=p.name;if(i)i.textContent=(p.name[0]||"?").toUpperCase()}
-function resetPasswordView(){pendingProfileId="";const box=document.getElementById("profilePasswordBox"),choices=document.getElementById("profileChoices"),input=document.getElementById("profilePasswordInput"),err=document.getElementById("profilePasswordError");if(box)box.hidden=true;if(choices)choices.hidden=false;if(input){input.value="";input.type="password"}if(err)err.hidden=true}
-function renderProfileChoices(){const w=document.getElementById("profileChoices");if(!w)return;w.hidden=false;w.innerHTML=PROFILES.map(p=>'<button type="button" class="profile-choice" data-profile="'+p.id+'"><span class="profile-avatar">'+p.name[0].toUpperCase()+'</span><span><strong>'+p.name+'</strong><small>Armario privado de '+p.name+'</small></span></button>').join("");w.querySelectorAll("[data-profile]").forEach(b=>b.addEventListener("click",()=>requestProfilePassword(b.dataset.profile)))}
-function showProfileGate(){resetPasswordView();renderProfileChoices();document.getElementById("profileGate")?.removeAttribute("hidden")}
-function requestProfilePassword(id){const p=PROFILES.find(x=>x.id===id);if(!p)return;pendingProfileId=id;const choices=document.getElementById("profileChoices"),box=document.getElementById("profilePasswordBox"),name=document.getElementById("profileSelectedName"),input=document.getElementById("profilePasswordInput"),help=document.getElementById("profilePasswordHelp"),btn=document.getElementById("profileUnlockBtn"),err=document.getElementById("profilePasswordError");const configured=!!localStorage.getItem(passwordKey(id));if(choices)choices.hidden=true;if(box)box.hidden=false;if(name)name.textContent=p.name;if(help)help.textContent=configured?"Introduce la contraseña para acceder.":"Primera vez en este dispositivo: crea la contraseña de este perfil.";if(btn)btn.textContent=configured?"Entrar en el armario":"Guardar contraseña y entrar";if(err)err.hidden=true;if(input){input.value="";setTimeout(()=>input.focus(),50)}}
-async function unlockProfile(){const p=PROFILES.find(x=>x.id===pendingProfileId),input=document.getElementById("profilePasswordInput"),err=document.getElementById("profilePasswordError");if(!p||!input)return;const value=input.value;if(value.length<4){if(err){err.textContent="La contraseña debe tener al menos 4 caracteres.";err.hidden=false}return}const entered=await hashPassword(value);const key=passwordKey(p.id),saved=localStorage.getItem(key);if(saved&&saved!==entered){if(err){err.textContent="Contraseña incorrecta.";err.hidden=false}input.select();return}if(!saved)localStorage.setItem(key,entered);activeProfileId=p.id;state=await loadStateAsync();updateProfileUI();document.getElementById("profileGate")?.setAttribute("hidden","");input.value="";renderAll();renderWishlistSaved();renderAnalytics();try{renderSavedOutfits()}catch(e){}}
-document.addEventListener("click",e=>{if(e.target.closest("#profileSwitchBtn"))showProfileGate();if(e.target.closest("#profileBackBtn"))resetPasswordView();if(e.target.closest("#profileUnlockBtn"))unlockProfile();if(e.target.closest("#profilePasswordToggle")){const i=document.getElementById("profilePasswordInput");if(i){i.type=i.type==="password"?"text":"password";e.target.textContent=i.type==="password"?"Ver":"Ocultar"}}});
+async function derivePassword(value,saltHex,iterations=PBKDF2_ITERATIONS){
+  const key=await crypto.subtle.importKey("raw",new TextEncoder().encode(value),{name:"PBKDF2"},false,["deriveBits"]);
+  const bits=await crypto.subtle.deriveBits({name:"PBKDF2",hash:"SHA-256",salt:hexToBytes(saltHex),iterations},key,256);
+  return bytesToHex(new Uint8Array(bits));
+}
+async function createPasswordRecord(value){
+  const salt=randomHex(16);
+  const hash=await derivePassword(value,salt,PBKDF2_ITERATIONS);
+  return "pbkdf2$"+PBKDF2_ITERATIONS+"$"+salt+"$"+hash;
+}
+async function verifyPassword(value,record){
+  if(!record)return {ok:false,migrate:false};
+  if(/^[a-f0-9]{64}$/i.test(record)){
+    return {ok:(await sha256(value))===record,migrate:true};
+  }
+  const parts=record.split("$");
+  if(parts.length!==4||parts[0]!=="pbkdf2")return {ok:false,migrate:false};
+  const iterations=Number(parts[1]),salt=parts[2],expected=parts[3];
+  const actual=await derivePassword(value,salt,iterations);
+  return {ok:actual===expected,migrate:false};
+}
+function readSecurity(id){
+  try{return JSON.parse(localStorage.getItem(securityKey(id))||"{}")}catch{return {}}
+}
+function writeSecurity(id,v){localStorage.setItem(securityKey(id),JSON.stringify(v))}
+function getLockRemaining(id){
+  const s=readSecurity(id),until=Number(s.lockedUntil||0);
+  return Math.max(0,until-Date.now());
+}
+function recordFailure(id){
+  const s=readSecurity(id);
+  const attempts=(Number(s.attempts)||0)+1;
+  if(attempts>=MAX_ATTEMPTS){writeSecurity(id,{attempts:0,lockedUntil:Date.now()+LOCKOUT_MS});return true}
+  writeSecurity(id,{attempts,lockedUntil:0});return false;
+}
+function clearFailures(id){writeSecurity(id,{attempts:0,lockedUntil:0})}
+function formatWait(ms){const m=Math.ceil(ms/60000);return m<=1?"1 minuto":m+" minutos"}
+
+function updateProfileUI(){
+  const p=getActiveProfile(),n=document.getElementById("activeProfileName"),i=document.getElementById("activeProfileInitial");
+  if(n)n.textContent=p.name;if(i)i.textContent=(p.name[0]||"?").toUpperCase()
+}
+function resetPasswordView(){
+  pendingProfileId="";
+  const box=document.getElementById("profilePasswordBox"),choices=document.getElementById("profileChoices"),input=document.getElementById("profilePasswordInput"),err=document.getElementById("profilePasswordError");
+  if(box)box.hidden=true;if(choices)choices.hidden=false;
+  if(input){input.value="";input.type="password";input.autocomplete="current-password"}
+  if(err)err.hidden=true
+}
+function renderProfileChoices(){
+  const w=document.getElementById("profileChoices");if(!w)return;
+  w.hidden=false;
+  w.innerHTML=PROFILES.map(p=>'<button type="button" class="profile-choice" data-profile="'+p.id+'"><span class="profile-avatar">'+p.name[0].toUpperCase()+'</span><span><strong>'+p.name+'</strong><small>Armario privado de '+p.name+'</small></span></button>').join("");
+  w.querySelectorAll("[data-profile]").forEach(b=>b.addEventListener("click",()=>requestProfilePassword(b.dataset.profile)))
+}
+function showProfileGate(){
+  activeProfileId="";
+  resetPasswordView();renderProfileChoices();
+  document.getElementById("profileGate")?.removeAttribute("hidden")
+}
+function lockAtelier(){
+  if(!activeProfileId)return;
+  activeProfileId="";
+  try{state=defaultState?defaultState():state}catch(e){}
+  showProfileGate()
+}
+function requestProfilePassword(id){
+  const p=PROFILES.find(x=>x.id===id);if(!p)return;
+  pendingProfileId=id;
+  const choices=document.getElementById("profileChoices"),box=document.getElementById("profilePasswordBox"),name=document.getElementById("profileSelectedName"),input=document.getElementById("profilePasswordInput"),help=document.getElementById("profilePasswordHelp"),btn=document.getElementById("profileUnlockBtn"),err=document.getElementById("profilePasswordError");
+  const configured=!!localStorage.getItem(passwordKey(id));
+  const remaining=getLockRemaining(id);
+  if(choices)choices.hidden=true;if(box)box.hidden=false;if(name)name.textContent=p.name;
+  if(help)help.textContent=configured?"Introduce la contraseña para acceder.":"Primera vez en este dispositivo: crea la contraseña de este perfil.";
+  if(btn){btn.textContent=configured?"Entrar en el armario":"Guardar contraseña y entrar";btn.disabled=remaining>0}
+  if(err){
+    if(remaining>0){err.textContent="Demasiados intentos. Vuelve a intentarlo en "+formatWait(remaining)+".";err.hidden=false}else err.hidden=true
+  }
+  if(input){input.value="";input.disabled=remaining>0;setTimeout(()=>{if(!input.disabled)input.focus()},50)}
+}
+async function unlockProfile(){
+  const p=PROFILES.find(x=>x.id===pendingProfileId),input=document.getElementById("profilePasswordInput"),err=document.getElementById("profilePasswordError"),btn=document.getElementById("profileUnlockBtn");
+  if(!p||!input)return;
+  const remaining=getLockRemaining(p.id);
+  if(remaining>0){
+    if(err){err.textContent="Demasiados intentos. Vuelve a intentarlo en "+formatWait(remaining)+".";err.hidden=false}
+    return;
+  }
+  const value=input.value;
+  if(value.length<4){if(err){err.textContent="La contraseña debe tener al menos 4 caracteres.";err.hidden=false}return}
+  if(btn)btn.disabled=true;
+  try{
+    const key=passwordKey(p.id),saved=localStorage.getItem(key);
+    if(!saved){
+      localStorage.setItem(key,await createPasswordRecord(value));
+      clearFailures(p.id);
+    }else{
+      const result=await verifyPassword(value,saved);
+      if(!result.ok){
+        const locked=recordFailure(p.id);
+        if(err){err.textContent=locked?"Demasiados intentos. El perfil queda bloqueado durante 5 minutos.":"Contraseña incorrecta.";err.hidden=false}
+        input.value="";input.focus();return;
+      }
+      if(result.migrate)localStorage.setItem(key,await createPasswordRecord(value));
+      clearFailures(p.id);
+    }
+    activeProfileId=p.id;
+    lastActivityAt=Date.now();
+    state=await loadStateAsync();updateProfileUI();
+    document.getElementById("profileGate")?.setAttribute("hidden","");
+    input.value="";
+    renderAll();renderWishlistSaved();renderAnalytics();try{renderSavedOutfits()}catch(e){}
+  }finally{if(btn)btn.disabled=false}
+}
+
+["pointerdown","touchstart","keydown","scroll"].forEach(evt=>document.addEventListener(evt,()=>{lastActivityAt=Date.now()},{passive:true}));
+setInterval(()=>{if(activeProfileId&&Date.now()-lastActivityAt>AUTO_LOCK_MS)lockAtelier()},30000);
+document.addEventListener("visibilitychange",()=>{
+  if(document.hidden){backgroundAt=Date.now()}
+  else if(activeProfileId&&backgroundAt&&Date.now()-backgroundAt>BACKGROUND_LOCK_MS){lockAtelier()}
+});
+window.addEventListener("pageshow",e=>{if(e.persisted)lockAtelier()});
+
+document.addEventListener("click",e=>{
+  if(e.target.closest("#profileSwitchBtn"))showProfileGate();
+  if(e.target.closest("#profileBackBtn"))resetPasswordView();
+  if(e.target.closest("#profileUnlockBtn"))unlockProfile();
+  if(e.target.closest("#profilePasswordToggle")){
+    const i=document.getElementById("profilePasswordInput");
+    if(i){i.type=i.type==="password"?"text":"password";e.target.textContent=i.type==="password"?"Ver":"Ocultar"}
+  }
+});
 document.addEventListener("keydown",e=>{if(e.key==="Enter"&&document.activeElement?.id==="profilePasswordInput")unlockProfile()});
 `;
     html=html.replace('const DB_NAME = "atelier-armario-db";',profileJs+'const DB_NAME = "atelier-armario-db";');
