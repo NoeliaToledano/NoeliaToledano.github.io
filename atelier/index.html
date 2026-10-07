@@ -419,6 +419,32 @@ document.addEventListener("keydown",e=>{if(e.key==="Enter"&&document.activeEleme
     if(!html||html.length<10000)throw new Error("APP_HTML_INVALID");
     if(!html.includes("profileStateKey(activeProfileId)"))throw new Error("PROFILE_STORAGE_PATCH_MISSING");
     if(!html.includes("ATELIER_API_BASE"))throw new Error("AUTH_PATCH_MISSING");
+    html=html.replace("</body>",`<script>
+(async function atelierSelfBoot(){
+  const raw=sessionStorage.getItem("atelier-preauth");
+  if(!raw)return;
+  sessionStorage.removeItem("atelier-preauth");
+  try{
+    const auth=JSON.parse(raw);
+    atelierSessionToken=auth.token||"";
+    activeProfileId=auth.profileId||"";
+    lastActivityAt=Date.now();
+    if(typeof renderProfileChoices==="function")renderProfileChoices();
+    state=await loadStateAsync();
+    updateProfileUI();
+    document.getElementById("profileGate")?.setAttribute("hidden","");
+    renderAll();
+    renderWishlistSaved();
+    renderAnalytics();
+    try{renderSavedOutfits()}catch(_){}
+    localStorage.setItem("atelier-debug-last","SELF_BOOT_OK "+Date.now());
+  }catch(e){
+    localStorage.setItem("atelier-debug-last","SELF_BOOT_ERROR "+(e?.stack||e?.message||e));
+    console.error("Atelier self boot",e);
+    if(typeof showProfileGate==="function")showProfileGate();
+  }
+})();
+<\\/script></body>`);
     window.__atelierPreparedHtml=html;
     return html;
   }catch(e){
@@ -431,25 +457,20 @@ document.addEventListener("keydown",e=>{if(e.key==="Enter"&&document.activeEleme
 function atelierInstallPreparedApp(){
   const html=window.__atelierPreparedHtml;
   if(!html){atelierDebug("INSTALL_NO_HTML");return false;}
-  const preselected=window.__atelierPreAuthProfile||window.__atelierPreselectedProfile||"";
-  const pretoken=window.__atelierPreAuthToken||"";
-  atelierDebug("DOCUMENT_WRITE_START");\n  document.open();document.write(html);document.close();\n  try{localStorage.setItem("atelier-debug-last","DOCUMENT_WRITE_DONE "+Date.now())}catch(_){}
-  if("serviceWorker" in navigator){navigator.serviceWorker.register("./sw.js").catch(()=>{})}
-  const boot=()=>{
-    try{
-      document.getElementById("instantProfileGate")?.remove();
-      if(typeof renderProfileChoices==="function")renderProfileChoices();
-      if(preselected&&pretoken){
-        atelierSessionToken=pretoken;activeProfileId=preselected;lastActivityAt=Date.now();
-        Promise.resolve(loadStateAsync()).then(x=>{
-          state=x;updateProfileUI();
-          document.getElementById("profileGate")?.setAttribute("hidden","");
-          renderAll();renderWishlistSaved();renderAnalytics();try{renderSavedOutfits()}catch(e){}
-        }).catch(()=>{if(typeof showProfileGate==="function")showProfileGate()});
-      }else if(typeof showProfileGate==="function")showProfileGate();
-    }catch(e){console.error("Atelier boot",e)}
-  };
-  setTimeout(boot,0);setTimeout(boot,150);
+  const profileId=window.__atelierPreAuthProfile||window.__atelierPreselectedProfile||"";
+  const token=window.__atelierPreAuthToken||"";
+  if(!profileId||!token){atelierDebug("INSTALL_NO_AUTH");return false;}
+  try{
+    sessionStorage.setItem("atelier-preauth",JSON.stringify({profileId,token}));
+    localStorage.setItem("atelier-debug-last","HANDOFF_READY "+Date.now());
+  }catch(e){
+    atelierDebug("HANDOFF_STORAGE_ERROR",e?.message||e);
+    return false;
+  }
+  atelierDebug("DOCUMENT_WRITE_START");
+  document.open();
+  document.write(html);
+  document.close();
   return true;
 }
 window.__atelierPreparePromise=atelierLoadApp();
