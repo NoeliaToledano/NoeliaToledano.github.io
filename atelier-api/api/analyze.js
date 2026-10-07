@@ -1,0 +1,97 @@
+export default async function handler(req, res) {
+  const allowedOrigins = new Set([
+    "https://noeliatoledano.github.io",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000"
+  ]);
+  const origin = req.headers.origin || "";
+  if (allowedOrigins.has(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
+  res.setHeader("Vary", "Origin");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  if (req.method === "OPTIONS") return res.status(204).end();
+  if (req.method !== "POST") return res.status(405).json({ error: "Método no permitido." });
+
+  if (!process.env.OPENAI_API_KEY) {
+    return res.status(503).json({ error: "Atelier AI aún no tiene configurada la clave de OpenAI." });
+  }
+
+  try {
+    const { image } = req.body || {};
+    if (typeof image !== "string" || !image.startsWith("data:image/")) {
+      return res.status(400).json({ error: "Falta una imagen válida." });
+    }
+    if (image.length > 8_000_000) {
+      return res.status(413).json({ error: "La imagen es demasiado grande. Haz una foto con menor resolución." });
+    }
+
+    const prompt = [
+      "Analiza la prenda de la imagen como un catalogador experto de moda.",
+      "No inventes marca, material ni detalles que no puedan inferirse visualmente.",
+      "Devuelve SOLO JSON válido, sin markdown ni texto adicional.",
+      "Los valores deben estar en español.",
+      "Usa null cuando no puedas determinar un valor con confianza.",
+      "Formato exacto:",
+      JSON.stringify({
+        name: "nombre corto y útil de la prenda",
+        type: "top|bottom|dress|outerwear|shoes|bag|accessory",
+        color: "color principal",
+        secondaryColors: ["color secundario"],
+        style: "casual|smart|minimal|romantico|fiesta|deportivo|boho|clasico|streetwear|otro",
+        seasons: ["primavera","verano","otono","invierno"],
+        fabric: "tejido/material aparente o null",
+        pattern: "liso|rayas|cuadros|flores|animal|lunares|grafico|otro",
+        length: "corto|midi|largo|na",
+        formality: "casual|smart-casual|formal|fiesta|deportivo",
+        occasions: ["diario","trabajo","fiesta","evento","viaje"],
+        fit: "ajustado|regular|oversize|fluido|null",
+        details: ["detalle visible breve"],
+        confidence: 0.0
+      })
+    ].join("\n");
+
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: process.env.OPENAI_VISION_MODEL || "gpt-4.1-mini",
+        input: [{
+          role: "user",
+          content: [
+            { type: "input_text", text: prompt },
+            { type: "input_image", image_url: image, detail: "high" }
+          ]
+        }],
+        max_output_tokens: 700
+      })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      console.error("OpenAI error", response.status, data);
+      return res.status(502).json({ error: "La IA no ha podido analizar la prenda.", detail: data?.error?.message || null });
+    }
+
+    const text = data.output_text || (data.output || [])
+      .flatMap(item => item.content || [])
+      .filter(part => part.type === "output_text")
+      .map(part => part.text)
+      .join("\n");
+
+    const cleaned = String(text || "").replace(/^\`\`\`(?:json)?\s*/i, "").replace(/\s*\`\`\`$/i, "").trim();
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    if (start < 0 || end <= start) throw new Error("Respuesta JSON no válida.");
+    const garment = JSON.parse(cleaned.slice(start, end + 1));
+
+    return res.status(200).json({ garment });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Error interno analizando la prenda." });
+  }
+}
