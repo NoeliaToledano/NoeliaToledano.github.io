@@ -102,7 +102,7 @@ small{color:#77716a}
       <button type="button" data-preprofile="irene" onclick="atelierPickProfile(this)"><b>I</b><span><strong>Irene</strong><small>Armario privado</small></span></button>
     </div>
     <div id="preprofileSelected" class="instant-password" hidden>
-      <button id="preprofileBack" class="instant-back" type="button">← Cambiar perfil</button>
+      <button id="preprofileBack" class="instant-back" type="button" onclick="return atelierBackToProfiles()">← Cambiar perfil</button>
       <div id="preprofileSelectedName" class="instant-name"></div>
       <label for="preprofilePassword">Contraseña</label>
       <div class="instant-password-row"><input id="preprofilePassword" type="password" autocomplete="current-password" placeholder="Introduce la contraseña"><button id="preprofileToggle" type="button">Ver</button></div>
@@ -112,7 +112,7 @@ small{color:#77716a}
     <small id="preloadStatus" style="display:block;margin-top:14px"></small>
   </div>
 </div>
-<script>function atelierPickProfile(b){window.__atelierPreselectedProfile=b.getAttribute("data-preprofile")||"";var l=document.querySelector(".instant-profile-list"),s=document.getElementById("preprofileSelected"),n=document.getElementById("preprofileSelectedName"),i=document.getElementById("preprofilePassword");if(l)l.style.display="none";if(s){s.hidden=false;s.style.display="grid"}if(n)n.textContent=(b.querySelector("strong")||{}).textContent||"Perfil";if(i){i.value="";setTimeout(function(){i.focus()},10)}return false}</script>
+<script>function atelierBackToProfiles(){window.__atelierPreselectedProfile="";window.__atelierPendingPassword="";var l=document.querySelector(".instant-profile-list"),s=document.getElementById("preprofileSelected"),i=document.getElementById("preprofilePassword"),e=document.getElementById("preprofileError");if(l){l.hidden=false;l.style.display="grid"}if(s){s.hidden=true;s.style.display="none"}if(i)i.value="";if(e)e.hidden=true;return false}function atelierPickProfile(b){window.__atelierPreselectedProfile=b.getAttribute("data-preprofile")||"";var l=document.querySelector(".instant-profile-list"),s=document.getElementById("preprofileSelected"),n=document.getElementById("preprofileSelectedName"),i=document.getElementById("preprofilePassword");if(l)l.style.display="none";if(s){s.hidden=false;s.style.display="grid"}if(n)n.textContent=(b.querySelector("strong")||{}).textContent||"Perfil";if(i){i.value="";setTimeout(function(){i.focus()},10)}return false}</script>
 <script>
 window.__atelierPreselectedProfile="";
 document.addEventListener("click",function(e){
