@@ -1,7 +1,7 @@
 const API_BASE="https://atelier-ai-backend-pi.vercel.app";
 const PROFILES=[{id:"noelia",name:"Noelia"},{id:"ana-maria",name:"Ana María"},{id:"irene",name:"Irene"}];
 const DB_NAME="atelier-armario-db",DB_VERSION=2,STORE="kv";
-const appState={profile:null,token:null,data:{garments:[],looks:[]},view:"wardrobe"};
+const appState={profile:null,token:null,data:{garments:[],looks:[]},view:"wardrobe",authExpired:false};
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
 function uid(){return crypto.randomUUID?.()||Date.now().toString(36)+Math.random().toString(36).slice(2)}
 function esc(v=""){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
@@ -16,7 +16,7 @@ async function api(path,options={}){const headers={...(options.headers||{})};if(
 function showAuth(){appState.profile=null;appState.token=null;sessionStorage.removeItem("atelier-session");$("#auth").classList.remove("hidden");$("#app").classList.add("hidden");$("#passwordStep").classList.add("hidden");$("#password").value="";$("#authError").textContent="";$$(".profile-option").forEach(x=>x.classList.remove("selected"))}
 function selectProfile(id){appState.profile=PROFILES.find(p=>p.id===id);$$(".profile-option").forEach(x=>x.classList.toggle("selected",x.dataset.profile===id));$("#passwordStep").classList.remove("hidden");$("#password").focus()}
 async function login(){if(!appState.profile)return;const btn=$("#loginBtn"),err=$("#authError");err.textContent="";btn.disabled=true;btn.textContent="Entrando…";try{const out=await api("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({profileId:appState.profile.id,password:$("#password").value})});const token=out.token||out.accessToken;if(!token)throw new Error("TOKEN_MISSING");appState.token=token;sessionStorage.setItem("atelier-session",JSON.stringify({profile:appState.profile.id,token}));await enterApp()}catch(e){console.error("LOGIN",e);err.textContent=e.name==="AbortError"?"La conexión está tardando demasiado.":e.message==="TOKEN_MISSING"?"Respuesta de acceso no válida.":"No se ha podido iniciar sesión. Revisa la contraseña."}finally{btn.disabled=false;btn.textContent="Entrar"}}
-async function enterApp(){await loadState();$("#auth").classList.add("hidden");$("#app").classList.remove("hidden");$("#profileName").textContent=appState.profile.name;render()}
+async function enterApp(){appState.authExpired=false;await loadState();$("#auth").classList.add("hidden");$("#app").classList.remove("hidden");$("#profileName").textContent=appState.profile.name;render()}
 async function restoreSession(){try{const s=JSON.parse(sessionStorage.getItem("atelier-session")||"null");if(!s?.profile||!s?.token)return false;const p=PROFILES.find(x=>x.id===s.profile);if(!p)return false;appState.profile=p;appState.token=s.token;await enterApp();return true}catch{return false}}
 function setView(view){appState.view=view;$$(".nav-btn").forEach(x=>x.classList.toggle("active",x.dataset.view===view));render()}
 function render(){const root=$("#content");if(appState.view==="wardrobe")renderWardrobe(root);else if(appState.view==="looks")renderLooks(root);else renderSettings(root)}
