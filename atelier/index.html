@@ -112,8 +112,6 @@ small{color:#77716a}
     <small id="preloadStatus" style="display:block;margin-top:14px"></small>
   </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
-<script src="./payload.js?v=9"></script>
 <script>
 window.__atelierPreselectedProfile="";
 window.__atelierPendingPassword="";
@@ -203,6 +201,9 @@ document.getElementById("preprofileEnter")?.addEventListener("click",atelierPreE
 document.querySelectorAll("[data-preprofile]").forEach(btn=>btn.addEventListener("click",()=>atelierPickProfile(btn)));
 document.getElementById("preprofilePassword")?.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();atelierPreEnter()}});
 </script>
+<script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
+<script src="./payload.js?v=9"></script>
+
 <script>
 async function atelierLoadApp(){
   try{
