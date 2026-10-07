@@ -133,6 +133,8 @@ document.addEventListener("click",function(e){
     const names=["chunk00.txt","chunk01.txt","chunk02.txt","chunk03.txt","chunk04.txt","chunk05.txt"];
     const parts=await Promise.all(names.map(n=>fetch(n,{cache:"no-store"}).then(r=>{if(!r.ok)throw new Error(n);return r.text();})));
     const b64=parts.join("").trim();
+    const status=document.getElementById("preloadStatus");
+    if(status)status.textContent="Abriendo Atelier…";
     const bytes=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
     const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
     let html=await new Response(stream).text();
@@ -323,10 +325,22 @@ document.addEventListener("keydown",e=>{if(e.key==="Enter"&&document.activeEleme
 
     html=html.replace("</body>","\n<script>\n(function(){\n function wardrobe(){try{const a=state.garments||state.items||state.wardrobe||state.clothes;return Array.isArray(a)?a:[]}catch(_){return[]}}\n function gid(g){return String(g.id||g.uid||g._id||\"\")} function photo(g){return g.image||g.imageUrl||g.photo||g.photoUrl||g.photoData||g.processedImage||g.processedPhoto||g.originalImage||g.originalPhoto||g.dataUrl||g.src||\"\"}\n function home(){return document.querySelector(\"#view-home,.view[data-view='home'],.view.home\")}\n function add(){\n   const v=home();if(!v||v.querySelector(\".ai-look-panel\"))return;\n   const p=document.createElement(\"div\");p.className=\"ai-look-panel\";p.innerHTML=\"<h3>Looks con Atelier ✦</h3><div class='meta'>La IA recibe solo una selección compacta de tu armario.</div><div class='ai-look-controls'><select id='aiOcc'><option value='daily'>Diario</option><option value='work'>Trabajo</option><option value='dinner'>Cena</option><option value='event'>Evento</option><option value='travel'>Viaje</option></select><select id='aiSeason'><option value=''>Cualquier temporada</option><option value='warm'>Calor</option><option value='cold'>Frío</option><option value='all'>Todo el año</option></select><button id='aiMakeLooks'>Crear 3 looks</button></div><div id='aiLookStatus' class='meta'></div><div id='aiLookResults' class='ai-look-results'></div>\";v.prepend(p)\n }\n function render(looks){\n   const box=document.getElementById(\"aiLookResults\");if(!box)return;const all=wardrobe();box.innerHTML=\"\";\n   (looks||[]).forEach((l,i)=>{const d=document.createElement(\"div\");d.className=\"ai-look-result\";const gs=(l.ids||l.itemIds||[]).map(id=>all.find(g=>gid(g)===String(id))).filter(Boolean);d.innerHTML=\"<strong>Look \"+(i+1)+\"</strong><div class='ai-look-pics'>\"+gs.map(g=>photo(g)?\"<img src='\"+photo(g)+\"' alt=''>\":\"\").join(\"\")+\"</div>\"+(l.why?\"<small>\"+l.why+\"</small>\":\"\");box.appendChild(d)})\n }\n async function make(){\n   const st=document.getElementById(\"aiLookStatus\"),btn=document.getElementById(\"aiMakeLooks\");if(!window.atelierBuildCompactLookRequest)return;\n   const context={occasion:document.getElementById(\"aiOcc\")?.value||\"\",season:document.getElementById(\"aiSeason\")?.value||\"\",count:3};\n   const built=atelierBuildCompactLookRequest(context);\n   if(built.cached){st.textContent=\"Reutilizado · 0 tokens\";try{atelierTrackAI(\"cacheHits\")}catch(_){}render(built.cached.result.looks||built.cached.result);return}\n   if(!built.payload.items.length){st.textContent=\"Añade prendas al armario primero.\";return}\n   btn.disabled=true;st.textContent=\"Creando looks…\";\n   try{\n     atelierMarkLookGeneration();\n     const r=await atelierAuthedFetch(\"/api/looks\",{method:\"POST\",headers:{\"Content-Type\":\"application/json\"},body:JSON.stringify(built.payload)});\n     const data=await r.json();if(!r.ok)throw new Error(data.error||\"Error\");\n     atelierRememberAILooks(built.key,data);render(data.looks);st.textContent=\"Listo · contexto optimizado\";\n   }catch(e){st.textContent=e.message||\"No se han podido crear los looks.\"}finally{btn.disabled=false}\n }\n document.addEventListener(\"click\",e=>{if(e.target.closest(\"#aiMakeLooks\"))make()});\n function init(){add()} if(document.readyState===\"loading\")document.addEventListener(\"DOMContentLoaded\",init);else init();new MutationObserver(init).observe(document.documentElement,{childList:true,subtree:true})\n})();\n<\/script>"+"</body>");
 
+    // Remove the temporary preloader before replacing the document.
+    const preselected=window.__atelierPreselectedProfile||"";
     document.open();
     document.write(html);
     document.close();
-    if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{});}
+    if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{})}
+    // The generated app owns the profile gate from this point on.
+    const boot=()=>{
+      try{
+        const pre=document.getElementById("instantProfileGate");if(pre)pre.remove();
+        if(typeof renderProfileChoices==="function")renderProfileChoices();
+        if(typeof showProfileGate==="function")showProfileGate();
+        if(preselected&&typeof requestProfilePassword==="function")requestProfilePassword(preselected);
+      }catch(e){}
+    };
+    setTimeout(boot,0);setTimeout(boot,250);
   }catch(e){
     document.getElementById("loading").innerHTML='<div class="card"><h2>No he podido abrir Atelier</h2><p>Recarga la página. Si sigue ocurriendo, falta alguno de los archivos de la aplicación.</p></div>';
   }
