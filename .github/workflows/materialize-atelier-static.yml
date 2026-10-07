@@ -1,0 +1,30 @@
+name: Materialize Atelier static app
+on:
+  push:
+    branches: [atelier-static-refactor]
+    paths:
+      - "atelier/index.html"
+      - "atelier/payload.js"
+      - "scripts/materialize-atelier.cjs"
+      - ".github/workflows/materialize-atelier-static.yml"
+permissions:
+  contents: write
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: atelier-static-refactor
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node scripts/materialize-atelier.cjs
+      - name: Commit generated static app
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add atelier/app-static.html
+          git diff --cached --quiet && exit 0
+          git commit -m "Materialize Atelier static application"
+          git push origin HEAD:atelier-static-refactor
