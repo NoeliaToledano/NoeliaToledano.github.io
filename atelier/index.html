@@ -91,7 +91,6 @@ small{color:#77716a}
 </style>
 </head>
 <body>
-<div id="atelierDebug" style="position:fixed;z-index:2147483647;left:8px;right:8px;bottom:8px;max-height:34vh;overflow:auto;background:rgba(0,0,0,.88);color:#b9ffbd;padding:10px;border-radius:12px;font:11px/1.35 ui-monospace,monospace;white-space:pre-wrap;display:none"></div>
 <div id="loading">
   <div class="card instant-profile-card">
     <small style="letter-spacing:.14em;font-weight:800">ATELIER</small>
@@ -114,20 +113,6 @@ small{color:#77716a}
   </div>
 </div>
 <script>
-const ATELIER_DEBUG=true;
-window.__atelierDebugLog=[];
-function atelierDebug(stage,data){
-  if(!ATELIER_DEBUG)return;
-  const row={t:Math.round(performance.now()),stage,data:data==null?"":String(data)};
-  window.__atelierDebugLog.push(row);
-  try{localStorage.setItem("atelier-debug-log",JSON.stringify(window.__atelierDebugLog.slice(-120)))}catch(_){}
-  console.log("[ATELIER]",row.t,stage,row.data);
-  const box=document.getElementById("atelierDebug");
-  if(box){box.style.display="block";box.textContent=window.__atelierDebugLog.map(x=>x.t+"ms  "+x.stage+(x.data?"  "+x.data:"")).join("\\n");box.scrollTop=box.scrollHeight}
-}
-window.addEventListener("error",e=>atelierDebug("WINDOW_ERROR",(e.message||"error")+" @ "+(e.filename||"")+":"+(e.lineno||"")));
-window.addEventListener("unhandledrejection",e=>atelierDebug("PROMISE_REJECTION",e.reason?.stack||e.reason?.message||e.reason||"unknown"));
-atelierDebug("BOOT","prelogin script running");
 window.__atelierPreselectedProfile="";
 window.__atelierPendingPassword="";
 window.__atelierPreAuthToken="";
@@ -177,7 +162,6 @@ async function atelierPreEnter(){
   if(!password){if(error){error.textContent="Introduce la contraseña.";error.hidden=false}return}
   if(error)error.hidden=true;
   if(btn){btn.disabled=true;btn.textContent="Entrando…"}
-  atelierDebug("LOGIN_START",profileId);
   const ctrl=new AbortController();
   const timer=setTimeout(()=>ctrl.abort(),12000);
   let response,data;
@@ -199,7 +183,6 @@ async function atelierPreEnter(){
     if(btn){btn.disabled=false;btn.textContent="Entrar en el armario"}
     return;
   }
-  atelierDebug("LOGIN_OK",profileId);
   window.__atelierPendingPassword=password;
   window.__atelierPreAuthToken=data.token||"";
   window.__atelierPreAuthProfile=profileId;
@@ -226,15 +209,12 @@ async function atelierLoadApp(){
   try{
     const b64=(window.__ATELIER_B64||"").trim();
     if(!b64)throw new Error("PAYLOAD_MISSING");
-    atelierDebug("PAYLOAD_READY",b64.length+" chars");
     const status=document.getElementById("preloadStatus");
     if(status)status.textContent="";
     const bytes=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
-    atelierDebug("BASE64_DECODED",bytes.length+" bytes");
     let html="";
-    if(window.fflate&&fflate.gunzipSync){atelierDebug("GUNZIP","fflate");html=new TextDecoder().decode(fflate.gunzipSync(bytes));}
-    else{atelierDebug("GUNZIP","DecompressionStream fallback");const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));html=await new Response(stream).text();}
-    atelierDebug("HTML_DECOMPRESSED",html.length+" chars");
+    if(window.fflate&&fflate.gunzipSync){html=new TextDecoder().decode(fflate.gunzipSync(bytes));}
+    else{const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));html=await new Response(stream).text();}
 
     const gateHtml=`
 <div id="profileGate" class="profile-gate" hidden>
@@ -391,86 +371,7 @@ document.addEventListener("keydown",e=>{if(e.key==="Enter"&&document.activeEleme
     html=html.replaceAll('idbSet("state",state)','idbSet(profileStateKey(activeProfileId),state)');
     html=html.replace('const legacy=localStorage.getItem(STORAGE_KEY);','const legacy=(activeProfileId==="noelia")?localStorage.getItem(STORAGE_KEY):null;');
     html=html.replace('idbSet("state",migrated)','idbSet(profileStateKey(activeProfileId),migrated)');
-    html=html.replace("</body>","
-<script>
-(function(){
-  function setSelect(id,value){
-    const el=document.getElementById(id);if(!el||value==null)return;
-    const v=String(value);
-    if([...el.options].some(o=>o.value===v)){el.value=v;el.dispatchEvent(new Event(\"change\",{bubbles:true}));return}
-    const norm=s=>s.normalize(\"NFD\").replace(/[\\\\u0300-\\\\u036f]/g,\"\").toLowerCase();
-    const match=[...el.options].find(o=>norm(o.textContent.trim())===norm(v));
-    if(match){el.value=match.value;el.dispatchEvent(new Event(\"change\",{bubbles:true}))}
-  }
-  function setInput(id,value){
-    const el=document.getElementById(id);if(!el||value==null)return;
-    el.value=String(value);el.dispatchEvent(new Event(\"input\",{bubbles:true}));el.dispatchEvent(new Event(\"change\",{bubbles:true}))
-  }
-  async function imageForAI(file){
-    const bitmap=await createImageBitmap(file);
-    const max=900,scale=Math.min(1,max/Math.max(bitmap.width,bitmap.height));
-    const w=Math.max(1,Math.round(bitmap.width*scale)),h=Math.max(1,Math.round(bitmap.height*scale));
-    const canvas=document.createElement(\"canvas\");canvas.width=w;canvas.height=h;
-    canvas.getContext(\"2d\").drawImage(bitmap,0,0,w,h);
-    if(bitmap.close)bitmap.close();
-    return canvas.toDataURL(\"image/jpeg\",0.86)
-  }
-  function applyGarment(g){
-    setInput(\"nameInput\",g.name);
-    setSelect(\"typeInput\",g.type);
-    setSelect(\"colorInput\",g.color);
-    setSelect(\"styleInput\",g.style);
-    setSelect(\"seasonInput\",g.season);
-    setSelect(\"fabricInput\",g.fabric);
-    setSelect(\"patternInput\",g.pattern);
-    setSelect(\"lengthInput\",g.length);
-    setSelect(\"formalityInput\",g.formality);
-    if(Array.isArray(g.occasions)){
-      const el=document.getElementById(\"occasionTagsInput\");
-      if(el)[...el.options].forEach(o=>o.selected=g.occasions.includes(o.value));
-    }
-    if(g.notes)setInput(\"notesInput\",g.notes);
-  }
-  async function analyzeWithAI(){
-    const btn=document.getElementById(\"analyzePhotoBtn\"),status=document.getElementById(\"aiStatus\"),input=document.getElementById(\"photoInput\");
-    const file=input?.files?.[0];
-    if(!file){if(status)status.textContent=\"Primero añade una foto.\";return}
-    if(!window.atelierAuthedFetch&&typeof atelierAuthedFetch!==\"function\"){if(status)status.textContent=\"Vuelve a iniciar sesión.\";return}
-    if(btn){btn.disabled=true;btn.textContent=\"Analizando con IA…\"}
-    if(status)status.textContent=\"La IA está identificando la prenda y sus atributos…\";
-    try{
-      const image=await imageForAI(file);
-      const response=await atelierAuthedFetch(\"/api/analyze\",{
-        method:\"POST\",
-        headers:{\"Content-Type\":\"application/json\"},
-        body:JSON.stringify({image})
-      });
-      const data=await response.json().catch(()=>({}));
-      if(response.status===401){lockAtelier();throw new Error(\"Tu sesión ha caducado. Vuelve a entrar.\")}
-      if(!response.ok)throw new Error(data.error||\"No se ha podido analizar la prenda.\");
-      applyGarment(data.garment||{});
-      if(status)status.textContent=\"✓ IA completada. Revisa los campos y guarda la prenda.\";
-    }catch(err){
-      if(status)status.textContent=err.message||\"No se ha podido analizar la foto.\";
-    }finally{
-      if(btn){btn.disabled=!input?.files?.[0];btn.textContent=\"✦ Analizar foto con IA\"}
-    }
-  }
-  document.addEventListener(\"click\",function(e){
-    const btn=e.target.closest(\"#analyzePhotoBtn\");
-    if(!btn)return;
-    e.preventDefault();e.stopImmediatePropagation();analyzeWithAI();
-  },true);
-  document.addEventListener(\"change\",function(e){
-    if(e.target?.id===\"photoInput\"){
-      const btn=document.getElementById(\"analyzePhotoBtn\");
-      if(btn){btn.disabled=!e.target.files?.length;btn.textContent=\"✦ Analizar foto con IA\"}
-      const status=document.getElementById(\"aiStatus\");
-      if(status&&e.target.files?.length)status.textContent=\"Foto lista. Pulsa “Analizar foto con IA”.\";
-    }
-  },true);
-})();
-<\/script>"+"</body>");
+    html=html.replace("</body>","\n<script>\n(function(){\n  function setSelect(id,value){\n    const el=document.getElementById(id);if(!el||value==null)return;\n    const v=String(value);\n    if([...el.options].some(o=>o.value===v)){el.value=v;el.dispatchEvent(new Event(\"change\",{bubbles:true}));return}\n    const norm=s=>s.normalize(\"NFD\").replace(/[\\\\u0300-\\\\u036f]/g,\"\").toLowerCase();\n    const match=[...el.options].find(o=>norm(o.textContent.trim())===norm(v));\n    if(match){el.value=match.value;el.dispatchEvent(new Event(\"change\",{bubbles:true}))}\n  }\n  function setInput(id,value){\n    const el=document.getElementById(id);if(!el||value==null)return;\n    el.value=String(value);el.dispatchEvent(new Event(\"input\",{bubbles:true}));el.dispatchEvent(new Event(\"change\",{bubbles:true}))\n  }\n  async function imageForAI(file){\n    const bitmap=await createImageBitmap(file);\n    const max=900,scale=Math.min(1,max/Math.max(bitmap.width,bitmap.height));\n    const w=Math.max(1,Math.round(bitmap.width*scale)),h=Math.max(1,Math.round(bitmap.height*scale));\n    const canvas=document.createElement(\"canvas\");canvas.width=w;canvas.height=h;\n    canvas.getContext(\"2d\").drawImage(bitmap,0,0,w,h);\n    if(bitmap.close)bitmap.close();\n    return canvas.toDataURL(\"image/jpeg\",0.86)\n  }\n  function applyGarment(g){\n    setInput(\"nameInput\",g.name);\n    setSelect(\"typeInput\",g.type);\n    setSelect(\"colorInput\",g.color);\n    setSelect(\"styleInput\",g.style);\n    setSelect(\"seasonInput\",g.season);\n    setSelect(\"fabricInput\",g.fabric);\n    setSelect(\"patternInput\",g.pattern);\n    setSelect(\"lengthInput\",g.length);\n    setSelect(\"formalityInput\",g.formality);\n    if(Array.isArray(g.occasions)){\n      const el=document.getElementById(\"occasionTagsInput\");\n      if(el)[...el.options].forEach(o=>o.selected=g.occasions.includes(o.value));\n    }\n    if(g.notes)setInput(\"notesInput\",g.notes);\n  }\n  async function analyzeWithAI(){\n    const btn=document.getElementById(\"analyzePhotoBtn\"),status=document.getElementById(\"aiStatus\"),input=document.getElementById(\"photoInput\");\n    const file=input?.files?.[0];\n    if(!file){if(status)status.textContent=\"Primero añade una foto.\";return}\n    if(!window.atelierAuthedFetch&&typeof atelierAuthedFetch!==\"function\"){if(status)status.textContent=\"Vuelve a iniciar sesión.\";return}\n    if(btn){btn.disabled=true;btn.textContent=\"Analizando con IA…\"}\n    if(status)status.textContent=\"La IA está identificando la prenda y sus atributos…\";\n    try{\n      const image=await imageForAI(file);\n      const response=await atelierAuthedFetch(\"/api/analyze\",{\n        method:\"POST\",\n        headers:{\"Content-Type\":\"application/json\"},\n        body:JSON.stringify({image})\n      });\n      const data=await response.json().catch(()=>({}));\n      if(response.status===401){lockAtelier();throw new Error(\"Tu sesión ha caducado. Vuelve a entrar.\")}\n      if(!response.ok)throw new Error(data.error||\"No se ha podido analizar la prenda.\");\n      applyGarment(data.garment||{});\n      if(status)status.textContent=\"✓ IA completada. Revisa los campos y guarda la prenda.\";\n    }catch(err){\n      if(status)status.textContent=err.message||\"No se ha podido analizar la foto.\";\n    }finally{\n      if(btn){btn.disabled=!input?.files?.[0];btn.textContent=\"✦ Analizar foto con IA\"}\n    }\n  }\n  document.addEventListener(\"click\",function(e){\n    const btn=e.target.closest(\"#analyzePhotoBtn\");\n    if(!btn)return;\n    e.preventDefault();e.stopImmediatePropagation();analyzeWithAI();\n  },true);\n  document.addEventListener(\"change\",function(e){\n    if(e.target?.id===\"photoInput\"){\n      const btn=document.getElementById(\"analyzePhotoBtn\");\n      if(btn){btn.disabled=!e.target.files?.length;btn.textContent=\"✦ Analizar foto con IA\"}\n      const status=document.getElementById(\"aiStatus\");\n      if(status&&e.target.files?.length)status.textContent=\"Foto lista. Pulsa “Analizar foto con IA”.\";\n    }\n  },true);\n})();\n<\/script>"+"</body>");
 
     html=html.replace(
 `async function bootstrapApp(){
@@ -487,357 +388,27 @@ document.addEventListener("keydown",e=>{if(e.key==="Enter"&&document.activeEleme
 }`
     );
 
-    html=html.replace("</body>","
-<script>
-(function(){
-  const PHOTO_KEYS=[\"image\",\"imageUrl\",\"photo\",\"photoUrl\",\"photoData\",\"processedImage\",\"processedPhoto\",\"originalImage\",\"originalPhoto\",\"dataUrl\",\"src\"];
-  function itemHasPhoto(item){
-    if(!item||typeof item!==\"object\")return false;
-    return PHOTO_KEYS.some(k=>typeof item[k]===\"string\"&&item[k].trim().length>20);
-  }
-  async function purgeNoeliaWithoutPhotos(){
-    if(typeof activeProfileId===\"undefined\"||activeProfileId!==\"noelia\"||typeof state===\"undefined\"||!state)return;
-    let changed=false;
-    for(const key of [\"garments\",\"wardrobe\",\"items\",\"clothes\"]){
-      if(Array.isArray(state[key])){
-        const filtered=state[key].filter(item=>itemHasPhoto(item));
-        if(filtered.length!==state[key].length){state[key]=filtered;changed=true}
-      }
-    }
-    if(changed){
-      try{await saveStateAsync()}catch(e){try{await idbSet(profileStateKey(activeProfileId),state)}catch(_){}}
-      try{renderAll();renderAnalytics()}catch(e){}
-    }
-  }
-  document.addEventListener(\"click\",function(e){
-    const save=e.target.closest(\"#saveGarmentBtn,button[type='submit']\");
-    if(!save)return;
-    const form=save.closest(\"form\");
-    if(form&&!form.querySelector(\"#photoInput\"))return;
-    const input=document.getElementById(\"photoInput\");
-    const preview=document.querySelector(\"#photoPreview img,.photo-preview img,[data-photo-preview] img\");
-    const hasPhoto=!!input?.files?.length||!!(preview&&preview.getAttribute(\"src\")&&preview.getAttribute(\"src\").length>20);
-    if(!hasPhoto){
-      e.preventDefault();e.stopImmediatePropagation();
-      const status=document.getElementById(\"aiStatus\");
-      if(status)status.textContent=\"La foto es obligatoria para guardar una prenda.\";
-      input?.scrollIntoView({behavior:\"smooth\",block:\"center\"});
-    }
-  },true);
-  document.addEventListener(\"click\",function(e){
-    if(e.target.closest(\"#profileUnlockBtn\")){
-      setTimeout(()=>{if(typeof activeProfileId!==\"undefined\"&&activeProfileId===\"noelia\")purgeNoeliaWithoutPhotos()},1500);
-    }
-  },true);
-})();
-<\/script>"+"</body>");
+    html=html.replace("</body>","\n<script>\n(function(){\n  const PHOTO_KEYS=[\"image\",\"imageUrl\",\"photo\",\"photoUrl\",\"photoData\",\"processedImage\",\"processedPhoto\",\"originalImage\",\"originalPhoto\",\"dataUrl\",\"src\"];\n  function itemHasPhoto(item){\n    if(!item||typeof item!==\"object\")return false;\n    return PHOTO_KEYS.some(k=>typeof item[k]===\"string\"&&item[k].trim().length>20);\n  }\n  async function purgeNoeliaWithoutPhotos(){\n    if(typeof activeProfileId===\"undefined\"||activeProfileId!==\"noelia\"||typeof state===\"undefined\"||!state)return;\n    let changed=false;\n    for(const key of [\"garments\",\"wardrobe\",\"items\",\"clothes\"]){\n      if(Array.isArray(state[key])){\n        const filtered=state[key].filter(item=>itemHasPhoto(item));\n        if(filtered.length!==state[key].length){state[key]=filtered;changed=true}\n      }\n    }\n    if(changed){\n      try{await saveStateAsync()}catch(e){try{await idbSet(profileStateKey(activeProfileId),state)}catch(_){}}\n      try{renderAll();renderAnalytics()}catch(e){}\n    }\n  }\n  document.addEventListener(\"click\",function(e){\n    const save=e.target.closest(\"#saveGarmentBtn,button[type='submit']\");\n    if(!save)return;\n    const form=save.closest(\"form\");\n    if(form&&!form.querySelector(\"#photoInput\"))return;\n    const input=document.getElementById(\"photoInput\");\n    const preview=document.querySelector(\"#photoPreview img,.photo-preview img,[data-photo-preview] img\");\n    const hasPhoto=!!input?.files?.length||!!(preview&&preview.getAttribute(\"src\")&&preview.getAttribute(\"src\").length>20);\n    if(!hasPhoto){\n      e.preventDefault();e.stopImmediatePropagation();\n      const status=document.getElementById(\"aiStatus\");\n      if(status)status.textContent=\"La foto es obligatoria para guardar una prenda.\";\n      input?.scrollIntoView({behavior:\"smooth\",block:\"center\"});\n    }\n  },true);\n  document.addEventListener(\"click\",function(e){\n    if(e.target.closest(\"#profileUnlockBtn\")){\n      setTimeout(()=>{if(typeof activeProfileId!==\"undefined\"&&activeProfileId===\"noelia\")purgeNoeliaWithoutPhotos()},1500);\n    }\n  },true);\n})();\n<\/script>"+"</body>");
 
-    html=html.replace("</body>","
-<script>
-(function(){
-  function removeLegacyChatGPT(){
-    const all=[...document.querySelectorAll(\"section,.card,article,div\")];
-    const target=all.find(el=>{
-      const t=(el.textContent||\"\").replace(/\\s+/g,\" \").trim();
-      return t.includes(\"Generar looks con ChatGPT\") && t.includes(\"Preparar para ChatGPT\");
-    });
-    if(target){
-      let node=target;
-      while(node.parentElement && node.parentElement!==document.body){
-        const pt=(node.parentElement.textContent||\"\");
-        if(pt.includes(\"Generar looks con ChatGPT\") && pt.length<5000) node=node.parentElement;
-        else break;
-      }
-      node.remove();
-    }
-    [...document.querySelectorAll(\"*\")].forEach(el=>{
-      const t=(el.textContent||\"\").trim();
-      if(t===\"ChatGPT sin API\"||t===\"CHATGPT SIN API\"||t===\"Sin coste API\") el.style.display=\"none\";
-    });
-  }
-  if(document.readyState===\"loading\")document.addEventListener(\"DOMContentLoaded\",removeLegacyChatGPT);
-  else removeLegacyChatGPT();
-  setTimeout(removeLegacyChatGPT,300);
-})();
-<\/script>"+"</body>");
+    html=html.replace("</body>","\n<script>\n(function(){\n  function removeLegacyChatGPT(){\n    const all=[...document.querySelectorAll(\"section,.card,article,div\")];\n    const target=all.find(el=>{\n      const t=(el.textContent||\"\").replace(/\\s+/g,\" \").trim();\n      return t.includes(\"Generar looks con ChatGPT\") && t.includes(\"Preparar para ChatGPT\");\n    });\n    if(target){\n      let node=target;\n      while(node.parentElement && node.parentElement!==document.body){\n        const pt=(node.parentElement.textContent||\"\");\n        if(pt.includes(\"Generar looks con ChatGPT\") && pt.length<5000) node=node.parentElement;\n        else break;\n      }\n      node.remove();\n    }\n    [...document.querySelectorAll(\"*\")].forEach(el=>{\n      const t=(el.textContent||\"\").trim();\n      if(t===\"ChatGPT sin API\"||t===\"CHATGPT SIN API\"||t===\"Sin coste API\") el.style.display=\"none\";\n    });\n  }\n  if(document.readyState===\"loading\")document.addEventListener(\"DOMContentLoaded\",removeLegacyChatGPT);\n  else removeLegacyChatGPT();\n  setTimeout(removeLegacyChatGPT,300);\n})();\n<\/script>"+"</body>");
 
-    html=html.replace("</body>","
-<script>
-(function(){
- const HELP={
-  \"Diversidad\":[\"Diversidad de looks\",\"Controla cuánto cambian las propuestas entre sí. Alta intenta repetir menos prendas, siluetas y combinaciones; Media mantiene más coherencia y puede reutilizar piezas que funcionan bien.\"],
-  \"Formalidad\":[\"Formalidad\",\"Indica lo arreglada que es una prenda o el contexto en el que encaja: casual, smart casual, formal, fiesta o deportivo.\"],
-  \"Temporada\":[\"Temporada\",\"Ayuda a Atelier a evitar prendas poco adecuadas para la época del año. “Todo el año” permite usarla en cualquier estación.\"],
-  \"Ocasión\":[\"Ocasión\",\"Define para qué situaciones encaja mejor: diario, trabajo, cena, evento o viaje.\"]
- };
- function addHelp(){
-  document.querySelectorAll(\"label\").forEach(label=>{
-   if(label.querySelector(\".atelier-help\"))return;
-   const text=[...label.childNodes].filter(n=>n.nodeType===3).map(n=>n.textContent).join(\" \").trim();
-   const key=Object.keys(HELP).find(k=>text===k||text.startsWith(k));
-   if(!key)return;
-   const b=document.createElement(\"button\");b.type=\"button\";b.className=\"atelier-help\";b.textContent=\"?\";b.setAttribute(\"aria-label\",\"¿Qué significa \"+key+\"?\");b.dataset.help=key;
-   label.insertBefore(b,label.querySelector(\"select,input,textarea\"));
-  });
- }
- function showHelp(key){
-  document.querySelector(\".atelier-help-pop\")?.remove();
-  const data=HELP[key];if(!data)return;
-  const p=document.createElement(\"div\");p.className=\"atelier-help-pop\";
-  p.innerHTML=\"<button type='button' aria-label='Cerrar'>×</button><strong>\"+data[0]+\"</strong><span>\"+data[1]+\"</span>\";
-  p.querySelector(\"button\").onclick=()=>p.remove();document.body.appendChild(p);
- }
- function setupMobileFilters(){
-  const toolbar=document.querySelector(\".wardrobe-toolbar\");if(!toolbar||document.querySelector(\".mobile-filter-trigger\"))return;
-  const trigger=document.createElement(\"button\");trigger.type=\"button\";trigger.className=\"mobile-filter-trigger\";
-  trigger.innerHTML=\"<span class='mf-left'><span class='mf-icon'>☷</span><span>Filtros y orden</span></span><span class='mf-count'>0</span>\";
-  toolbar.parentNode.insertBefore(trigger,toolbar);
-  const close=document.createElement(\"button\");close.type=\"button\";close.className=\"mobile-filter-close\";close.setAttribute(\"aria-label\",\"Cerrar filtros\");close.textContent=\"×\";toolbar.prepend(close);
-  const closeFilters=()=>{toolbar.classList.remove(\"mobile-open\");document.body.classList.remove(\"atelier-filter-open\")};
-  trigger.onclick=()=>{toolbar.classList.add(\"mobile-open\");document.body.classList.add(\"atelier-filter-open\")};
-  close.onclick=closeFilters;
-  document.addEventListener(\"click\",e=>{if(document.body.classList.contains(\"atelier-filter-open\")&&!toolbar.contains(e.target)&&!trigger.contains(e.target))closeFilters()});
-  function count(){
-   let n=0;
-   toolbar.querySelectorAll(\"select\").forEach(s=>{if(s.id!==\"filterSort\"&&s.value&&s.value!==\"all\")n++});
-   toolbar.querySelectorAll(\"input\").forEach(i=>{if(i.value.trim())n++});
-   const badge=trigger.querySelector(\".mf-count\");badge.textContent=n;badge.style.display=n?\"inline-block\":\"none\";
-  }
-  toolbar.addEventListener(\"change\",count);toolbar.addEventListener(\"input\",count);count();
- }
- function init(){addHelp();setupMobileFilters()}
- document.addEventListener(\"click\",e=>{const b=e.target.closest(\".atelier-help\");if(b){e.preventDefault();e.stopPropagation();showHelp(b.dataset.help)}});
- if(document.readyState===\"loading\")document.addEventListener(\"DOMContentLoaded\",init);else init();
- setTimeout(init,500);
-})();
-<\/script>"+"</body>");
+    html=html.replace("</body>","\n<script>\n(function(){\n const HELP={\n  \"Diversidad\":[\"Diversidad de looks\",\"Controla cuánto cambian las propuestas entre sí. Alta intenta repetir menos prendas, siluetas y combinaciones; Media mantiene más coherencia y puede reutilizar piezas que funcionan bien.\"],\n  \"Formalidad\":[\"Formalidad\",\"Indica lo arreglada que es una prenda o el contexto en el que encaja: casual, smart casual, formal, fiesta o deportivo.\"],\n  \"Temporada\":[\"Temporada\",\"Ayuda a Atelier a evitar prendas poco adecuadas para la época del año. “Todo el año” permite usarla en cualquier estación.\"],\n  \"Ocasión\":[\"Ocasión\",\"Define para qué situaciones encaja mejor: diario, trabajo, cena, evento o viaje.\"]\n };\n function addHelp(){\n  document.querySelectorAll(\"label\").forEach(label=>{\n   if(label.querySelector(\".atelier-help\"))return;\n   const text=[...label.childNodes].filter(n=>n.nodeType===3).map(n=>n.textContent).join(\" \").trim();\n   const key=Object.keys(HELP).find(k=>text===k||text.startsWith(k));\n   if(!key)return;\n   const b=document.createElement(\"button\");b.type=\"button\";b.className=\"atelier-help\";b.textContent=\"?\";b.setAttribute(\"aria-label\",\"¿Qué significa \"+key+\"?\");b.dataset.help=key;\n   label.insertBefore(b,label.querySelector(\"select,input,textarea\"));\n  });\n }\n function showHelp(key){\n  document.querySelector(\".atelier-help-pop\")?.remove();\n  const data=HELP[key];if(!data)return;\n  const p=document.createElement(\"div\");p.className=\"atelier-help-pop\";\n  p.innerHTML=\"<button type='button' aria-label='Cerrar'>×</button><strong>\"+data[0]+\"</strong><span>\"+data[1]+\"</span>\";\n  p.querySelector(\"button\").onclick=()=>p.remove();document.body.appendChild(p);\n }\n function setupMobileFilters(){\n  const toolbar=document.querySelector(\".wardrobe-toolbar\");if(!toolbar||document.querySelector(\".mobile-filter-trigger\"))return;\n  const trigger=document.createElement(\"button\");trigger.type=\"button\";trigger.className=\"mobile-filter-trigger\";\n  trigger.innerHTML=\"<span class='mf-left'><span class='mf-icon'>☷</span><span>Filtros y orden</span></span><span class='mf-count'>0</span>\";\n  toolbar.parentNode.insertBefore(trigger,toolbar);\n  const close=document.createElement(\"button\");close.type=\"button\";close.className=\"mobile-filter-close\";close.setAttribute(\"aria-label\",\"Cerrar filtros\");close.textContent=\"×\";toolbar.prepend(close);\n  const closeFilters=()=>{toolbar.classList.remove(\"mobile-open\");document.body.classList.remove(\"atelier-filter-open\")};\n  trigger.onclick=()=>{toolbar.classList.add(\"mobile-open\");document.body.classList.add(\"atelier-filter-open\")};\n  close.onclick=closeFilters;\n  document.addEventListener(\"click\",e=>{if(document.body.classList.contains(\"atelier-filter-open\")&&!toolbar.contains(e.target)&&!trigger.contains(e.target))closeFilters()});\n  function count(){\n   let n=0;\n   toolbar.querySelectorAll(\"select\").forEach(s=>{if(s.id!==\"filterSort\"&&s.value&&s.value!==\"all\")n++});\n   toolbar.querySelectorAll(\"input\").forEach(i=>{if(i.value.trim())n++});\n   const badge=trigger.querySelector(\".mf-count\");badge.textContent=n;badge.style.display=n?\"inline-block\":\"none\";\n  }\n  toolbar.addEventListener(\"change\",count);toolbar.addEventListener(\"input\",count);count();\n }\n function init(){addHelp();setupMobileFilters()}\n document.addEventListener(\"click\",e=>{const b=e.target.closest(\".atelier-help\");if(b){e.preventDefault();e.stopPropagation();showHelp(b.dataset.help)}});\n if(document.readyState===\"loading\")document.addEventListener(\"DOMContentLoaded\",init);else init();\n setTimeout(init,500);\n})();\n<\/script>"+"</body>");
 
-    html=html.replace("</body>","
-<script>
-(function(){
- const AIKEY=\"atelier-ai-usage-v1\",PREFKEY=\"atelier-look-preferences-v1\",RECENTKEY=\"atelier-recent-look-items-v1\";
- function profileKey(k){return k+\":\"+(typeof activeProfileId!==\"undefined\"&&activeProfileId?activeProfileId:\"default\")}
- function getJSON(k,f){try{return JSON.parse(localStorage.getItem(profileKey(k)))||f}catch(e){return f}}
- function setJSON(k,v){localStorage.setItem(profileKey(k),JSON.stringify(v))}
- function aiUsage(){return getJSON(AIKEY,{vision:0,looks:0,cacheHits:0})}
- window.atelierTrackAI=function(kind){const u=aiUsage();u[kind]=(u[kind]||0)+1;setJSON(AIKEY,u);renderAIMeter()}
- function renderAIMeter(){
-   const el=document.getElementById(\"atelierAiMeter\");if(!el)return;const u=aiUsage();
-   el.textContent=\"IA este dispositivo · \"+(u.vision||0)+\" análisis · \"+(u.looks||0)+\" generaciones · \"+(u.cacheHits||0)+\" reutilizados\";
- }
- function injectSmartHome(){
-   const view=document.querySelector(\"#view-home,.view[data-view='home'],.view.home\");if(!view||view.querySelector(\".atelier-smart-card\"))return;
-   const card=document.createElement(\"div\");card.className=\"atelier-smart-card\";
-   card.innerHTML=\"<div class='atelier-smart-head'><strong>Atajos</strong><span>✦</span></div><div class='atelier-chip-row' style='margin-top:10px'><button class='atelier-chip' data-smart-nav='wardrobe'>Ver armario</button><button class='atelier-chip' data-smart-nav='today'>Crear look</button><button class='atelier-chip' data-smart-nav='shopping'>Qué me falta</button></div><div id='atelierAiMeter' class='atelier-ai-meter'></div>\";
-   view.prepend(card);renderAIMeter();
- }
- function quickWardrobeFilters(){
-   const toolbar=document.querySelector(\".wardrobe-toolbar\"),trigger=document.querySelector(\".mobile-filter-trigger\");if(!toolbar||!trigger||document.getElementById(\"atelierQuickFilters\"))return;
-   const row=document.createElement(\"div\");row.id=\"atelierQuickFilters\";row.className=\"atelier-chip-row\";
-   const opts=[[\"Todo\",\"\"],[\"Arriba\",\"top\"],[\"Abajo\",\"bottom\"],[\"Vestidos\",\"dress\"],[\"Zapatos\",\"shoes\"],[\"Abrigos\",\"outerwear\"]];
-   opts.forEach(([label,val])=>{const b=document.createElement(\"button\");b.type=\"button\";b.className=\"atelier-chip\";b.textContent=label;b.onclick=()=>{
-      const sel=toolbar.querySelector(\"#filterType,select[name*='type'],select[id*='Type']\");
-      if(sel){sel.value=val||\"all\";sel.dispatchEvent(new Event(\"change\",{bubbles:true}))}
-   };row.appendChild(b)});
-   trigger.parentNode.insertBefore(row,trigger.nextSibling);
- }
- function feedback(){
-   document.querySelectorAll(\"[data-outfit-id],.outfit-card,.look-card\").forEach((card,i)=>{
-     if(card.querySelector(\".atelier-feedback\"))return;
-     const box=document.createElement(\"div\");box.className=\"atelier-feedback\";box.innerHTML=\"<button type='button' title='Me gusta'>👍</button><button type='button' title='No me gusta'>👎</button>\";
-     box.onclick=e=>{const b=e.target.closest(\"button\");if(!b)return;const prefs=getJSON(PREFKEY,{up:0,down:0});b.textContent.includes(\"👍\")?prefs.up++:prefs.down++;setJSON(PREFKEY,prefs);b.disabled=true};
-     card.appendChild(box);
-   });
- }
- function smartNav(target){
-   const candidates=[...document.querySelectorAll(\"[data-view],nav button,.bottom-nav button,a\")];
-   const aliases={wardrobe:[\"wardrobe\",\"armario\"],today:[\"today\",\"hoy\"],shopping:[\"shopping\",\"comprar\"]}[target]||[target];
-   const hit=candidates.find(x=>aliases.some(a=>(x.dataset.view||x.textContent||\"\").toLowerCase().includes(a)));
-   hit?.click();
- }
- document.addEventListener(\"click\",e=>{const b=e.target.closest(\"[data-smart-nav]\");if(b)smartNav(b.dataset.smartNav)});
- function observe(){injectSmartHome();quickWardrobeFilters();feedback()}
- if(document.readyState===\"loading\")document.addEventListener(\"DOMContentLoaded\",observe);else observe();
- new MutationObserver(()=>observe()).observe(document.documentElement,{childList:true,subtree:true});
-})();
-<\/script>"+"</body>");
+    html=html.replace("</body>","\n<script>\n(function(){\n const AIKEY=\"atelier-ai-usage-v1\",PREFKEY=\"atelier-look-preferences-v1\",RECENTKEY=\"atelier-recent-look-items-v1\";\n function profileKey(k){return k+\":\"+(typeof activeProfileId!==\"undefined\"&&activeProfileId?activeProfileId:\"default\")}\n function getJSON(k,f){try{return JSON.parse(localStorage.getItem(profileKey(k)))||f}catch(e){return f}}\n function setJSON(k,v){localStorage.setItem(profileKey(k),JSON.stringify(v))}\n function aiUsage(){return getJSON(AIKEY,{vision:0,looks:0,cacheHits:0})}\n window.atelierTrackAI=function(kind){const u=aiUsage();u[kind]=(u[kind]||0)+1;setJSON(AIKEY,u);renderAIMeter()}\n function renderAIMeter(){\n   const el=document.getElementById(\"atelierAiMeter\");if(!el)return;const u=aiUsage();\n   el.textContent=\"IA este dispositivo · \"+(u.vision||0)+\" análisis · \"+(u.looks||0)+\" generaciones · \"+(u.cacheHits||0)+\" reutilizados\";\n }\n function injectSmartHome(){\n   const view=document.querySelector(\"#view-home,.view[data-view='home'],.view.home\");if(!view||view.querySelector(\".atelier-smart-card\"))return;\n   const card=document.createElement(\"div\");card.className=\"atelier-smart-card\";\n   card.innerHTML=\"<div class='atelier-smart-head'><strong>Atajos</strong><span>✦</span></div><div class='atelier-chip-row' style='margin-top:10px'><button class='atelier-chip' data-smart-nav='wardrobe'>Ver armario</button><button class='atelier-chip' data-smart-nav='today'>Crear look</button><button class='atelier-chip' data-smart-nav='shopping'>Qué me falta</button></div><div id='atelierAiMeter' class='atelier-ai-meter'></div>\";\n   view.prepend(card);renderAIMeter();\n }\n function quickWardrobeFilters(){\n   const toolbar=document.querySelector(\".wardrobe-toolbar\"),trigger=document.querySelector(\".mobile-filter-trigger\");if(!toolbar||!trigger||document.getElementById(\"atelierQuickFilters\"))return;\n   const row=document.createElement(\"div\");row.id=\"atelierQuickFilters\";row.className=\"atelier-chip-row\";\n   const opts=[[\"Todo\",\"\"],[\"Arriba\",\"top\"],[\"Abajo\",\"bottom\"],[\"Vestidos\",\"dress\"],[\"Zapatos\",\"shoes\"],[\"Abrigos\",\"outerwear\"]];\n   opts.forEach(([label,val])=>{const b=document.createElement(\"button\");b.type=\"button\";b.className=\"atelier-chip\";b.textContent=label;b.onclick=()=>{\n      const sel=toolbar.querySelector(\"#filterType,select[name*='type'],select[id*='Type']\");\n      if(sel){sel.value=val||\"all\";sel.dispatchEvent(new Event(\"change\",{bubbles:true}))}\n   };row.appendChild(b)});\n   trigger.parentNode.insertBefore(row,trigger.nextSibling);\n }\n function feedback(){\n   document.querySelectorAll(\"[data-outfit-id],.outfit-card,.look-card\").forEach((card,i)=>{\n     if(card.querySelector(\".atelier-feedback\"))return;\n     const box=document.createElement(\"div\");box.className=\"atelier-feedback\";box.innerHTML=\"<button type='button' title='Me gusta'>👍</button><button type='button' title='No me gusta'>👎</button>\";\n     box.onclick=e=>{const b=e.target.closest(\"button\");if(!b)return;const prefs=getJSON(PREFKEY,{up:0,down:0});b.textContent.includes(\"👍\")?prefs.up++:prefs.down++;setJSON(PREFKEY,prefs);b.disabled=true};\n     card.appendChild(box);\n   });\n }\n function smartNav(target){\n   const candidates=[...document.querySelectorAll(\"[data-view],nav button,.bottom-nav button,a\")];\n   const aliases={wardrobe:[\"wardrobe\",\"armario\"],today:[\"today\",\"hoy\"],shopping:[\"shopping\",\"comprar\"]}[target]||[target];\n   const hit=candidates.find(x=>aliases.some(a=>(x.dataset.view||x.textContent||\"\").toLowerCase().includes(a)));\n   hit?.click();\n }\n document.addEventListener(\"click\",e=>{const b=e.target.closest(\"[data-smart-nav]\");if(b)smartNav(b.dataset.smartNav)});\n function observe(){injectSmartHome();quickWardrobeFilters();feedback()}\n if(document.readyState===\"loading\")document.addEventListener(\"DOMContentLoaded\",observe);else observe();\n new MutationObserver(()=>observe()).observe(document.documentElement,{childList:true,subtree:true});\n})();\n<\/script>"+"</body>");
 
-    html=html.replace("</body>","
-<script>
-/* Atelier Token Optimizer v3 */
-(function(){
- const K=\"atelier-ai-look-cache-v3\", R=\"atelier-recent-look-signatures-v3\";
- function pk(k){let p=\"default\";try{p=activeProfileId||p}catch(_){}return k+\":\"+p}
- function read(k,d){try{return JSON.parse(localStorage.getItem(pk(k)))||d}catch(_){return d}}
- function write(k,v){try{localStorage.setItem(pk(k),JSON.stringify(v))}catch(_){}}
- function norm(v){return String(v||\"\").trim().toLowerCase()}
- function ids(items){return (items||[]).map(x=>x.id||x.uid||x._id).filter(Boolean)}
- function compact(g){
-   return {i:g.id||g.uid||g._id,t:g.type||g.category||\"\",c:g.color||\"\",s:g.style||\"\",e:g.season||\"\",f:g.formality||\"\",o:Array.isArray(g.occasions)?g.occasions.slice(0,3):g.occasion||\"\"};
- }
- function hash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return (h>>>0).toString(36)}
- function wardrobe(){
-   try{
-     if(typeof state!==\"undefined\"){
-       const a=state.garments||state.items||state.wardrobe||state.clothes;
-       if(Array.isArray(a))return a;
-     }
-   }catch(_){}
-   return [];
- }
- function score(g,ctx,recent){
-   let n=0, season=norm(g.season), occ=(Array.isArray(g.occasions)?g.occasions.join(\" \"):g.occasion||\"\").toLowerCase();
-   if(ctx.season&&season.includes(ctx.season))n+=4;
-   if(ctx.occasion&&occ.includes(ctx.occasion))n+=4;
-   if(g.favorite||g.isFavorite)n+=1;
-   const id=g.id||g.uid||g._id;if(id&&recent.includes(id))n-=3;
-   return n;
- }
- window.atelierBuildCompactLookRequest=function(context){
-   context=context||{};
-   const all=wardrobe(), recent=read(R,[]).slice(-18);
-   const rankedAll=all.map(g=>({g,n:score(g,context,recent)})).sort((a,b)=>b.n-a.n);
-   const buckets={top:[],bottom:[],dress:[],outerwear:[],shoes:[],bag:[],accessory:[],other:[]};
-   rankedAll.forEach(x=>{const t=norm(x.g.type||x.g.category);(buckets[t]||buckets.other).push(x)});
-   const take=(k,n)=>buckets[k].slice(0,n);
-   let selected=[...take("top",6),...take("bottom",5),...take("dress",4),...take("outerwear",3),...take("shoes",4),...take("bag",2),...take("accessory",3)];
-   const seen=new Set(selected.map(x=>x.g.id||x.g.uid||x.g._id));
-   const minimum=Math.min(all.length,18);
-   if(selected.length<minimum){for(const x of rankedAll){const id=x.g.id||x.g.uid||x.g._id;if(!seen.has(id)){selected.push(x);seen.add(id)}if(selected.length>=minimum)break}}
-   const maximum=Math.min(all.length,32);if(selected.length>maximum)selected=selected.sort((a,b)=>b.n-a.n).slice(0,maximum);
-   const ranked=selected.map(x=>compact(x.g));
-   const payload={v:4,occasion:context.occasion||"",season:context.season||"",weather:context.weather||"",need:context.count||3,avoid:recent.slice(-12),items:ranked};
-   const key=hash(JSON.stringify(payload));
-   return {key,payload,cached:read(K,{})[key]||null};
- };
- window.atelierRememberAILooks=function(key,result){
-   const cache=read(K,{});cache[key]={at:Date.now(),result};const entries=Object.entries(cache).sort((a,b)=>b[1].at-a[1].at).slice(0,40);write(K,Object.fromEntries(entries));
-   const found=[];(Array.isArray(result)?result:(result&&result.looks)||[]).forEach(l=>{(l.items||l.itemIds||l.ids||[]).forEach(i=>found.push(typeof i===\"string\"?i:i.id))});
-   if(found.length)write(R,read(R,[]).concat(found).slice(-30));
- };
- window.atelierGetCachedAILooks=function(context){
-   const r=window.atelierBuildCompactLookRequest(context);if(r.cached){try{atelierTrackAI(\"cacheHits\")}catch(_){}return r.cached.result}return null;
- };
- window.atelierMarkLookGeneration=function(){try{atelierTrackAI(\"looks\")}catch(_){}};
-})();
-<\/script>"+"</body>");
+    html=html.replace("</body>","\n<script>\n/* Atelier Token Optimizer v3 */\n(function(){\n const K=\"atelier-ai-look-cache-v3\", R=\"atelier-recent-look-signatures-v3\";\n function pk(k){let p=\"default\";try{p=activeProfileId||p}catch(_){}return k+\":\"+p}\n function read(k,d){try{return JSON.parse(localStorage.getItem(pk(k)))||d}catch(_){return d}}\n function write(k,v){try{localStorage.setItem(pk(k),JSON.stringify(v))}catch(_){}}\n function norm(v){return String(v||\"\").trim().toLowerCase()}\n function ids(items){return (items||[]).map(x=>x.id||x.uid||x._id).filter(Boolean)}\n function compact(g){\n   return {i:g.id||g.uid||g._id,t:g.type||g.category||\"\",c:g.color||\"\",s:g.style||\"\",e:g.season||\"\",f:g.formality||\"\",o:Array.isArray(g.occasions)?g.occasions.slice(0,3):g.occasion||\"\"};\n }\n function hash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return (h>>>0).toString(36)}\n function wardrobe(){\n   try{\n     if(typeof state!==\"undefined\"){\n       const a=state.garments||state.items||state.wardrobe||state.clothes;\n       if(Array.isArray(a))return a;\n     }\n   }catch(_){}\n   return [];\n }\n function score(g,ctx,recent){\n   let n=0, season=norm(g.season), occ=(Array.isArray(g.occasions)?g.occasions.join(\" \"):g.occasion||\"\").toLowerCase();\n   if(ctx.season&&season.includes(ctx.season))n+=4;\n   if(ctx.occasion&&occ.includes(ctx.occasion))n+=4;\n   if(g.favorite||g.isFavorite)n+=1;\n   const id=g.id||g.uid||g._id;if(id&&recent.includes(id))n-=3;\n   return n;\n }\n window.atelierBuildCompactLookRequest=function(context){\n   context=context||{};\n   const all=wardrobe(), recent=read(R,[]).slice(-18);\n   const rankedAll=all.map(g=>({g,n:score(g,context,recent)})).sort((a,b)=>b.n-a.n);\n   const buckets={top:[],bottom:[],dress:[],outerwear:[],shoes:[],bag:[],accessory:[],other:[]};\n   rankedAll.forEach(x=>{const t=norm(x.g.type||x.g.category);(buckets[t]||buckets.other).push(x)});\n   const take=(k,n)=>buckets[k].slice(0,n);\n   let selected=[...take("top",6),...take("bottom",5),...take("dress",4),...take("outerwear",3),...take("shoes",4),...take("bag",2),...take("accessory",3)];\n   const seen=new Set(selected.map(x=>x.g.id||x.g.uid||x.g._id));\n   const minimum=Math.min(all.length,18);\n   if(selected.length<minimum){for(const x of rankedAll){const id=x.g.id||x.g.uid||x.g._id;if(!seen.has(id)){selected.push(x);seen.add(id)}if(selected.length>=minimum)break}}\n   const maximum=Math.min(all.length,32);if(selected.length>maximum)selected=selected.sort((a,b)=>b.n-a.n).slice(0,maximum);\n   const ranked=selected.map(x=>compact(x.g));\n   const payload={v:4,occasion:context.occasion||"",season:context.season||"",weather:context.weather||"",need:context.count||3,avoid:recent.slice(-12),items:ranked};\n   const key=hash(JSON.stringify(payload));\n   return {key,payload,cached:read(K,{})[key]||null};\n };\n window.atelierRememberAILooks=function(key,result){\n   const cache=read(K,{});cache[key]={at:Date.now(),result};const entries=Object.entries(cache).sort((a,b)=>b[1].at-a[1].at).slice(0,40);write(K,Object.fromEntries(entries));\n   const found=[];(Array.isArray(result)?result:(result&&result.looks)||[]).forEach(l=>{(l.items||l.itemIds||l.ids||[]).forEach(i=>found.push(typeof i===\"string\"?i:i.id))});\n   if(found.length)write(R,read(R,[]).concat(found).slice(-30));\n };\n window.atelierGetCachedAILooks=function(context){\n   const r=window.atelierBuildCompactLookRequest(context);if(r.cached){try{atelierTrackAI(\"cacheHits\")}catch(_){}return r.cached.result}return null;\n };\n window.atelierMarkLookGeneration=function(){try{atelierTrackAI(\"looks\")}catch(_){}};\n})();\n<\/script>"+"</body>");
 
-    html=html.replace("</body>","
-<script>
-(function(){
- const STORE=\"atelier-manual-looks-v1\";let chosen=[],filter=\"all\";
- function wardrobe(){try{const a=state.garments||state.items||state.wardrobe||state.clothes;return Array.isArray(a)?a:[]}catch(_){return[]}}
- function pid(){try{return activeProfileId||\"default\"}catch(_){return\"default\"}}
- function photo(g){return g.image||g.imageUrl||g.photo||g.photoUrl||g.photoData||g.processedImage||g.processedPhoto||g.originalImage||g.originalPhoto||g.dataUrl||g.src||\"\"}
- function gid(g){return g.id||g.uid||g._id}
- function typ(g){return String(g.type||g.category||\"other\").toLowerCase()}
- function label(g){return g.name||g.type||g.category||\"Prenda\"}
- function open(){
-   chosen=[];filter=\"all\";document.querySelector(\".manual-look-builder\")?.remove();
-   const el=document.createElement(\"div\");el.className=\"manual-look-builder\";
-   el.innerHTML=\"<div class='manual-look-top'><div><small>ATELIER</small><h2>Crear look</h2></div><button class='manual-look-close' aria-label='Cerrar'>×</button></div><div class='manual-look-canvas'><div class='manual-look-stage'></div></div><div class='manual-look-picker'><div class='manual-look-tabs'></div><div class='manual-look-items'></div></div><button class='manual-look-save' type='button'>Guardar look</button>\";
-   document.body.appendChild(el);render();
- }
- function render(){
-   const el=document.querySelector(\".manual-look-builder\");if(!el)return;
-   const stage=el.querySelector(\".manual-look-stage\");stage.innerHTML=\"\";
-   if(!chosen.length)stage.innerHTML=\"<div class='manual-look-slot' style='grid-column:1/-1'><span>Toca prendas de tu armario para montar el look ✦</span></div>\";
-   chosen.forEach((g,i)=>{const d=document.createElement(\"div\");d.className=\"manual-look-slot\";d.innerHTML=(photo(g)?\"<img src='\"+photo(g)+\"' alt=''>\":\"<span>\"+label(g)+\"</span>\")+\"<button data-remove='\"+i+\"' aria-label='Quitar'>×</button>\";stage.appendChild(d)});
-   const tabs=[[\"all\",\"Todo\"],[\"top\",\"Arriba\"],[\"bottom\",\"Abajo\"],[\"dress\",\"Vestidos\"],[\"outerwear\",\"Capas\"],[\"shoes\",\"Zapatos\"],[\"bag\",\"Bolsos\"],[\"accessory\",\"Accesorios\"]];
-   el.querySelector(\".manual-look-tabs\").innerHTML=tabs.map(([v,l])=>\"<button data-mfilter='\"+v+\"' class='\"+(filter===v?\"active\":\"\")+\"'>\"+l+\"</button>\").join(\"\");
-   const items=wardrobe().filter(g=>filter===\"all\"||typ(g)===filter).filter(g=>photo(g));
-   el.querySelector(\".manual-look-items\").innerHTML=items.map(g=>\"<button class='manual-look-item' data-add='\"+gid(g)+\"' title='\"+label(g).replace(/'/g,\"\")+\"'><img src='\"+photo(g)+\"' alt='\"+label(g).replace(/'/g,\"\")+\"'></button>\").join(\"\");
- }
- function save(){
-   if(chosen.length<2){alert(\"Añade al menos dos prendas al look.\");return}
-   const k=STORE+\":\"+pid();let a=[];try{a=JSON.parse(localStorage.getItem(k))||[]}catch(_){}
-   a.unshift({id:\"manual-\"+Date.now(),createdAt:new Date().toISOString(),itemIds:chosen.map(gid)});localStorage.setItem(k,JSON.stringify(a.slice(0,60)));
-   try{if(typeof state!==\"undefined\"){state.savedOutfits=state.savedOutfits||[];state.savedOutfits.unshift({id:\"manual-\"+Date.now(),name:\"Look manual\",items:chosen.map(gid),createdAt:new Date().toISOString()});if(typeof saveStateAsync===\"function\")saveStateAsync();if(typeof renderSavedOutfits===\"function\")renderSavedOutfits()}}catch(_){}
-   document.querySelector(\".manual-look-builder\")?.remove();
- }
- function addButton(){
-   if(document.querySelector(\".manual-look-fab\"))return;
-   const b=document.createElement(\"button\");b.className=\"manual-look-fab\";b.type=\"button\";b.textContent=\"＋ Crear look\";document.body.appendChild(b);b.onclick=open;
- }
- document.addEventListener(\"click\",e=>{
-   if(e.target.closest(\".manual-look-close\"))document.querySelector(\".manual-look-builder\")?.remove();
-   const t=e.target.closest(\"[data-mfilter]\");if(t){filter=t.dataset.mfilter;render()}
-   const r=e.target.closest(\"[data-remove]\");if(r){chosen.splice(+r.dataset.remove,1);render()}
-   const a=e.target.closest(\"[data-add]\");if(a){const g=wardrobe().find(x=>String(gid(x))===String(a.dataset.add));if(g&&!chosen.some(x=>String(gid(x))===String(gid(g)))){chosen.push(g);render()}}
-   if(e.target.closest(\".manual-look-save\"))save();
- });
- if(document.readyState===\"loading\")document.addEventListener(\"DOMContentLoaded\",addButton);else addButton();
- setTimeout(addButton,500);
-})();
-<\/script>"+"</body>");
+    html=html.replace("</body>","\n<script>\n(function(){\n const STORE=\"atelier-manual-looks-v1\";let chosen=[],filter=\"all\";\n function wardrobe(){try{const a=state.garments||state.items||state.wardrobe||state.clothes;return Array.isArray(a)?a:[]}catch(_){return[]}}\n function pid(){try{return activeProfileId||\"default\"}catch(_){return\"default\"}}\n function photo(g){return g.image||g.imageUrl||g.photo||g.photoUrl||g.photoData||g.processedImage||g.processedPhoto||g.originalImage||g.originalPhoto||g.dataUrl||g.src||\"\"}\n function gid(g){return g.id||g.uid||g._id}\n function typ(g){return String(g.type||g.category||\"other\").toLowerCase()}\n function label(g){return g.name||g.type||g.category||\"Prenda\"}\n function open(){\n   chosen=[];filter=\"all\";document.querySelector(\".manual-look-builder\")?.remove();\n   const el=document.createElement(\"div\");el.className=\"manual-look-builder\";\n   el.innerHTML=\"<div class='manual-look-top'><div><small>ATELIER</small><h2>Crear look</h2></div><button class='manual-look-close' aria-label='Cerrar'>×</button></div><div class='manual-look-canvas'><div class='manual-look-stage'></div></div><div class='manual-look-picker'><div class='manual-look-tabs'></div><div class='manual-look-items'></div></div><button class='manual-look-save' type='button'>Guardar look</button>\";\n   document.body.appendChild(el);render();\n }\n function render(){\n   const el=document.querySelector(\".manual-look-builder\");if(!el)return;\n   const stage=el.querySelector(\".manual-look-stage\");stage.innerHTML=\"\";\n   if(!chosen.length)stage.innerHTML=\"<div class='manual-look-slot' style='grid-column:1/-1'><span>Toca prendas de tu armario para montar el look ✦</span></div>\";\n   chosen.forEach((g,i)=>{const d=document.createElement(\"div\");d.className=\"manual-look-slot\";d.innerHTML=(photo(g)?\"<img src='\"+photo(g)+\"' alt=''>\":\"<span>\"+label(g)+\"</span>\")+\"<button data-remove='\"+i+\"' aria-label='Quitar'>×</button>\";stage.appendChild(d)});\n   const tabs=[[\"all\",\"Todo\"],[\"top\",\"Arriba\"],[\"bottom\",\"Abajo\"],[\"dress\",\"Vestidos\"],[\"outerwear\",\"Capas\"],[\"shoes\",\"Zapatos\"],[\"bag\",\"Bolsos\"],[\"accessory\",\"Accesorios\"]];\n   el.querySelector(\".manual-look-tabs\").innerHTML=tabs.map(([v,l])=>\"<button data-mfilter='\"+v+\"' class='\"+(filter===v?\"active\":\"\")+\"'>\"+l+\"</button>\").join(\"\");\n   const items=wardrobe().filter(g=>filter===\"all\"||typ(g)===filter).filter(g=>photo(g));\n   el.querySelector(\".manual-look-items\").innerHTML=items.map(g=>\"<button class='manual-look-item' data-add='\"+gid(g)+\"' title='\"+label(g).replace(/'/g,\"\")+\"'><img src='\"+photo(g)+\"' alt='\"+label(g).replace(/'/g,\"\")+\"'></button>\").join(\"\");\n }\n function save(){\n   if(chosen.length<2){alert(\"Añade al menos dos prendas al look.\");return}\n   const k=STORE+\":\"+pid();let a=[];try{a=JSON.parse(localStorage.getItem(k))||[]}catch(_){}\n   a.unshift({id:\"manual-\"+Date.now(),createdAt:new Date().toISOString(),itemIds:chosen.map(gid)});localStorage.setItem(k,JSON.stringify(a.slice(0,60)));\n   try{if(typeof state!==\"undefined\"){state.savedOutfits=state.savedOutfits||[];state.savedOutfits.unshift({id:\"manual-\"+Date.now(),name:\"Look manual\",items:chosen.map(gid),createdAt:new Date().toISOString()});if(typeof saveStateAsync===\"function\")saveStateAsync();if(typeof renderSavedOutfits===\"function\")renderSavedOutfits()}}catch(_){}\n   document.querySelector(\".manual-look-builder\")?.remove();\n }\n function addButton(){\n   if(document.querySelector(\".manual-look-fab\"))return;\n   const b=document.createElement(\"button\");b.className=\"manual-look-fab\";b.type=\"button\";b.textContent=\"＋ Crear look\";document.body.appendChild(b);b.onclick=open;\n }\n document.addEventListener(\"click\",e=>{\n   if(e.target.closest(\".manual-look-close\"))document.querySelector(\".manual-look-builder\")?.remove();\n   const t=e.target.closest(\"[data-mfilter]\");if(t){filter=t.dataset.mfilter;render()}\n   const r=e.target.closest(\"[data-remove]\");if(r){chosen.splice(+r.dataset.remove,1);render()}\n   const a=e.target.closest(\"[data-add]\");if(a){const g=wardrobe().find(x=>String(gid(x))===String(a.dataset.add));if(g&&!chosen.some(x=>String(gid(x))===String(gid(g)))){chosen.push(g);render()}}\n   if(e.target.closest(\".manual-look-save\"))save();\n });\n if(document.readyState===\"loading\")document.addEventListener(\"DOMContentLoaded\",addButton);else addButton();\n setTimeout(addButton,500);\n})();\n<\/script>"+"</body>");
 
-    html=html.replace("</body>","
-<script>
-(function(){
- function wardrobe(){try{const a=state.garments||state.items||state.wardrobe||state.clothes;return Array.isArray(a)?a:[]}catch(_){return[]}}
- function gid(g){return String(g.id||g.uid||g._id||\"\")} function photo(g){return g.image||g.imageUrl||g.photo||g.photoUrl||g.photoData||g.processedImage||g.processedPhoto||g.originalImage||g.originalPhoto||g.dataUrl||g.src||\"\"}
- function home(){return document.querySelector(\"#view-home,.view[data-view='home'],.view.home\")}
- function add(){
-   const v=home();if(!v||v.querySelector(\".ai-look-panel\"))return;
-   const p=document.createElement(\"div\");p.className=\"ai-look-panel\";p.innerHTML=\"<h3>Looks con Atelier ✦</h3><div class='meta'>La IA recibe solo una selección compacta de tu armario.</div><div class='ai-look-controls'><select id='aiOcc'><option value='daily'>Diario</option><option value='work'>Trabajo</option><option value='dinner'>Cena</option><option value='event'>Evento</option><option value='travel'>Viaje</option></select><select id='aiSeason'><option value=''>Cualquier temporada</option><option value='warm'>Calor</option><option value='cold'>Frío</option><option value='all'>Todo el año</option></select><button id='aiMakeLooks'>Crear 3 looks</button></div><div id='aiLookStatus' class='meta'></div><div id='aiLookResults' class='ai-look-results'></div>\";v.prepend(p)
- }
- function render(looks){
-   const box=document.getElementById(\"aiLookResults\");if(!box)return;const all=wardrobe();box.innerHTML=\"\";
-   (looks||[]).forEach((l,i)=>{const d=document.createElement(\"div\");d.className=\"ai-look-result\";const gs=(l.ids||l.itemIds||[]).map(id=>all.find(g=>gid(g)===String(id))).filter(Boolean);d.innerHTML=\"<strong>Look \"+(i+1)+\"</strong><div class='ai-look-pics'>\"+gs.map(g=>photo(g)?\"<img src='\"+photo(g)+\"' alt=''>\":\"\").join(\"\")+\"</div>\"+(l.why?\"<small>\"+l.why+\"</small>\":\"\");box.appendChild(d)})
- }
- async function make(){
-   const st=document.getElementById(\"aiLookStatus\"),btn=document.getElementById(\"aiMakeLooks\");if(!window.atelierBuildCompactLookRequest)return;
-   const context={occasion:document.getElementById(\"aiOcc\")?.value||\"\",season:document.getElementById(\"aiSeason\")?.value||\"\",count:3};
-   const built=atelierBuildCompactLookRequest(context);
-   if(built.cached){st.textContent=\"Reutilizado · 0 tokens\";try{atelierTrackAI(\"cacheHits\")}catch(_){}render(built.cached.result.looks||built.cached.result);return}
-   if(!built.payload.items.length){st.textContent=\"Añade prendas al armario primero.\";return}
-   btn.disabled=true;st.textContent=\"Creando looks…\";
-   try{
-     atelierMarkLookGeneration();
-     const r=await atelierAuthedFetch(\"/api/looks\",{method:\"POST\",headers:{\"Content-Type\":\"application/json\"},body:JSON.stringify(built.payload)});
-     const data=await r.json();if(!r.ok)throw new Error(data.error||\"Error\");
-     atelierRememberAILooks(built.key,data);render(data.looks);st.textContent=\"Listo · contexto optimizado\";
-   }catch(e){st.textContent=e.message||\"No se han podido crear los looks.\"}finally{btn.disabled=false}
- }
- document.addEventListener(\"click\",e=>{if(e.target.closest(\"#aiMakeLooks\"))make()});
- function init(){add()} if(document.readyState===\"loading\")document.addEventListener(\"DOMContentLoaded\",init);else init();new MutationObserver(init).observe(document.documentElement,{childList:true,subtree:true})
-})();
-<\/script>"+"</body>");
+    html=html.replace("</body>","\n<script>\n(function(){\n function wardrobe(){try{const a=state.garments||state.items||state.wardrobe||state.clothes;return Array.isArray(a)?a:[]}catch(_){return[]}}\n function gid(g){return String(g.id||g.uid||g._id||\"\")} function photo(g){return g.image||g.imageUrl||g.photo||g.photoUrl||g.photoData||g.processedImage||g.processedPhoto||g.originalImage||g.originalPhoto||g.dataUrl||g.src||\"\"}\n function home(){return document.querySelector(\"#view-home,.view[data-view='home'],.view.home\")}\n function add(){\n   const v=home();if(!v||v.querySelector(\".ai-look-panel\"))return;\n   const p=document.createElement(\"div\");p.className=\"ai-look-panel\";p.innerHTML=\"<h3>Looks con Atelier ✦</h3><div class='meta'>La IA recibe solo una selección compacta de tu armario.</div><div class='ai-look-controls'><select id='aiOcc'><option value='daily'>Diario</option><option value='work'>Trabajo</option><option value='dinner'>Cena</option><option value='event'>Evento</option><option value='travel'>Viaje</option></select><select id='aiSeason'><option value=''>Cualquier temporada</option><option value='warm'>Calor</option><option value='cold'>Frío</option><option value='all'>Todo el año</option></select><button id='aiMakeLooks'>Crear 3 looks</button></div><div id='aiLookStatus' class='meta'></div><div id='aiLookResults' class='ai-look-results'></div>\";v.prepend(p)\n }\n function render(looks){\n   const box=document.getElementById(\"aiLookResults\");if(!box)return;const all=wardrobe();box.innerHTML=\"\";\n   (looks||[]).forEach((l,i)=>{const d=document.createElement(\"div\");d.className=\"ai-look-result\";const gs=(l.ids||l.itemIds||[]).map(id=>all.find(g=>gid(g)===String(id))).filter(Boolean);d.innerHTML=\"<strong>Look \"+(i+1)+\"</strong><div class='ai-look-pics'>\"+gs.map(g=>photo(g)?\"<img src='\"+photo(g)+\"' alt=''>\":\"\").join(\"\")+\"</div>\"+(l.why?\"<small>\"+l.why+\"</small>\":\"\");box.appendChild(d)})\n }\n async function make(){\n   const st=document.getElementById(\"aiLookStatus\"),btn=document.getElementById(\"aiMakeLooks\");if(!window.atelierBuildCompactLookRequest)return;\n   const context={occasion:document.getElementById(\"aiOcc\")?.value||\"\",season:document.getElementById(\"aiSeason\")?.value||\"\",count:3};\n   const built=atelierBuildCompactLookRequest(context);\n   if(built.cached){st.textContent=\"Reutilizado · 0 tokens\";try{atelierTrackAI(\"cacheHits\")}catch(_){}render(built.cached.result.looks||built.cached.result);return}\n   if(!built.payload.items.length){st.textContent=\"Añade prendas al armario primero.\";return}\n   btn.disabled=true;st.textContent=\"Creando looks…\";\n   try{\n     atelierMarkLookGeneration();\n     const r=await atelierAuthedFetch(\"/api/looks\",{method:\"POST\",headers:{\"Content-Type\":\"application/json\"},body:JSON.stringify(built.payload)});\n     const data=await r.json();if(!r.ok)throw new Error(data.error||\"Error\");\n     atelierRememberAILooks(built.key,data);render(data.looks);st.textContent=\"Listo · contexto optimizado\";\n   }catch(e){st.textContent=e.message||\"No se han podido crear los looks.\"}finally{btn.disabled=false}\n }\n document.addEventListener(\"click\",e=>{if(e.target.closest(\"#aiMakeLooks\"))make()});\n function init(){add()} if(document.readyState===\"loading\")document.addEventListener(\"DOMContentLoaded\",init);else init();new MutationObserver(init).observe(document.documentElement,{childList:true,subtree:true})\n})();\n<\/script>"+"</body>");
 
     if(!html||html.length<10000)throw new Error("APP_HTML_INVALID");
     if(!html.includes("profileStateKey(activeProfileId)"))throw new Error("PROFILE_STORAGE_PATCH_MISSING");
     if(!html.includes("ATELIER_API_BASE"))throw new Error("AUTH_PATCH_MISSING");
-    html=html.replace("</body>",`<script>
-(async function atelierSelfBoot(){
-  const raw=sessionStorage.getItem("atelier-preauth");
-  if(!raw)return;
-  sessionStorage.removeItem("atelier-preauth");
-  try{
-    const auth=JSON.parse(raw);
-    atelierSessionToken=auth.token||"";
-    activeProfileId=auth.profileId||"";
-    lastActivityAt=Date.now();
-    if(typeof renderProfileChoices==="function")renderProfileChoices();
-    state=await loadStateAsync();
-    updateProfileUI();
-    document.getElementById("profileGate")?.setAttribute("hidden","");
-    renderAll();
-    renderWishlistSaved();
-    renderAnalytics();
-    try{renderSavedOutfits()}catch(_){}
-    localStorage.setItem("atelier-debug-last","SELF_BOOT_OK "+Date.now());
-  }catch(e){
-    localStorage.setItem("atelier-debug-last","SELF_BOOT_ERROR "+(e?.stack||e?.message||e));
-    console.error("Atelier self boot",e);
-    if(typeof showProfileGate==="function")showProfileGate();
-  }
-})();
-<\\/script></body>`);
     window.__atelierPreparedHtml=html;
     return html;
   }catch(e){
     window.__atelierPrepareError=e;
-    atelierDebug("PREPARE_ERROR",e?.stack||e?.message||e);
     const er=document.getElementById("preprofileError");
     if(er){er.textContent="No he podido preparar Atelier. Recarga la página.";er.hidden=false}
     throw e;
@@ -845,21 +416,26 @@ document.addEventListener("keydown",e=>{if(e.key==="Enter"&&document.activeEleme
 }
 function atelierInstallPreparedApp(){
   const html=window.__atelierPreparedHtml;
-  if(!html){atelierDebug("INSTALL_NO_HTML");return false;}
-  const profileId=window.__atelierPreAuthProfile||window.__atelierPreselectedProfile||"";
-  const token=window.__atelierPreAuthToken||"";
-  if(!profileId||!token){atelierDebug("INSTALL_NO_AUTH");return false;}
-  try{
-    sessionStorage.setItem("atelier-preauth",JSON.stringify({profileId,token}));
-    localStorage.setItem("atelier-debug-last","HANDOFF_READY "+Date.now());
-  }catch(e){
-    atelierDebug("HANDOFF_STORAGE_ERROR",e?.message||e);
-    return false;
-  }
-  atelierDebug("DOCUMENT_WRITE_START");
-  document.open();
-  document.write(html);
-  document.close();
+  if(!html)return false;
+  const preselected=window.__atelierPreAuthProfile||window.__atelierPreselectedProfile||"";
+  const pretoken=window.__atelierPreAuthToken||"";
+  document.open();document.write(html);document.close();
+  if("serviceWorker" in navigator){navigator.serviceWorker.register("./sw.js").catch(()=>{})}
+  const boot=()=>{
+    try{
+      document.getElementById("instantProfileGate")?.remove();
+      if(typeof renderProfileChoices==="function")renderProfileChoices();
+      if(preselected&&pretoken){
+        atelierSessionToken=pretoken;activeProfileId=preselected;lastActivityAt=Date.now();
+        Promise.resolve(loadStateAsync()).then(x=>{
+          state=x;updateProfileUI();
+          document.getElementById("profileGate")?.setAttribute("hidden","");
+          renderAll();renderWishlistSaved();renderAnalytics();try{renderSavedOutfits()}catch(e){}
+        }).catch(()=>{if(typeof showProfileGate==="function")showProfileGate()});
+      }else if(typeof showProfileGate==="function")showProfileGate();
+    }catch(e){console.error("Atelier boot",e)}
+  };
+  setTimeout(boot,0);setTimeout(boot,150);
   return true;
 }
 window.__atelierPreparePromise=atelierLoadApp();
