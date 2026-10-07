@@ -1,3 +1,5 @@
+import { verifySession } from "../_lib/auth.js";
+
 export default async function handler(req, res) {
   const allowedOrigins = new Set([
     "https://noeliatoledano.github.io",
@@ -13,6 +15,9 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Método no permitido." });
+
+  const session = verifySession(req);
+  if (!session) return res.status(401).json({ error: "Sesión no válida o caducada." });
 
   if (!process.env.OPENAI_API_KEY) {
     return res.status(503).json({ error: "Atelier AI aún no tiene configurada la clave de OpenAI." });
