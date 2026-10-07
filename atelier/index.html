@@ -98,7 +98,7 @@ small{color:#77716a}
       <button id="preprofileBack" type="button" style="border:0;background:transparent;padding:0 0 12px;font:inherit;font-weight:700">← Cambiar perfil</button>
       <div id="preprofileSelectedName" style="font-size:20px;font-weight:800"></div>
     </div>
-    <small id="preloadStatus" style="display:block;margin-top:14px">Cargando Atelier en segundo plano…</small>
+    <small id="preloadStatus" style="display:block;margin-top:14px"></small>
   </div>
 </div>
 <script>
@@ -112,7 +112,7 @@ document.addEventListener("click",function(e){
     const s=document.getElementById("preloadStatus");
     if(list)list.hidden=false;
     if(selected)selected.hidden=true;
-    if(s)s.textContent="Cargando Atelier en segundo plano…";
+    if(s)s.textContent="";
     return;
   }
   const b=e.target.closest("[data-preprofile]");
@@ -126,7 +126,7 @@ document.addEventListener("click",function(e){
   if(selected)selected.hidden=false;
   if(selectedName)selectedName.textContent=label;
   const s=document.getElementById("preloadStatus");
-  if(s)s.textContent="Perfil seleccionado. Terminando de cargar…";
+  if(s)s.textContent="";
 });
 (async()=>{
   try{
@@ -134,7 +134,7 @@ document.addEventListener("click",function(e){
     const parts=await Promise.all(names.map(n=>fetch(n,{cache:"no-store"}).then(r=>{if(!r.ok)throw new Error(n);return r.text();})));
     const b64=parts.join("").trim();
     const status=document.getElementById("preloadStatus");
-    if(status)status.textContent="Abriendo Atelier…";
+    if(status)status.textContent="";
     const bytes=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
     const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
     let html=await new Response(stream).text();
