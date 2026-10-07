@@ -123,8 +123,7 @@ function atelierDebug(stage,data){
   try{localStorage.setItem("atelier-debug-log",JSON.stringify(window.__atelierDebugLog.slice(-120)))}catch(_){}
   console.log("[ATELIER]",row.t,stage,row.data);
   const box=document.getElementById("atelierDebug");
-  if(box){box.style.display="block";box.textContent=window.__atelierDebugLog.map(x=>x.t+"ms  "+x.stage+(x.data?"  "+x.data:"")).join("
-");box.scrollTop=box.scrollHeight}
+  if(box){box.style.display="block";box.textContent=window.__atelierDebugLog.map(x=>x.t+"ms  "+x.stage+(x.data?"  "+x.data:"")).join("\\n");box.scrollTop=box.scrollHeight}
 }
 window.addEventListener("error",e=>atelierDebug("WINDOW_ERROR",(e.message||"error")+" @ "+(e.filename||"")+":"+(e.lineno||"")));
 window.addEventListener("unhandledrejection",e=>atelierDebug("PROMISE_REJECTION",e.reason?.stack||e.reason?.message||e.reason||"unknown"));
