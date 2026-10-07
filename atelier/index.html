@@ -21,6 +21,13 @@ small{color:#77716a}
 .instant-profile-list span{display:grid;gap:2px}.instant-profile-list strong{font-size:16px}
 .instant-profile-list button:active{transform:scale(.99)}
 .instant-profile-list button[disabled]{opacity:.55}
+.instant-password{display:grid;gap:10px;text-align:left}.instant-password[hidden]{display:none}
+.instant-password .instant-back{border:0;background:transparent;padding:0 0 4px;font:inherit;font-weight:700;text-align:left}
+.instant-password .instant-name{font-size:22px;font-weight:800}
+.instant-password label{font-size:13px;font-weight:700;color:#77716a}
+.instant-password-row{display:flex;gap:8px}.instant-password-row input{min-width:0;flex:1;border:1px solid #ded8d0;border-radius:14px;padding:13px 14px;font:inherit;font-size:16px;background:#fff}.instant-password-row button{border:1px solid #ded8d0;background:#fff;border-radius:14px;padding:0 13px;font:inherit;font-weight:700}
+.instant-enter{border:0!important;background:#171717!important;color:#fff;border-radius:14px!important;padding:14px!important;font:inherit!important;font-weight:800!important;text-align:center!important;justify-content:center!important}
+.instant-error{color:#a12d2d;font-size:13px;margin:0}
 
 /* Atelier mobile UX */
 .atelier-help{display:inline-grid;place-items:center;width:20px;height:20px;margin-left:5px;border:1px solid #cfc8bf;border-radius:50%;background:#fff;color:#6f6962;font-size:12px;font-weight:800;line-height:1;vertical-align:1px;cursor:pointer;padding:0}
@@ -94,9 +101,13 @@ small{color:#77716a}
       <button type="button" data-preprofile="ana-maria"><b>A</b><span><strong>Ana María</strong><small>Armario privado</small></span></button>
       <button type="button" data-preprofile="irene"><b>I</b><span><strong>Irene</strong><small>Armario privado</small></span></button>
     </div>
-    <div id="preprofileSelected" hidden style="margin-top:8px">
-      <button id="preprofileBack" type="button" style="border:0;background:transparent;padding:0 0 12px;font:inherit;font-weight:700">← Cambiar perfil</button>
-      <div id="preprofileSelectedName" style="font-size:20px;font-weight:800"></div>
+    <div id="preprofileSelected" class="instant-password" hidden>
+      <button id="preprofileBack" class="instant-back" type="button">← Cambiar perfil</button>
+      <div id="preprofileSelectedName" class="instant-name"></div>
+      <label for="preprofilePassword">Contraseña</label>
+      <div class="instant-password-row"><input id="preprofilePassword" type="password" autocomplete="current-password" placeholder="Introduce la contraseña"><button id="preprofileToggle" type="button">Ver</button></div>
+      <button id="preprofileEnter" class="instant-enter" type="button">Entrar en el armario</button>
+      <p id="preprofileError" class="instant-error" hidden></p>
     </div>
     <small id="preloadStatus" style="display:block;margin-top:14px"></small>
   </div>
@@ -104,6 +115,10 @@ small{color:#77716a}
 <script>
 window.__atelierPreselectedProfile="";
 document.addEventListener("click",function(e){
+  const toggle=e.target.closest("#preprofileToggle");
+  if(toggle){const i=document.getElementById("preprofilePassword");if(i){i.type=i.type==="password"?"text":"password";toggle.textContent=i.type==="password"?"Ver":"Ocultar"}return}
+  const enter=e.target.closest("#preprofileEnter");
+  if(enter){window.__atelierPendingPassword=document.getElementById("preprofilePassword")?.value||"";const er=document.getElementById("preprofileError");if(!window.__atelierPendingPassword){if(er){er.textContent="Introduce la contraseña.";er.hidden=false}}else{enter.disabled=true;enter.textContent="Entrando…"}return}
   const back=e.target.closest("#preprofileBack");
   if(back){
     window.__atelierPreselectedProfile="";
@@ -125,6 +140,8 @@ document.addEventListener("click",function(e){
   if(list)list.hidden=true;
   if(selected)selected.hidden=false;
   if(selectedName)selectedName.textContent=label;
+  const inp=document.getElementById("preprofilePassword");if(inp){inp.value="";setTimeout(()=>inp.focus(),0)}
+  const er=document.getElementById("preprofileError");if(er)er.hidden=true;
   const s=document.getElementById("preloadStatus");
   if(s)s.textContent="";
 });
@@ -337,7 +354,11 @@ document.addEventListener("keydown",e=>{if(e.key==="Enter"&&document.activeEleme
         const pre=document.getElementById("instantProfileGate");if(pre)pre.remove();
         if(typeof renderProfileChoices==="function")renderProfileChoices();
         if(typeof showProfileGate==="function")showProfileGate();
-        if(preselected&&typeof requestProfilePassword==="function")requestProfilePassword(preselected);
+        if(preselected&&typeof requestProfilePassword==="function"){
+          requestProfilePassword(preselected);
+          const pw=window.__atelierPendingPassword||"";
+          if(pw){const input=document.getElementById("profilePasswordInput");if(input){input.value=pw;if(typeof unlockProfile==="function")unlockProfile()}}
+        }
       }catch(e){}
     };
     setTimeout(boot,0);setTimeout(boot,250);
