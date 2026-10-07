@@ -95,7 +95,7 @@ small{color:#77716a}
   <div class="card instant-profile-card">
     <small style="letter-spacing:.14em;font-weight:800">ATELIER</small>
     <h2 style="margin:8px 0 6px">¿Quién va a usar el armario?</h2>
-    <p style="margin:0 0 18px;color:#77716a">Elige tu perfil mientras Atelier termina de cargar.</p>
+    <p style="margin:0 0 18px;color:#77716a">Elige tu perfil para abrir tu armario.</p>
     <div class="instant-profile-list">
       <button type="button" data-preprofile="noelia" onclick="atelierPickProfile(this)"><b>N</b><span><strong>Noelia</strong><small>Armario privado</small></span></button>
       <button type="button" data-preprofile="ana-maria" onclick="atelierPickProfile(this)"><b>A</b><span><strong>Ana María</strong><small>Armario privado</small></span></button>
@@ -114,7 +114,7 @@ small{color:#77716a}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
 <script src="./payload.js?v=9"></script>
-<script>async function atelierPreEnter(){var i=document.getElementById("preprofilePassword"),e=document.getElementById("preprofileError"),b=document.getElementById("preprofileEnter"),p=window.__atelierPreselectedProfile||"",pw=i?i.value:"";if(!pw){if(e){e.textContent="Introduce la contraseña.";e.hidden=false}return false}if(e)e.hidden=true;if(b){b.disabled=true;b.textContent="Entrando…"}try{var ctrl=new AbortController(),timer=setTimeout(function(){ctrl.abort()},12000),r=await fetch("https://atelier-ai-backend-pi.vercel.app/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({profileId:p,password:pw}),signal:ctrl.signal});clearTimeout(timer);var d=await r.json().catch(function(){return {}});if(!r.ok){if(e){e.textContent=d.error||"Contraseña incorrecta.";e.hidden=false}if(b){b.disabled=false;b.textContent="Entrar en el armario"}return false}window.__atelierPendingPassword=pw;window.__atelierPreAuthToken=d.token||"";window.__atelierPreAuthProfile=p;if(b)b.textContent="Abriendo Atelier…";return false}catch(x){if(e){e.textContent="No puedo conectar con Atelier.";e.hidden=false}if(b){b.disabled=false;b.textContent="Entrar en el armario"}return false}}function atelierBackToProfiles(){window.__atelierPreselectedProfile="";window.__atelierPendingPassword="";var l=document.querySelector(".instant-profile-list"),s=document.getElementById("preprofileSelected"),i=document.getElementById("preprofilePassword"),e=document.getElementById("preprofileError");if(l){l.hidden=false;l.style.display="grid"}if(s){s.hidden=true;s.style.display="none"}if(i)i.value="";if(e)e.hidden=true;return false}function atelierPickProfile(b){window.__atelierPreselectedProfile=b.getAttribute("data-preprofile")||"";var l=document.querySelector(".instant-profile-list"),s=document.getElementById("preprofileSelected"),n=document.getElementById("preprofileSelectedName"),i=document.getElementById("preprofilePassword");if(l)l.style.display="none";if(s){s.hidden=false;s.style.display="grid"}if(n)n.textContent=(b.querySelector("strong")||{}).textContent||"Perfil";if(i){i.value="";setTimeout(function(){i.focus()},10)}return false}</script>
+<script>async function atelierPreEnter(){var i=document.getElementById("preprofilePassword"),e=document.getElementById("preprofileError"),b=document.getElementById("preprofileEnter"),p=window.__atelierPreselectedProfile||"",pw=i?i.value:"";if(!pw){if(e){e.textContent="Introduce la contraseña.";e.hidden=false}return false}if(e)e.hidden=true;if(b){b.disabled=true;b.textContent="Entrando…"}try{var ctrl=new AbortController(),timer=setTimeout(function(){ctrl.abort()},12000),r=await fetch("https://atelier-ai-backend-pi.vercel.app/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({profileId:p,password:pw}),signal:ctrl.signal});clearTimeout(timer);var d=await r.json().catch(function(){return {}});if(!r.ok){if(e){e.textContent=d.error||"Contraseña incorrecta.";e.hidden=false}if(b){b.disabled=false;b.textContent="Entrar en el armario"}return false}window.__atelierPendingPassword=pw;window.__atelierPreAuthToken=d.token||"";window.__atelierPreAuthProfile=p;if(b)b.textContent="Abriendo Atelier…";await atelierLoadApp();return false}catch(x){if(e){e.textContent="No puedo conectar con Atelier.";e.hidden=false}if(b){b.disabled=false;b.textContent="Entrar en el armario"}return false}}function atelierBackToProfiles(){window.__atelierPreselectedProfile="";window.__atelierPendingPassword="";var l=document.querySelector(".instant-profile-list"),s=document.getElementById("preprofileSelected"),i=document.getElementById("preprofilePassword"),e=document.getElementById("preprofileError");if(l){l.hidden=false;l.style.display="grid"}if(s){s.hidden=true;s.style.display="none"}if(i)i.value="";if(e)e.hidden=true;return false}function atelierPickProfile(b){window.__atelierPreselectedProfile=b.getAttribute("data-preprofile")||"";var l=document.querySelector(".instant-profile-list"),s=document.getElementById("preprofileSelected"),n=document.getElementById("preprofileSelectedName"),i=document.getElementById("preprofilePassword");if(l)l.style.display="none";if(s){s.hidden=false;s.style.display="grid"}if(n)n.textContent=(b.querySelector("strong")||{}).textContent||"Perfil";if(i){i.value="";setTimeout(function(){i.focus()},10)}return false}</script>
 <script>
 window.__atelierPreselectedProfile="";
 document.addEventListener("click",function(e){
@@ -148,7 +148,7 @@ document.addEventListener("click",function(e){
   const s=document.getElementById("preloadStatus");
   if(s)s.textContent="";
 });
-(async()=>{
+async function atelierLoadApp(){
   try{
     const b64=(window.__ATELIER_B64||"").trim();
     if(!b64)throw new Error("PAYLOAD_MISSING");
@@ -368,7 +368,7 @@ document.addEventListener("keydown",e=>{if(e.key==="Enter"&&document.activeEleme
   }catch(e){
     document.getElementById("loading").innerHTML='<div class="card"><h2>No he podido abrir Atelier</h2><p>Recarga la página. Si sigue ocurriendo, falta alguno de los archivos de la aplicación.</p></div>';
   }
-})();
+}
 </script>
 </body>
 </html>
