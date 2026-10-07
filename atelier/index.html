@@ -148,7 +148,7 @@ document.addEventListener("click",function(e){
 (async()=>{
   try{
     const names=["chunk00.txt","chunk01.txt","chunk02.txt","chunk03.txt","chunk04.txt","chunk05.txt"];
-    const parts=await Promise.all(names.map(n=>fetch(n,{cache:"no-store"}).then(r=>{if(!r.ok)throw new Error(n);return r.text();})));
+    const parts=await Promise.all(names.map(n=>fetch(n,{cache:"force-cache"}).then(r=>{if(!r.ok)throw new Error(n);return r.text();})));
     const b64=parts.join("").trim();
     const status=document.getElementById("preloadStatus");
     if(status)status.textContent="";
