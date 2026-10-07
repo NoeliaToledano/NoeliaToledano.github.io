@@ -12,7 +12,7 @@ export default async function handler(req, res) {
   }
   res.setHeader("Vary", "Origin");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Método no permitido." });
 
@@ -42,17 +42,15 @@ export default async function handler(req, res) {
       JSON.stringify({
         name: "nombre corto y útil de la prenda",
         type: "top|bottom|dress|outerwear|shoes|bag|accessory",
-        color: "color principal",
-        secondaryColors: ["color secundario"],
-        style: "casual|smart|minimal|romantico|fiesta|deportivo|boho|clasico|streetwear|otro",
-        seasons: ["primavera","verano","otono","invierno"],
-        fabric: "tejido/material aparente o null",
-        pattern: "liso|rayas|cuadros|flores|animal|lunares|grafico|otro",
-        length: "corto|midi|largo|na",
-        formality: "casual|smart-casual|formal|fiesta|deportivo",
-        occasions: ["diario","trabajo","fiesta","evento","viaje"],
-        fit: "ajustado|regular|oversize|fluido|null",
-        details: ["detalle visible breve"],
+        color: "Negro|Blanco|Gris|Beige|Marrón|Azul|Vaquero|Verde|Rojo|Rosa|Morado|Amarillo|Plateado|Dorado|Multicolor",
+        style: "basic|casual|smart|party|sport",
+        season: "all|warm|cold",
+        fabric: "unknown|cotton|denim|linen|wool|knit|leather|satin|silk|synthetic|mixed",
+        pattern: "plain|stripes|checks|floral|animal|dots|graphic|other",
+        length: "na|cropped|regular|midi|long",
+        formality: "casual|smartcasual|formal|party|sport",
+        occasions: ["daily","work","dinner","event","travel"],
+        notes: "una frase breve con detalles visibles útiles o cadena vacía",
         confidence: 0.0
       })
     ].join("\n");
