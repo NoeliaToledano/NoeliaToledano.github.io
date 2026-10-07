@@ -21,11 +21,69 @@ small{color:#77716a}
 (async()=>{
   try{
     const names=["chunk00.txt","chunk01.txt","chunk02.txt","chunk03.txt","chunk04.txt","chunk05.txt"];
-    const parts=await Promise.all(names.map(n=>fetch(n,{cache:"force-cache"}).then(r=>{if(!r.ok)throw new Error(n);return r.text();})));
+    const parts=await Promise.all(names.map(n=>fetch(n,{cache:"no-store"}).then(r=>{if(!r.ok)throw new Error(n);return r.text();})));
     const b64=parts.join("").trim();
     const bytes=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
     const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
-    const html=await new Response(stream).text();
+    let html=await new Response(stream).text();
+
+    const gateHtml=`
+<div id="profileGate" class="profile-gate" hidden>
+  <div class="profile-gate-card">
+    <span class="eyebrow">ATELIER</span>
+    <h1>¿Quién va a usar el armario?</h1>
+    <p class="meta">Cada perfil tiene sus propias prendas, looks, favoritos, wishlist e historial.</p>
+    <div id="profileChoices" class="profile-choices"></div>
+  </div>
+</div>`;
+    html=html.replace("<body>","<body>"+gateHtml);
+
+    const profileCss=`
+.profile-gate{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:24px;background:rgba(244,241,236,.96);backdrop-filter:blur(16px)}
+.profile-gate[hidden]{display:none}
+.profile-gate-card{width:min(100%,460px);background:#fffdf9;border:1px solid var(--line);border-radius:28px;padding:26px;box-shadow:0 22px 70px rgba(30,24,17,.12)}
+.profile-gate-card h1{margin:6px 0 8px}.profile-choices{display:grid;gap:12px;margin-top:20px}
+.profile-choice{width:100%;border:1px solid var(--line);background:#fff;border-radius:20px;padding:14px 16px;display:flex;align-items:center;gap:14px;text-align:left;cursor:pointer}
+.profile-avatar{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;background:#171717;color:#fff;font-weight:800;flex:0 0 auto}
+.profile-choice strong{display:block}.profile-choice small{display:block;color:var(--muted);margin-top:2px}
+.profile-switch-button{position:fixed;top:14px;right:14px;z-index:80;border:1px solid var(--line);background:#fffdf9;border-radius:999px;padding:6px 10px 6px 6px;display:inline-flex;align-items:center;gap:8px;font-weight:700;cursor:pointer}
+.profile-switch-button .pi{width:28px;height:28px;border-radius:50%;background:#171717;color:#fff;display:grid;place-items:center;font-size:12px}
+`;
+    html=html.replace("</style>",profileCss+"</style>");
+
+    html=html.replace("<main",'<button class="profile-switch-button" id="profileSwitchBtn" type="button"><span class="pi" id="activeProfileInitial">N</span><span id="activeProfileName">Noelia</span></button><main');
+
+    const profileJs=`
+const PROFILES=[{id:"noelia",name:"Noelia"},{id:"ana-maria",name:"Ana María"},{id:"irene",name:"Irene"}];
+let activeProfileId=localStorage.getItem("atelier-active-profile")||"";
+function profileStateKey(id){return "state:"+id}
+function getActiveProfile(){return PROFILES.find(p=>p.id===activeProfileId)||PROFILES[0]}
+function updateProfileUI(){const p=getActiveProfile();const n=document.getElementById("activeProfileName"),i=document.getElementById("activeProfileInitial");if(n)n.textContent=p.name;if(i)i.textContent=(p.name[0]||"?").toUpperCase()}
+function renderProfileChoices(){const w=document.getElementById("profileChoices");if(!w)return;w.innerHTML=PROFILES.map(p=>'<button type="button" class="profile-choice" data-profile="'+p.id+'"><span class="profile-avatar">'+p.name[0].toUpperCase()+'</span><span><strong>'+p.name+'</strong><small>Armario privado de '+p.name+'</small></span></button>').join("");w.querySelectorAll("[data-profile]").forEach(b=>b.addEventListener("click",()=>selectProfile(b.dataset.profile)))}
+function showProfileGate(){renderProfileChoices();document.getElementById("profileGate")?.removeAttribute("hidden")}
+async function selectProfile(id){if(!PROFILES.some(p=>p.id===id))return;activeProfileId=id;localStorage.setItem("atelier-active-profile",id);state=await loadStateAsync();updateProfileUI();document.getElementById("profileGate")?.setAttribute("hidden","");renderAll();renderWishlistSaved();renderAnalytics();try{renderSavedOutfits()}catch(e){}}
+document.addEventListener("click",e=>{if(e.target.closest("#profileSwitchBtn"))showProfileGate()});
+`;
+    html=html.replace('const DB_NAME = "atelier-armario-db";',profileJs+'const DB_NAME = "atelier-armario-db";');
+    html=html.replace('idbGet("state")','idbGet(profileStateKey(activeProfileId))');
+    html=html.replaceAll('idbSet("state",state)','idbSet(profileStateKey(activeProfileId),state)');
+    html=html.replace('const legacy=localStorage.getItem(STORAGE_KEY);','const legacy=(activeProfileId==="noelia")?localStorage.getItem(STORAGE_KEY):null;');
+    html=html.replace('idbSet("state",migrated)','idbSet(profileStateKey(activeProfileId),migrated)');
+
+    html=html.replace(
+`async function bootstrapApp(){
+  state = await loadStateAsync();
+  renderAll();
+  renderWishlistSaved();
+  renderAnalytics();
+}`,
+`async function bootstrapApp(){
+  renderProfileChoices();
+  if(!activeProfileId||!PROFILES.some(p=>p.id===activeProfileId)){showProfileGate();return;}
+  state=await loadStateAsync();updateProfileUI();renderAll();renderWishlistSaved();renderAnalytics();
+}`
+    );
+
     document.open();
     document.write(html);
     document.close();
