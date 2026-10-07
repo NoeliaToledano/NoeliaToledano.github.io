@@ -1,4 +1,4 @@
-const CACHE="atelier-shell-debug-v19";
+const CACHE="atelier-shell-rollback-v21";
 const ASSETS=["./manifest.json"];
 self.addEventListener("install",event=>{self.skipWaiting();event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)))});
 self.addEventListener("activate",event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith("atelier-shell-")&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
