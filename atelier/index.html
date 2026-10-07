@@ -34,16 +34,37 @@ small{color:#77716a}
       <button type="button" data-preprofile="ana-maria"><b>A</b><span><strong>Ana María</strong><small>Armario privado</small></span></button>
       <button type="button" data-preprofile="irene"><b>I</b><span><strong>Irene</strong><small>Armario privado</small></span></button>
     </div>
+    <div id="preprofileSelected" hidden style="margin-top:8px">
+      <button id="preprofileBack" type="button" style="border:0;background:transparent;padding:0 0 12px;font:inherit;font-weight:700">← Cambiar perfil</button>
+      <div id="preprofileSelectedName" style="font-size:20px;font-weight:800"></div>
+    </div>
     <small id="preloadStatus" style="display:block;margin-top:14px">Cargando Atelier en segundo plano…</small>
   </div>
 </div>
 <script>
 window.__atelierPreselectedProfile="";
 document.addEventListener("click",function(e){
+  const back=e.target.closest("#preprofileBack");
+  if(back){
+    window.__atelierPreselectedProfile="";
+    const list=document.querySelector(".instant-profile-list");
+    const selected=document.getElementById("preprofileSelected");
+    const s=document.getElementById("preloadStatus");
+    if(list)list.hidden=false;
+    if(selected)selected.hidden=true;
+    if(s)s.textContent="Cargando Atelier en segundo plano…";
+    return;
+  }
   const b=e.target.closest("[data-preprofile]");
   if(!b)return;
   window.__atelierPreselectedProfile=b.dataset.preprofile||"";
-  document.querySelectorAll("[data-preprofile]").forEach(x=>x.disabled=true);
+  const list=document.querySelector(".instant-profile-list");
+  const selected=document.getElementById("preprofileSelected");
+  const selectedName=document.getElementById("preprofileSelectedName");
+  const label=b.querySelector("strong")?.textContent||"Perfil";
+  if(list)list.hidden=true;
+  if(selected)selected.hidden=false;
+  if(selectedName)selectedName.textContent=label;
   const s=document.getElementById("preloadStatus");
   if(s)s.textContent="Perfil seleccionado. Terminando de cargar…";
 });
@@ -64,7 +85,7 @@ document.addEventListener("click",function(e){
     <p class="meta">Cada perfil tiene sus propias prendas, looks, favoritos, wishlist e historial.</p>
     <div id="profileChoices" class="profile-choices"></div>
     <div id="profilePasswordBox" class="profile-password-box" hidden>
-      <button id="profileBackBtn" class="profile-back" type="button">← Volver</button>
+      <button id="profileBackBtn" class="profile-back" type="button">← Cambiar perfil</button>
       <div class="profile-selected" id="profileSelectedName"></div>
       <p id="profilePasswordHelp" class="meta"></p>
       <label for="profilePasswordInput">Contraseña</label>
