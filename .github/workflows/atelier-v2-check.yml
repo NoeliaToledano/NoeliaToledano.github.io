@@ -5,7 +5,7 @@ on:
       - "atelier/**"
       - ".github/workflows/atelier-v2-check.yml"
   push:
-    branches: [main, atelier-security-audit]
+    branches: [main, atelier-v3-mobile-audit]
     paths:
       - "atelier/**"
 jobs:
@@ -20,6 +20,7 @@ jobs:
         run: |
           node --check atelier/app-v2.js
           node --check atelier/sw.js
+          node --check atelier/features-v3.js
       - name: Atelier release gate
         run: node atelier/validate-v2.mjs
       - name: Security regression tests
@@ -32,3 +33,9 @@ jobs:
         run: |
           python3 -m http.server 8000 --bind 127.0.0.1 >/tmp/atelier-http.log 2>&1 &
           node atelier/smoke-test.mjs
+      - name: Install Safari engine
+        run: npx playwright install --with-deps webkit
+      - name: Safari WebKit v3 browser test
+        run: |
+          python3 -m http.server 8000 --bind 127.0.0.1 >/tmp/atelier-http.log 2>&1 &
+          node atelier/webkit-v3-test.mjs
