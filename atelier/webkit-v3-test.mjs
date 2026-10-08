@@ -61,7 +61,7 @@ try{
  await page.locator('[name="wishName"]').fill("Zapatos de prueba");
  await page.locator('#wishlistForm button[type="submit"]').click();
  await page.getByText("Zapatos de prueba").waitFor();
- await page.locator('[data-view="settings"]').click();
+ await page.locator('#profileName').click();
  const downloadPromise=page.waitForEvent("download");
  await page.locator("#exportBackup").click();
  const download=await downloadPromise;
