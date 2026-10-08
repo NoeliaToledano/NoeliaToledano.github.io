@@ -32,6 +32,7 @@ try{
  const bg=await page.locator("body").evaluate(el=>getComputedStyle(el).backgroundColor);
  assert.notEqual(bg,"rgba(0, 0, 0, 0)","CSS not applied");
  await page.locator("#addGarment").click();
+ console.log("GARMENT_DIAGNOSTIC",{classes:await page.locator("#garmentSheet").getAttribute("class"),visible:await page.locator("#garmentName").isVisible(),errors});
  await page.locator("#autoAnalyze").evaluate(el=>{el.checked=false;el.dispatchEvent(new Event("change",{bubbles:true}))});
  await page.locator("#garmentName").fill("Prenda auditada");
  await page.locator("#garmentCategory").selectOption("Arriba");
