@@ -76,7 +76,7 @@ try{
  assert.equal(await page.locator("#meta-fit").inputValue(),"regular");
  assert.equal(await page.locator("#meta-brand").inputValue(),"Marca introducida a mano");
  await page.locator("#closeGarment").click();
- await page.locator('[data-view="stylist"]').click(); await page.locator('#openLooks').click();
+ await page.locator('[data-view="stylist"]').click(); console.log("STYLIST_DEBUG",await page.locator("#content").innerText(),await page.locator("#content").locator("[role=tab]").count()); await page.locator("#openLooks").click();
  await page.locator("#aiLooks").click();
  await page.getByText("Look de prueba IA").waitFor();
  await page.locator('[data-view="wardrobe"]').click();
