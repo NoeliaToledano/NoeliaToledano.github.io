@@ -1,6 +1,6 @@
 import { chromium, devices } from "playwright";
 import assert from "node:assert/strict";
-const browser=await chromium.launch({headless:true});
+const browser=await chromium.launch({headless:true,channel:"chrome"});
 const context=await browser.newContext({...devices["iPhone 13"],browserName:undefined});
 const page=await context.newPage();
 const errors=[];
