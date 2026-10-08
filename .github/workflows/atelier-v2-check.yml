@@ -5,7 +5,7 @@ on:
       - "atelier/**"
       - ".github/workflows/atelier-v2-check.yml"
   push:
-    branches: [atelier-full-repair]
+    branches: [main, atelier-security-audit]
     paths:
       - "atelier/**"
 jobs:
@@ -22,3 +22,5 @@ jobs:
           node --check atelier/sw.js
       - name: Atelier release gate
         run: node atelier/validate-v2.mjs
+      - name: Security regression tests
+        run: node atelier/security-test.mjs
