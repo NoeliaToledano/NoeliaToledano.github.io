@@ -703,6 +703,7 @@ function openGarment(id){
  btn?.classList.toggle("hidden",!g);
  buildMetadataSection();renderPhotoControls();populateMetadata(g);setAnalyzeStatus("");
  const details=$("#metadataDetails");if(details)details.open=false;
+ const extra=$("#garmentExtra");if(extra)extra.open=!!g;
  const auto=$("#autoAnalyze");if(auto)auto.checked=appState.data.preferences.autoAnalyze!==false;
  const aw=$("#autoWhite");if(aw)aw.checked=appState.data.preferences.autoWhite!==false;
  lastAnalysis=null;$("#garmentSheet").classList.remove("hidden");
