@@ -996,7 +996,7 @@ function stylistShell(root,title,subtitle,body){
  $$("[data-stylist-tab]",root).forEach(b=>b.addEventListener("click",()=>{const t=b.dataset.stylistTab;if(t==="looks")return setView("looks");ui.stylistTab=t;setView("stylist")}));
 }
 function renderStylist(root){
- if(ui.stylistTab==="today"||ui.stylistTab==="trips"||ui.stylistTab==="looks")ui.stylistTab="week";
+ if(ui.stylistTab==="today"||ui.stylistTab==="trips"||ui.stylistTab==="looks")ui.stylistTab="around";
  if(ui.stylistTab==="around")return renderAround(root);
  return renderWeek(root);
 }
