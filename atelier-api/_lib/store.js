@@ -34,6 +34,15 @@ export async function pipeline(commands) {
   });
 }
 
+// Límite diario por perfil, compartido entre todos sus dispositivos (contador en Redis que caduca a las 48 h).
+// Sin Redis configurado no se limita aquí (queda el límite del móvil).
+export async function dailyQuota(profile, kind, max) {
+  if (!storeConfigured()) return { ok: true, count: 0 };
+  const key = `atelier:v1:${profile}:quota:${kind}:${new Date().toISOString().slice(0, 10)}`;
+  const [n] = await pipeline([["INCR", key], ["EXPIRE", key, "172800"]]);
+  return { ok: Number(n) <= max, count: Number(n) };
+}
+
 // Claves por perfil
 export const keys = profile => ({
   rev: `atelier:v1:${profile}:rev`,

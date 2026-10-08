@@ -23,6 +23,8 @@ const ANALYSIS_FIELDS={pattern:["plain","stripes","checks","floral","animal","do
 const emptyData=()=>({garments:[],looks:[],wishlist:[],wearLog:[],trips:[],plans:[],feedback:{},deleted:{},preferences:{forgottenDays:60,diversity:65,occasion:"daily",season:"all",budget:100,avoidRepeats:true,temperature:DEFAULT_TEMPERATURE}});
 function normalizeData(v){
  const d=emptyData();if(!v||typeof v!=="object")return d;
+ // Claves que esta versión no conoce (de una versión más nueva): se conservan para no borrarlas al sincronizar
+ for(const k of Object.keys(v))if(!(k in d)&&k!=="__proto__")d[k]=v[k];
  for(const key of ["garments","looks","wishlist","wearLog","trips","plans"])if(Array.isArray(v[key]))d[key]=v[key].filter(x=>x&&typeof x==="object"&&x.id);
  for(const key of ["feedback","deleted"])if(v[key]&&typeof v[key]==="object"&&!Array.isArray(v[key]))d[key]=v[key];
  if(v.preferences&&typeof v.preferences==="object")d.preferences={...d.preferences,...v.preferences};
@@ -351,6 +353,8 @@ async function loadState(){
 async function saveState(opts={}){
  const d=appState.data;
  try{
+  // Lo que llega del servidor ya trae sus marcas: no se vuelve a marcar como cambio de este dispositivo
+  if(!opts.noStamp)stampChanges(d,lastSavedData);
   const ids=new Set(d.garments.map(g=>g.id)),puts=[],dels=[];
   for(const g of d.garments)if(validImage(g.image)&&storedImages.get(g.id)!==g.image)puts.push([imgKey(g.id),g.image]);
   for(const id of storedImages.keys())if(!ids.has(id))dels.push(imgKey(id));
@@ -407,20 +411,34 @@ async function syncFetch(path,options={},token=appState.token){
   return {status:r.status,body};
  }finally{clearTimeout(timer)}
 }
+/* Un elemento borrado (tomb) solo se descarta si el borrado es posterior a su última edición:
+   así se puede volver a crear algo con el mismo id (por ejemplo, el plan de un día). */
+const isDead=(x,deleted)=>!!deleted[x.id]&&String(deleted[x.id])>=String(x.updatedAt||"");
 function mergeLists(local,remote,deleted){
  const out=new Map();
- for(const x of remote)if(x?.id&&!deleted[x.id])out.set(x.id,x);
- for(const x of local){if(!x?.id||deleted[x.id])continue;const r=out.get(x.id);if(!r||String(x.updatedAt||"")>=String(r.updatedAt||""))out.set(x.id,x)}
+ for(const x of remote)if(x?.id&&!isDead(x,deleted))out.set(x.id,x);
+ for(const x of local){if(!x?.id||isDead(x,deleted))continue;const r=out.get(x.id);if(!r||String(x.updatedAt||"")>=String(r.updatedAt||""))out.set(x.id,x)}
  const order=[...local.map(x=>x?.id),...remote.map(x=>x?.id)];
  return [...new Set(order)].filter(id=>out.has(id)).map(id=>out.get(id));
 }
+const newest=(a,b)=>{const o={...(a||{})};for(const [k,v] of Object.entries(b||{}))if(!o[k]||String(v)>String(o[k]))o[k]=v;return o};
+/* Marca la fecha de cada preferencia y cada 👍/👎 que cambia, para fusionar por clave entre dispositivos */
+function stampChanges(d,prev){
+ const now=new Date().toISOString();if(!d.stamps||typeof d.stamps!=="object")d.stamps={};
+ for(const [area,pre] of [["preferences","p:"],["feedback","f:"]]){const a=d[area]||{},b=prev?.[area]||{};
+  for(const k of new Set([...Object.keys(a),...Object.keys(b)]))if(JSON.stringify(a[k])!==JSON.stringify(b[k]))d.stamps[pre+k]=now}
+}
 function mergeData(local,remote){
- const deleted={...(remote.deleted||{}),...(local.deleted||{})},cutoff=new Date(Date.now()-90*86400000).toISOString();
+ const deleted=newest(remote.deleted,local.deleted),cutoff=new Date(Date.now()-90*86400000).toISOString();
  for(const [id,at] of Object.entries(deleted))if(String(at)<cutoff)delete deleted[id];
- const m=normalizeData({...local,deleted});
+ const m=normalizeData({...remote,...local,deleted});
  for(const key of ["garments","looks","wishlist","wearLog","trips","plans"])m[key]=mergeLists(local[key]||[],remote[key]||[],deleted);
- m.feedback={...(remote.feedback||{}),...(local.feedback||{})};
- m.preferences={...(remote.preferences||{}),...(local.preferences||{})};
+ // Preferencias y 👍/👎: por clave, gana el cambio más reciente (stamps), también si fue un borrado
+ const ls=local.stamps||{},rs=remote.stamps||{},byKey=(area,pre)=>{const L=local[area]||{},R=remote[area]||{},out={};
+  for(const k of new Set([...Object.keys(L),...Object.keys(R)])){const src=String(ls[pre+k]||"")>=String(rs[pre+k]||"")?L:R;if(Object.hasOwn(src,k))out[k]=src[k]}return out};
+ m.feedback=byKey("feedback","f:");
+ m.preferences={...emptyData().preferences,...byKey("preferences","p:")};
+ m.stamps=newest(rs,ls);
  return m;
 }
 /* Cada foto lleva una versión (imageAt): cambia al sustituir la foto, así se sube y descarga de nuevo. */
@@ -454,7 +472,7 @@ async function applyFromServer(data){
  const local=appState.data.preferences,keep={aiUsage:local.aiUsage,installHintHidden:local.installHintHidden,lastBackupAt:local.lastBackupAt};
  data.preferences={...data.preferences,...Object.fromEntries(Object.entries(keep).filter(x=>x[1]!==undefined))};
  appState.data=data;syncChangedView=true;
- return saveState({fromSync:true});
+ return saveState({fromSync:true,noStamp:true});
 }
 const SYNC_STALE="SYNC_STALE";
 async function syncNow(){
@@ -530,6 +548,7 @@ async function rawApi(path,options={}){
  try{
   const r=await fetch(API_BASE+path,{...options,headers,signal:ctrl.signal});let body={};try{body=await r.json()}catch{}
   if(r.status===401&&path!=="/api/login"){showAuth();throw new Error("SESSION_EXPIRED")}
+  if(r.status===429){toast(body.error||"Has llegado al límite de IA de hoy");throw new Error("AI_QUOTA")}
   if(!r.ok)throw new Error(body.error||`HTTP_${r.status}`);
   return body;
  }finally{clearTimeout(timer)}
@@ -985,10 +1004,12 @@ function isDuplicate(a,b){
  return sameColor&&(!a.style||!b.style||a.style===b.style);
 }
 function outfitBases(gs){
- const tops=gs.filter(g=>g.category==="Arriba"),bottoms=gs.filter(g=>g.category==="Abajo"),bases=[];
- for(const t of tops)for(const b of bottoms)if(pairs(t,b))bases.push([t,b]);
- for(const d of gs.filter(g=>g.category==="Vestidos"))bases.push([d]);
- return bases.slice(0,400);
+ const tops=gs.filter(g=>g.category==="Arriba"),bottoms=gs.filter(g=>g.category==="Abajo"),bases=gs.filter(g=>g.category==="Vestidos").map(d=>[d]),combos=[];
+ for(const t of tops)for(const b of bottoms)if(pairs(t,b))combos.push([t,b]);
+ // Como mucho 400 en total: los vestidos siempre entran y el resto se reparte a lo largo de todas las combinaciones
+ const room=Math.max(0,400-bases.length),step=combos.length>room?combos.length/room:1;
+ for(let i=0;i<combos.length&&bases.length<400;i+=step)bases.push(combos[Math.floor(i)]);
+ return bases;
 }
 
 /* ===================== 7. Estilista ===================== */
@@ -1275,8 +1296,9 @@ const weekdayName=d=>new Intl.DateTimeFormat("es-ES",{weekday:"long"}).format(ne
 const capFirst=s=>s.charAt(0).toUpperCase()+s.slice(1);
 async function setPlan(date,garmentIds,{name,lookId}={}){
  const now=new Date().toISOString();
- return mutate(()=>{const old=planFor(date);if(old){appState.data.plans=myPlans().filter(p=>p!==old);tomb(old.id)}
-  myPlans().push({id:uid(),date,garmentIds:[...garmentIds],name:String(name||"Look del día").slice(0,80),lookId:lookId||null,worn:false,updatedAt:now})},"Look planificado para el "+fmtDay(date));
+ // Id fijo por día: si dos móviles planifican el mismo día sin conexión, queda uno solo (el más reciente)
+ return mutate(()=>{const id="plan:"+date;appState.data.plans=myPlans().filter(p=>{if(p.date!==date)return true;if(p.id!==id)tomb(p.id);return false});
+  myPlans().push({id,date,garmentIds:[...garmentIds],name:String(name||"Look del día").slice(0,80),lookId:lookId||null,worn:false,updatedAt:now})},"Look planificado para el "+fmtDay(date));
 }
 /* Propuestas para un día: bases que combinan, completadas con calzado (y capa si hace frío), puntuadas por favoritas,
    prendas olvidadas, «Tus gustos» y sin repetir prendas de los días cercanos de la semana. */
@@ -1768,8 +1790,11 @@ async function importBackup(file){
   const obj=JSON.parse(await file.text());
   if(obj?.type!=="atelier-backup"||obj.profile!==appState.profile.id||!obj.data||!Array.isArray(obj.data.garments)||!Array.isArray(obj.data.looks))return toast("Copia inválida o perteneciente a otro perfil");
   if(!confirm("¿Sustituir todos los datos actuales de "+appState.profile.name+" por esta copia? Esta acción no se puede deshacer."))return;
-  const ids=d=>[...d.garments,...d.looks,...d.wishlist,...d.wearLog,...d.trips].map(x=>x.id);
-  const current=new Set(ids(appState.data)),data=normalizeData(obj.data),kept=new Set(ids(data));
+  const ids=d=>[...d.garments,...d.looks,...d.wishlist,...d.wearLog,...d.trips,...(d.plans||[])].map(x=>x.id);
+  const current=new Set(ids(appState.data)),data=normalizeData(obj.data),kept=new Set(ids(data)),now=new Date().toISOString();
+  // Lo restaurado cuenta como recién editado: así gana a borrados antiguos de otros dispositivos
+  for(const key of ["garments","looks","wishlist","wearLog","trips","plans"])for(const x of data[key])x.updatedAt=now;
+  data.deleted={...appState.data.deleted};for(const id of kept)delete data.deleted[id];
   await mutate(()=>{appState.data=data;for(const id of current)if(!kept.has(id))tomb(id)},"Copia restaurada");
  }catch(e){console.error("BACKUP",e);toast("No se pudo importar la copia")}
 }
