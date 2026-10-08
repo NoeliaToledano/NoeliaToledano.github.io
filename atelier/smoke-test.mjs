@@ -72,6 +72,7 @@ try{
  await page.locator('[data-view="stylist"]').click();
  await page.locator("#openPacking").click();
  await page.locator('[name="tripName"]').fill("Escapada familiar");
+ await page.locator(".packing-picker").first().locator("summary").click();
  await page.locator('input[name="packingLook"]').first().check();
  await page.locator('#packingForm button[type="submit"]').click();
  await page.getByText("Maleta creada").waitFor();
