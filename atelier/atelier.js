@@ -174,24 +174,61 @@ function garmentMask(d,w,h,stats){
  for(const i of border)if(!bg[i]&&dBg(i)<tGlobal){bg[i]=1;queue[qt++]=i}
  const grow=(p,q)=>{if(!bg[q]&&dN(p,q)<tLocal&&dBg(q)<tGlobal){bg[q]=1;queue[qt++]=q}};
  while(qh<qt){const p=queue[qh++],x=p%w;if(x>0)grow(p,p-1);if(x<w-1)grow(p,p+1);if(p>=w)grow(p,p-w);if(p<n-w)grow(p,p+w)}
- // Se quedan las zonas de prenda grandes (fuera manchas sueltas)
- const comp=new Int32Array(n).fill(-1),sizes=[];
- for(let s=0;s<n;s++){
-  if(bg[s]||comp[s]>=0)continue;
-  const id=sizes.length;let size=0;qh=qt=0;queue[qt++]=s;comp[s]=id;
-  const add=q=>{if(!bg[q]&&comp[q]<0){comp[q]=id;queue[qt++]=q}};
-  while(qh<qt){const p=queue[qh++],x=p%w;size++;if(x>0)add(p-1);if(x<w-1)add(p+1);if(p>=w)add(p-w);if(p<n-w)add(p+w)}
-  sizes.push(size);
- }
- const biggest=sizes.reduce((m,v)=>v>m?v:m,0),minSize=Math.max(biggest*.02,n*.002),mask=new Uint8Array(n);
- let fg=0,x0=w,y0=h,x1=-1,y1=-1;
- for(let i=0;i<n;i++)if(!bg[i]&&sizes[comp[i]]>=minSize){mask[i]=1;fg++;const x=i%w,y=(i-x)/w;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}
+ const raw=n-bg.reduce((t,v)=>t+v,0);
+ // Limpieza: (1) apertura (encoger y volver a crecer 3 px) para cortar líneas finas pegadas (juntas del suelo, sombras);
+ // (2) solo las piezas grandes (≥ 15 % de la mayor: así caben los dos zapatos de un par) y, salvo la mayor, que no toquen el borde de la foto;
+ // (3) se rellenan los huecos pequeños; los grandes se cuentan: si son muchos, el recorte se ha comido la prenda.
+ const morph=(src,keep)=>{const o=new Uint8Array(n);for(let y=0;y<h;y++)for(let x=0;x<w;x++){let all=1,any=0;
+  for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const xx=x+dx,yy=y+dy,v=xx>=0&&yy>=0&&xx<w&&yy<h?src[yy*w+xx]:0;all&=v;any|=v}
+  o[y*w+x]=keep?all:any}return o};
+ const notBg=Uint8Array.from(bg,v=>1-v);
+ const opened=morph(morph(morph(morph(morph(morph(notBg,1),1),1),0),0),0);
+ const labels=new Int32Array(n).fill(-1),parts=[];
+ for(let s=0;s<n;s++){if(!opened[s]||labels[s]>=0)continue;const id=parts.length;let size=0;qh=qt=0;queue[qt++]=s;labels[s]=id;
+  while(qh<qt){const p=queue[qh++],x=p%w;size++;for(const q of [x>0?p-1:-1,x<w-1?p+1:-1,p>=w?p-w:-1,p<n-w?p+w:-1])if(q>=0&&opened[q]&&labels[q]<0){labels[q]=id;queue[qt++]=q}}
+  parts.push(size)}
+ const touches=new Uint8Array(parts.length);for(const i of border)if(labels[i]>=0)touches[labels[i]]=1;
+ const biggest=parts.reduce((m,v)=>v>m?v:m,0),keepPart=parts.map((v,id)=>v>=Math.max(biggest*.15,n*.002)&&(v===biggest||!touches[id]));
+ let near=Uint8Array.from(labels,l=>l>=0&&keepPart[l]?1:0);near=morph(morph(morph(near,0),0),0);
+ let mask=Uint8Array.from(notBg,(v,i)=>v&near[i]);
+ // Huecos: fondo rodeado de prenda
+ const out=new Uint8Array(n);qh=qt=0;
+ for(let i=0;i<n;i++){const x=i%w,y=(i-x)/w;if(!mask[i]&&(x===0||y===0||x===w-1||y===h-1)){out[i]=1;queue[qt++]=i}}
+ while(qh<qt){const p=queue[qh++],x=p%w;for(const q of [x>0?p-1:-1,x<w-1?p+1:-1,p>=w?p-w:-1,p<n-w?p+w:-1])if(q>=0&&!mask[q]&&!out[q]){out[q]=1;queue[qt++]=q}}
+ let holes=0,fg=0,x0=w,y0=h,x1=-1,y1=-1;
+ const hlab=new Int32Array(n).fill(-1);
+ for(let s=0;s<n;s++){if(mask[s]||out[s]||hlab[s]>=0)continue;const list=[];qh=qt=0;queue[qt++]=s;hlab[s]=1;
+  while(qh<qt){const p=queue[qh++],x=p%w;list.push(p);for(const q of [x>0?p-1:-1,x<w-1?p+1:-1,p>=w?p-w:-1,p<n-w?p+w:-1])if(q>=0&&!mask[q]&&!out[q]&&hlab[q]<0){hlab[q]=1;queue[qt++]=q}}
+  if(list.length<n*.004)for(const p of list)mask[p]=1;else holes+=list.length}
+ for(let i=0;i<n;i++)if(mask[i]){fg++;const x=i%w,y=(i-x)/w;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}
+ // Solidez: prenda / su envolvente convexa (por piezas). Muy baja = recorte deshilachado
+ let hullArea=0;
+ parts.forEach((sz,id)=>{if(!keepPart[id])return;const lo=new Int32Array(h).fill(w),hi=new Int32Array(h).fill(-1);
+  for(let i=0;i<n;i++)if(labels[i]===id){const x=i%w,y=(i-x)/w;if(x<lo[y])lo[y]=x;if(x>hi[y])hi[y]=x}
+  const pts=[];for(let y=0;y<h;y++)if(hi[y]>=0)pts.push([lo[y],y],[hi[y]+1,y],[lo[y],y+1],[hi[y]+1,y+1]);
+  pts.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);const cr=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]),L1=[],U=[];
+  for(const p of pts){while(L1.length>1&&cr(L1[L1.length-2],L1[L1.length-1],p)<=0)L1.pop();L1.push(p)}
+  for(const p of pts.slice().reverse()){while(U.length>1&&cr(U[U.length-2],U[U.length-1],p)<=0)U.pop();U.push(p)}
+  const hull=L1.slice(0,-1).concat(U.slice(0,-1));let a2=0;for(let k=0;k<hull.length;k++){const p=hull[k],q=hull[(k+1)%hull.length];a2+=p[0]*q[1]-q[0]*p[1]}hullArea+=Math.abs(a2)/2});
+ const keptOpen=parts.reduce((t,v,id)=>t+(keepPart[id]?v:0),0),solidity=hullArea?keptOpen/hullArea:0,holeFrac=holes/Math.max(1,fg+holes),kept=fg/Math.max(1,raw);
+ // Contraste: parte de la prenda casi del color del fondo, y bordes «blandos» (prenda y fondo vecinos casi iguales)
+ let nearC=0,bEdge=0,soft=0;
+ for(let i=0;i<n;i++){if(!mask[i])continue;if(dBg(i)<tGlobal*1.6)nearC++;const x=i%w;
+  for(const q of [x>0?i-1:-1,x<w-1?i+1:-1,i>=w?i-w:-1,i<n-w?i+w:-1])if(q>=0&&!mask[q]){bEdge++;if(dN(i,q)<tLocal*1.5)soft++;break}}
+ const nearFrac=nearC/Math.max(1,fg),softFrac=soft/Math.max(1,bEdge);
+ // Borde irregular (recorte «mordido»): longitud del borde frente al tamaño de la prenda
+ const rough=bEdge/Math.sqrt(Math.max(1,fg));
  const frac=fg/n,edge=border.filter(i=>mask[i]).length/border.length,borderBg=border.filter(i=>bg[i]).length/border.length;
- if(stats)Object.assign(stats,{spread,noise,borderBg,edge,frac,chroma:Math.hypot(ba,bb),bl});
+ if(stats)Object.assign(stats,{spread,noise,borderBg,edge,frac,chroma:Math.hypot(ba,bb),bl,solidity,holeFrac,kept,nearFrac,softFrac,tGlobal,tLocal,rough});
  // No se recorta si: casi nada o casi todo es prenda; la «prenda» toca mucho borde (llena la foto);
  // o el fondo no es liso (colores muy variados en el borde, como un cuarto desordenado)
  if(frac<.04||frac>.9||edge>.3||spread>22||borderBg<.85)return null;
+ // Recorte poco fiable (probado con fotos reales de ropa): se ha quedado con poca prenda tras limpiar,
+ // la silueta es muy irregular o el borde está «mordido», o la prenda es casi del color del fondo y los bordes son blandos
+ if(kept<.8||solidity<.68||rough>7||(softFrac>.5&&nearFrac>.9))return null;
  // Borde suave: se encoge un poco (quita el halo del fondo) y se difumina
+ // Con fondo de color fuerte (una tela roja) se encoge 1 px más, para que no quede un hilo de ese color
+ if(Math.hypot(ba,bb)>25)mask=morph(mask,1);
  const alpha=new Float32Array(n);
  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x;if(!mask[i])continue;let sum=0,cnt=0;
   for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const xx=x+dx,yy=y+dy;if(xx<0||yy<0||xx>=w||yy>=h)continue;cnt++;sum+=mask[yy*w+xx]}
