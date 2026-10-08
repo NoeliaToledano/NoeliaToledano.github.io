@@ -58,6 +58,8 @@ try{
  await page.locator("#openLooks").click();
  await page.locator("#aiLooks").click();
  await page.getByText("Combinación de prueba",{exact:true}).waitFor();
+ await page.locator("#aiSheet [data-ai-save]").first().click();
+ await page.locator("#aiSheet").waitFor({state:"detached"});
  await page.locator('[data-view="shopping"]').click();
  await page.locator('[data-shop-tab="wish"]').click();
  await page.locator('[name="wishName"]').fill("Zapatos de prueba");

@@ -87,6 +87,11 @@ try{
  await page.locator('[data-view="stylist"]').click(); await page.locator("#openLooks").click();
  await page.locator("#aiLooks").click();
  await page.getByText("Look de prueba IA").waitFor();
+ // Las propuestas de la IA se revisan: no se guardan solas
+ assert.equal(await page.evaluate(()=>myLooks().filter(l=>l.ai).length),0,"La IA no debe guardar looks sin revisión");
+ await page.locator("#aiSheet [data-ai-save]").first().click();
+ await page.locator("#aiSheet").waitFor({state:"detached"});
+ assert.equal(await page.evaluate(()=>myLooks().filter(l=>l.ai).length),1);
  await page.locator('[data-view="wardrobe"]').click();
  await page.locator('[data-fav]').first().click();
  await page.locator('[data-wear]').first().click();
