@@ -63,6 +63,7 @@ try{
 
  await page.locator('[data-view="wardrobe"]').click();
  await page.locator('[data-fav]').first().click();
+ await page.getByText("Favoritos actualizados").waitFor();
  page.once("dialog",d=>d.accept(new Date().toISOString().slice(0,10)));
  await page.locator('[data-wear]').first().click();
  await page.getByText("Uso registrado").waitFor();
