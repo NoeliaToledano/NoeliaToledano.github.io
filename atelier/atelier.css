@@ -180,3 +180,39 @@ p.notice-card{display:block}
 .auth-selected-profile .profile-avatar{width:48px;height:48px;background:#b88d73;color:white;font-size:24px}
 .auth-selected-profile strong{display:block;font-family:Georgia,serif;font-size:23px;font-weight:500}
 .auth-selected-caption{display:block;font-size:10px;letter-spacing:.13em;color:#927864;margin-bottom:3px}
+
+/* Ficha de prenda: jerarquía editorial y controles móviles */
+#garmentSheet .sheet{padding:0;max-height:96dvh;overflow:hidden}
+#garmentForm{display:flex;flex-direction:column;max-height:96dvh;overflow-y:auto;overscroll-behavior:contain;padding:22px 20px calc(20px + var(--safe-bottom));scrollbar-gutter:stable}
+.garment-heading{align-items:flex-start;gap:12px;margin:0 0 12px}
+.garment-heading h2{font-size:clamp(28px,6vw,36px);letter-spacing:-.035em}
+.garment-eyebrow{margin:0 0 7px;color:#987965;font-size:10px;font-weight:750;letter-spacing:.15em}
+.garment-intro{margin:8px 0 0;color:var(--muted);line-height:1.45;font-size:13px;max-width:340px}
+.garment-close{flex:none;min-width:40px;height:40px;padding:0;border-radius:50%;font-size:18px}
+.garment-form-section{margin:14px 0 0;padding:18px;border:1px solid #ece4dc;border-radius:20px;background:#fff}
+.garment-photo-section{background:#faf7f3}
+.garment-section-title{display:flex;align-items:start;gap:12px;margin-bottom:14px}
+.garment-step{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:#e9dcd0;color:#7b5d49;flex:none;font:600 12px Georgia,serif}
+.garment-section-title strong,.garment-section-title span:not(.garment-step){display:block}
+.garment-section-title strong{font-family:Georgia,serif;font-size:20px;font-weight:500}
+.garment-section-title div>span{color:var(--muted);font-size:12px;line-height:1.5;margin-top:3px}
+.garment-form-section .field{margin:10px 0}
+.required-note{font-size:11px;color:#9c765d;font-weight:500}
+.garment-photo-section .photo-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.garment-photo-section .photo-buttons button{min-height:48px;border-radius:13px}
+.garment-photo-section .garment-preview{display:block;max-width:100%;max-height:300px;margin:14px auto;border-radius:14px;object-fit:contain}
+.garment-photo-section .garment-preview.hidden{display:none}
+.garment-analyze{width:100%;margin-top:10px;min-height:44px}
+.garment-field-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:12px}
+.garment-field-pair .field{min-width:0}
+.garment-extra{border:1px solid #e9e1d9;background:#fff;border-radius:18px;margin:15px 0 0;overflow:hidden}
+.garment-extra>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none;cursor:pointer;padding:17px 18px}
+.garment-extra>summary::-webkit-details-marker{display:none}
+.garment-extra>summary strong{display:block;font-size:14px}
+.garment-extra>summary small{display:block;font-size:12px;color:var(--muted);margin-top:4px}
+.garment-chevron{color:#856952;font-size:23px;transition:transform .2s}
+.garment-extra[open] .garment-chevron{transform:rotate(180deg)}
+.garment-extra-body{padding:0 18px 16px;border-top:1px solid #f0e9e3}
+.garment-actions{position:sticky;bottom:calc(-20px - var(--safe-bottom));z-index:3;background:linear-gradient(to bottom,rgba(255,255,255,.92),#fff 24%);padding:17px 0 calc(10px + var(--safe-bottom));margin-top:8px}
+.garment-actions button{min-height:50px}
+@media(max-width:390px){#garmentForm{padding:16px 13px calc(16px + var(--safe-bottom))}.garment-form-section{padding:13px}.garment-field-pair{column-gap:8px}}
