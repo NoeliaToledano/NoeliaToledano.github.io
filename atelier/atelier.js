@@ -1096,6 +1096,57 @@ function tasteCardHtml(){
    (t.dislikes.length?'<p><strong>Te gustan menos</strong></p><ul class="taste-list">'+t.dislikes.map(x=>line(x,false)).join("")+'</ul>':'');
  return '<details class="feature-card taste-card"'+(t.enough?' open':'')+'><summary><strong>Tus gustos</strong> <span class="muted">· según '+plural(t.U+t.D,"valoración","valoraciones")+'</span></summary>'+body+'<p class="helper">Se calcula en tu móvil con tus 👍, 👎 y favoritos; sin IA.</p></details>';
 }
+/* Cambiar una prenda de un look: alternativas de la misma categoría que combinan con el resto del look,
+   ordenadas en el móvil (sin IA) por color, estilo, temporada, favoritas, prendas olvidadas y tus gustos. */
+const SWAP_NAMES={Arriba:"parte de arriba",Abajo:"parte de abajo",Vestidos:"vestido",Capas:"capa",Zapatos:"zapatos",Bolsos:"bolso",Accesorios:"accesorio"};
+const lookSig=ids=>ids.slice().sort().join("|");
+function swapOptions(l,oldId,max=6){
+ const byId=new Map(myGarments().map(g=>[g.id,g])),gs=(l.garmentIds||[]).map(id=>byId.get(id)).filter(Boolean),old=byId.get(oldId);
+ if(!old)return [];
+ const rest=gs.filter(g=>g.id!==oldId),fb=appState.data.feedback||{},taste=tasteProfile();
+ const likeT=new Set(taste.likes.map(x=>x.k)),disT=new Set(taste.dislikes.map(x=>x.k)),saved=new Map(myLooks().map(x=>[lookSig(x.garmentIds||[]),x]));
+ const restStyles=rest.map(g=>g.style).filter(Boolean),restFams=new Set(rest.map(r=>colorInfo(r.color,r.pattern).fam));
+ return myGarments().filter(g=>g.id!==oldId&&g.category===old.category&&!rest.some(r=>r.id===g.id)&&rest.every(r=>pairs(g,r))).map(g=>{
+  const ids=[...rest.map(r=>r.id),g.id],ex=saved.get(lookSig(ids)),ci=colorInfo(g.color,g.pattern),why=[];let sc=0;
+  if(ci.fam&&ci.fam!=="neutro"&&ci.fam!=="estampado"&&restFams.has(ci.fam)){sc+=2;why.push("Repite un tono del look")}
+  else if(ci.fam==="neutro"){sc+=1;why.push("Color neutro, combina con todo el look")}
+  if(g.style&&restStyles.length&&restStyles.every(x=>x===g.style)){sc+=1;why.push("Mismo estilo que el resto")}
+  if(notInSeason(g))sc-=2;
+  if(g.favorite){sc+=1;why.push("Es de tus favoritas")}
+  if(forgottenStatus(g).forgotten){sc+=1.5;why.push("Hace tiempo que no te la pones")}else sc+=1/(1+wornCount(g.id));
+  for(const k of lookTraits({garmentIds:ids})){if(likeT.has(k)){sc+=1.5;why.unshift("Va con tus gustos: "+tasteLabel(k))}if(disT.has(k))sc-=1.5}
+  return {g,ids,sc,why:why.slice(0,2),exists:ex||null,disliked:!!ex&&fb[ex.id]==="down"};
+ }).filter(o=>!o.disliked).sort((a,b)=>b.sc-a.sc).slice(0,max);
+}
+let swapState=null;
+function openSwap(lookId){swapState={lookId,garmentId:null};renderSwap();$("#swapSheet")?.classList.remove("hidden");$("#swapSheet [data-swap-pick]")?.focus()}
+function closeSwap(){swapState=null;$("#swapSheet")?.classList.add("hidden")}
+function renderSwap(){
+ let el=$("#swapSheet");
+ if(!el){document.body.insertAdjacentHTML("beforeend",'<div id="swapSheet" class="overlay hidden"><section class="sheet" role="dialog" aria-modal="true" aria-labelledby="swapTitle"><div id="swapBody"></div></section></div>');el=$("#swapSheet");
+  el.addEventListener("click",e=>{if(e.target===el)closeSwap()});el.addEventListener("keydown",e=>{if(e.key==="Escape")closeSwap()})}
+ const l=myLooks().find(x=>x.id===swapState?.lookId);if(!l)return closeSwap();
+ const gs=(l.garmentIds||[]).map(id=>myGarments().find(g=>g.id===id)).filter(Boolean),cur=gs.find(g=>g.id===swapState.garmentId);
+ const opts=cur?swapOptions(l,cur.id):[];
+ $("#swapBody").innerHTML='<div class="section-head"><h2 id="swapTitle">Cambiar una prenda</h2><button type="button" class="secondary" id="closeSwap">Cerrar</button></div>'+
+  '<p class="muted">'+fx(l.name)+'. El resto del look se queda igual.</p>'+outfitBoard(gs)+
+  '<div class="swap-picks" role="group" aria-label="Prenda que quieres cambiar">'+gs.map(g=>'<button type="button" class="chip-button'+(cur?.id===g.id?' on':'')+'" data-swap-pick="'+fx(g.id)+'" aria-pressed="'+(cur?.id===g.id)+'">Cambiar '+fx(SWAP_NAMES[g.category]||g.name)+'</button>').join("")+'</div>'+
+  (!cur?'<p class="helper">Elige qué prenda quieres cambiar.</p>'
+   :opts.length?'<div class="swap-list">'+opts.map((o,i)=>'<div class="swap-option"><div class="thumb"'+(validImage(o.g.image)?' style="background-image:url('+o.g.image+')"':'')+'></div><div class="swap-text"><strong>'+fx(o.g.name)+'</strong>'+o.why.map(w=>'<span class="muted">'+fx(w)+'</span>').join("")+(o.exists?'<span class="muted">Ya tienes este look guardado</span>':'')+'</div><div class="swap-actions">'+
+     (o.exists?'':'<button type="button" class="primary" data-swap-use="'+i+'" data-swap-mode="new">Guardar como look nuevo</button><button type="button" class="secondary" data-swap-use="'+i+'" data-swap-mode="replace">Cambiar en este look</button>')+'</div></div>').join("")+'</div>'
+   :'<p class="muted">No tienes otra prenda de '+fx(SWAP_NAMES[cur.category]||"esta categoría")+' que combine con el resto del look. Mira «Recomendaciones» en Compras.</p>');
+ $("#closeSwap").addEventListener("click",closeSwap);
+ $$("[data-swap-pick]",el).forEach(b=>b.addEventListener("click",()=>{swapState.garmentId=b.dataset.swapPick;renderSwap();$('#swapSheet [data-swap-pick][aria-pressed="true"]')?.focus()}));
+ $$("[data-swap-use]",el).forEach(b=>b.addEventListener("click",()=>applySwap(l,opts[Number(b.dataset.swapUse)],b.dataset.swapMode)));
+}
+async function applySwap(l,o,mode){
+ if(!o)return;const now=new Date().toISOString();
+ // «Cambiar en este look» crea el look con un id nuevo y borra el anterior (tomb): así sus 👍/👎 no pasan a otra combinación
+ const nl={...l,id:uid(),garmentIds:o.ids,ai:false,updatedAt:now};
+ if(mode==="new"){nl.name=(l.name+" · con "+o.g.name).slice(0,80);nl.favorite=false}
+ const ok=await mutate(()=>{const looks=myLooks();if(mode==="replace"){const i=looks.findIndex(x=>x.id===l.id);if(i>=0){looks.splice(i,1,nl);tomb(l.id)}}else looks.unshift(nl)},mode==="new"?"Look nuevo guardado":"Look actualizado");
+ if(ok)closeSwap();
+}
 function renderLooks(root){
  let looks=myLooks();
  if(ui.lookFilter==="favorites")looks=looks.filter(l=>l.favorite);
@@ -1107,13 +1158,14 @@ function renderLooks(root){
   '<button class="secondary wide" id="aiLooks">✦ Sugerir nuevos looks</button>'+
   tasteCardHtml()+
   (looks.length?'<div class="grid">'+looks.map(l=>'<div class="look-tile">'+lookCard(l)+
-   '<div class="tile-tools"><button class="chip-button" data-look-fav="'+fx(l.id)+'">'+(l.favorite?'♥':'♡')+'</button><button class="chip-button" data-look-wear="'+fx(l.id)+'">✓ Llevado</button></div>'+
+   '<div class="tile-tools"><button class="chip-button" data-look-fav="'+fx(l.id)+'">'+(l.favorite?'♥':'♡')+'</button><button class="chip-button" data-look-wear="'+fx(l.id)+'">✓ Llevado</button><button class="chip-button" data-look-swap="'+fx(l.id)+'">↻ Cambiar prenda</button></div>'+
    '<div class="tile-tools"><button class="chip-button'+(fb[l.id]==="up"?' on':'')+'" data-feedback="'+fx(l.id)+'" data-vote="up" aria-label="Me gusta">👍</button><button class="chip-button'+(fb[l.id]==="down"?' on':'')+'" data-feedback="'+fx(l.id)+'" data-vote="down" aria-label="No me gusta">👎</button></div>'+
    '<div class="tile-hints">'+(l.ai?"IA":"Manual")+'</div></div>').join("")+'</div>':'<div class="empty">Todavía no tienes looks para este filtro.</div>'));
  $("#newLook")?.addEventListener("click",()=>openLook());$("#aiLooks")?.addEventListener("click",()=>suggestLooks());
  $$("[data-look-filter]",root).forEach(b=>b.addEventListener("click",()=>{ui.lookFilter=b.dataset.lookFilter;render()}));
  $$("[data-look]",root).forEach(b=>b.addEventListener("click",()=>openLook(b.dataset.look)));
  $$("[data-look-fav]",root).forEach(b=>b.addEventListener("click",async()=>{const l=myLooks().find(l=>l.id===b.dataset.lookFav);if(l)await mutate(()=>{l.favorite=!l.favorite;l.updatedAt=new Date().toISOString()},"Look actualizado")}));
+ $$("[data-look-swap]",root).forEach(b=>b.addEventListener("click",()=>openSwap(b.dataset.lookSwap)));
  $$("[data-look-wear]",root).forEach(b=>b.addEventListener("click",()=>{const l=myLooks().find(l=>l.id===b.dataset.lookWear);if(l)promptWear(l.garmentIds,l.id)}));
  $$("[data-feedback]",root).forEach(b=>b.addEventListener("click",async()=>{const id=b.dataset.feedback;await mutate(()=>{if(fb[id]===b.dataset.vote)delete fb[id];else fb[id]=b.dataset.vote},"Preferencia guardada")}));
 }
