@@ -22,7 +22,7 @@ Secciones de `atelier.js`:
 | 4. API y ahorro de tokens | Todas las llamadas a ChatGPT pasan por `api()`: IDs cortos, 24 prendas máx., fotos a 512 px, caché, límites diarios |
 | 5. Sesión y navegación | Login, sesión en `localStorage` (30 días), vistas |
 | 6. Armario, prendas y looks | Ficha de prenda con foto de cámara o galería, mejora de fotos (`enhancePhoto`: fondo blanco y retoque, sin IA), análisis automático, looks como composición (`outfitBoard`), reglas locales de combinación |
-| 7. Estilista | Pestañas Hoy / Combinar prenda / Mis looks / Maletas; tiempo con Open-Meteo; 25 °C por defecto |
+| 7. Estilista | Pestañas Hoy / Mi semana / Combinar prenda / Mis looks / Maletas; «Cambiar prenda» (`swapOptions`); tiempo con Open-Meteo; 25 °C por defecto |
 | 8. Compras | Pestañas ¿Lo compro? / Recomendaciones / Wishlist |
 | 9–11 | Análisis, calendario, ajustes, copias y arranque |
 
@@ -30,6 +30,7 @@ Reglas de la app:
 - Prioridad: **gastar pocos tokens de OpenAI**. Lo que se pueda calcular en el móvil no va a la IA («¿Lo compro?», recomendaciones, «Combinar prenda», maletas y el fondo blanco de las fotos no la usan).
 - Al borrar una prenda, look, deseo o uso, llama a `tomb(id)`; si no, la sincronización lo resucita desde otro dispositivo.
 - Al modificar una prenda o look, actualiza `updatedAt`: la sincronización se queda con la versión más reciente.
+- Mi semana (`plans`): cada plan guarda su propia copia de prendas. Planificado no es usado: solo «Me lo he puesto» añade a `wearLog`.
 - La CSP de `index.html` solo permite conectar con el backend de Vercel y `api.open-meteo.com`.
 
 Pruebas: `atelier/security-test.mjs` (Node), `atelier/smoke-test.mjs` (Chrome) y `atelier/webkit-v3-test.mjs` (Safari/WebKit).

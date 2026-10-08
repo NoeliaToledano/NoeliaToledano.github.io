@@ -20,10 +20,10 @@ const seasons={all:"Todo el año",warm:"Primavera / verano",cold:"Otoño / invie
 const styleNames={casual:"casual",smart:"arreglado",party:"fiesta",sport:"deporte"};
 const ANALYSIS_FIELDS={pattern:["plain","stripes","checks","floral","animal","dots","graphic","other"],fabric:["unknown","cotton","denim","linen","wool","knit","leather","satin","silk","synthetic","mixed"],length:["na","cropped","regular","midi","long"],formality:["casual","smartcasual","formal","party","sport"]};
 
-const emptyData=()=>({garments:[],looks:[],wishlist:[],wearLog:[],trips:[],feedback:{},deleted:{},preferences:{forgottenDays:60,diversity:65,occasion:"daily",season:"all",budget:100,avoidRepeats:true,temperature:DEFAULT_TEMPERATURE}});
+const emptyData=()=>({garments:[],looks:[],wishlist:[],wearLog:[],trips:[],plans:[],feedback:{},deleted:{},preferences:{forgottenDays:60,diversity:65,occasion:"daily",season:"all",budget:100,avoidRepeats:true,temperature:DEFAULT_TEMPERATURE}});
 function normalizeData(v){
  const d=emptyData();if(!v||typeof v!=="object")return d;
- for(const key of ["garments","looks","wishlist","wearLog","trips"])if(Array.isArray(v[key]))d[key]=v[key].filter(x=>x&&typeof x==="object"&&x.id);
+ for(const key of ["garments","looks","wishlist","wearLog","trips","plans"])if(Array.isArray(v[key]))d[key]=v[key].filter(x=>x&&typeof x==="object"&&x.id);
  for(const key of ["feedback","deleted"])if(v[key]&&typeof v[key]==="object"&&!Array.isArray(v[key]))d[key]=v[key];
  if(v.preferences&&typeof v.preferences==="object")d.preferences={...d.preferences,...v.preferences};
  return d;
@@ -418,7 +418,7 @@ function mergeData(local,remote){
  const deleted={...(remote.deleted||{}),...(local.deleted||{})},cutoff=new Date(Date.now()-90*86400000).toISOString();
  for(const [id,at] of Object.entries(deleted))if(String(at)<cutoff)delete deleted[id];
  const m=normalizeData({...local,deleted});
- for(const key of ["garments","looks","wishlist","wearLog","trips"])m[key]=mergeLists(local[key]||[],remote[key]||[],deleted);
+ for(const key of ["garments","looks","wishlist","wearLog","trips","plans"])m[key]=mergeLists(local[key]||[],remote[key]||[],deleted);
  m.feedback={...(remote.feedback||{}),...(local.feedback||{})};
  m.preferences={...(remote.preferences||{}),...(local.preferences||{})};
  return m;
@@ -988,7 +988,7 @@ function outfitBases(gs){
 }
 
 /* ===================== 7. Estilista ===================== */
-const STYLIST_TABS=[["today","Hoy"],["around","Combinar prenda"],["looks","Mis looks",' id="openLooks"'],["trips","Maletas"]];
+const STYLIST_TABS=[["today","Hoy"],["week","Mi semana"],["around","Combinar prenda"],["looks","Mis looks",' id="openLooks"'],["trips","Maletas"]];
 function stylistShell(root,title,subtitle,body){
  root.innerHTML=heroHtml(title,subtitle)+tabsHtml("stylist",STYLIST_TABS,appState.view==="looks"?"looks":ui.stylistTab)+body;
  $$("[data-stylist-tab]",root).forEach(b=>b.addEventListener("click",()=>{const t=b.dataset.stylistTab;if(t==="looks")return setView("looks");ui.stylistTab=t;setView("stylist")}));
@@ -997,9 +997,11 @@ function renderStylist(root){
  if(ui.stylistTab==="looks")ui.stylistTab="today";
  if(ui.stylistTab==="around")return renderAround(root);
  if(ui.stylistTab==="trips")return renderTrips(root);
+ if(ui.stylistTab==="week")return renderWeek(root);
  const p=appState.data.preferences,u=aiUsage(),candidates=recommendGarments().filter(g=>forgottenStatus(g).forgotten||wornCount(g.id)===0).slice(0,5);
  const info=p.autoWeather&&p.weatherDay===dayISO()?"Tiempo de hoy en tu zona: media de "+p.temperature+" °C.":p.autoWeather?"Actualizando el tiempo de hoy…":"";
  stylistShell(root,"Tu estilista","Combina lo que ya tienes. La IA no inventará prendas.",
+  plannedTodayHtml()+
   '<div class="feature-card"><div class="section-head"><h2>¿Qué me pongo hoy?</h2><span class="muted">IA</span></div>'+
   '<div class="filter-grid"><label class="field"><span>Ocasión</span><select id="prefOccasion">'+optionList(Object.entries(occasions),p.occasion)+'</select></label>'+
   '<label class="field"><span>Temporada</span><select id="prefSeason">'+optionList(Object.entries(seasons),p.season)+'</select></label></div>'+
@@ -1020,6 +1022,7 @@ function renderStylist(root){
  $("#suggestSmart")?.addEventListener("click",()=>suggestLooks());
  $("#createManual")?.addEventListener("click",()=>openLook());
  $("#openCalendar")?.addEventListener("click",()=>setView("calendar"));
+ bindPlanActions(root);$$("[data-open-week]",root).forEach(b=>b.addEventListener("click",()=>{ui.stylistTab="week";render()}));
  $$("[data-rescue]",root).forEach(b=>b.addEventListener("click",()=>{ui.aroundId=b.dataset.rescue;ui.stylistTab="around";render()}));
  $("#useWeather")?.addEventListener("click",async e=>{e.target.disabled=true;e.target.textContent="Consultando…";
   try{const w=await fetchTodayTemperature(true);toast("Hoy: entre "+w.min+" y "+w.max+" °C (media "+w.mean+" °C)");render()}
@@ -1119,21 +1122,21 @@ function swapOptions(l,oldId,max=6){
  }).filter(o=>!o.disliked).sort((a,b)=>b.sc-a.sc).slice(0,max);
 }
 let swapState=null;
-function openSwap(lookId){swapState={lookId,garmentId:null};renderSwap();$("#swapSheet")?.classList.remove("hidden");$("#swapSheet [data-swap-pick]")?.focus()}
+function openSwap(lookId,kind="look"){swapState={lookId,kind,garmentId:null};renderSwap();$("#swapSheet")?.classList.remove("hidden");$("#swapSheet [data-swap-pick]")?.focus()}
 function closeSwap(){swapState=null;$("#swapSheet")?.classList.add("hidden")}
 function renderSwap(){
  let el=$("#swapSheet");
  if(!el){document.body.insertAdjacentHTML("beforeend",'<div id="swapSheet" class="overlay hidden"><section class="sheet" role="dialog" aria-modal="true" aria-labelledby="swapTitle"><div id="swapBody"></div></section></div>');el=$("#swapSheet");
   el.addEventListener("click",e=>{if(e.target===el)closeSwap()});el.addEventListener("keydown",e=>{if(e.key==="Escape")closeSwap()})}
- const l=myLooks().find(x=>x.id===swapState?.lookId);if(!l)return closeSwap();
+ const isPlan=swapState?.kind==="plan",l=(isPlan?myPlans():myLooks()).find(x=>x.id===swapState?.lookId);if(!l)return closeSwap();
  const gs=(l.garmentIds||[]).map(id=>myGarments().find(g=>g.id===id)).filter(Boolean),cur=gs.find(g=>g.id===swapState.garmentId);
  const opts=cur?swapOptions(l,cur.id):[];
  $("#swapBody").innerHTML='<div class="section-head"><h2 id="swapTitle">Cambiar una prenda</h2><button type="button" class="secondary" id="closeSwap">Cerrar</button></div>'+
   '<p class="muted">'+fx(l.name)+'. El resto del look se queda igual.</p>'+outfitBoard(gs)+
   '<div class="swap-picks" role="group" aria-label="Prenda que quieres cambiar">'+gs.map(g=>'<button type="button" class="chip-button'+(cur?.id===g.id?' on':'')+'" data-swap-pick="'+fx(g.id)+'" aria-pressed="'+(cur?.id===g.id)+'">Cambiar '+fx(SWAP_NAMES[g.category]||g.name)+'</button>').join("")+'</div>'+
   (!cur?'<p class="helper">Elige qué prenda quieres cambiar.</p>'
-   :opts.length?'<div class="swap-list">'+opts.map((o,i)=>'<div class="swap-option"><div class="thumb"'+(validImage(o.g.image)?' style="background-image:url('+o.g.image+')"':'')+'></div><div class="swap-text"><strong>'+fx(o.g.name)+'</strong>'+o.why.map(w=>'<span class="muted">'+fx(w)+'</span>').join("")+(o.exists?'<span class="muted">Ya tienes este look guardado</span>':'')+'</div><div class="swap-actions">'+
-     (o.exists?'':'<button type="button" class="primary" data-swap-use="'+i+'" data-swap-mode="new">Guardar como look nuevo</button><button type="button" class="secondary" data-swap-use="'+i+'" data-swap-mode="replace">Cambiar en este look</button>')+'</div></div>').join("")+'</div>'
+   :opts.length?'<div class="swap-list">'+opts.map((o,i)=>'<div class="swap-option"><div class="thumb"'+(validImage(o.g.image)?' style="background-image:url('+o.g.image+')"':'')+'></div><div class="swap-text"><strong>'+fx(o.g.name)+'</strong>'+o.why.map(w=>'<span class="muted">'+fx(w)+'</span>').join("")+(o.exists&&!isPlan?'<span class="muted">Ya tienes este look guardado</span>':'')+'</div><div class="swap-actions">'+
+     (isPlan?'<button type="button" class="primary" data-swap-use="'+i+'" data-swap-mode="plan">Usar este día</button>':o.exists?'':'<button type="button" class="primary" data-swap-use="'+i+'" data-swap-mode="new">Guardar como look nuevo</button><button type="button" class="secondary" data-swap-use="'+i+'" data-swap-mode="replace">Cambiar en este look</button>')+'</div></div>').join("")+'</div>'
    :'<p class="muted">No tienes otra prenda de '+fx(SWAP_NAMES[cur.category]||"esta categoría")+' que combine con el resto del look. Mira «Recomendaciones» en Compras.</p>');
  $("#closeSwap").addEventListener("click",closeSwap);
  $$("[data-swap-pick]",el).forEach(b=>b.addEventListener("click",()=>{swapState.garmentId=b.dataset.swapPick;renderSwap();$('#swapSheet [data-swap-pick][aria-pressed="true"]')?.focus()}));
@@ -1141,6 +1144,8 @@ function renderSwap(){
 }
 async function applySwap(l,o,mode){
  if(!o)return;const now=new Date().toISOString();
+ // En un día planificado solo cambia ese plan (es una copia): el look guardado no se toca
+ if(mode==="plan"){const ok=await mutate(()=>{l.garmentIds=o.ids;l.updatedAt=now},"Prenda cambiada para el "+fmtDay(l.date));if(ok)closeSwap();return}
  // «Cambiar en este look» crea el look con un id nuevo y borra el anterior (tomb): así sus 👍/👎 no pasan a otra combinación
  const nl={...l,id:uid(),garmentIds:o.ids,ai:false,updatedAt:now};
  if(mode==="new"){nl.name=(l.name+" · con "+o.g.name).slice(0,80);nl.favorite=false}
@@ -1215,6 +1220,104 @@ async function refreshWeatherIfNeeded(){
  if(weatherInFlight||!p.autoWeather||!p.weatherPlace||p.weatherDay===dayISO())return;
  weatherInFlight=true;
  try{await fetchTodayTemperature(false);if(appState.view==="stylist")render()}catch(e){console.warn("WEATHER",e)}finally{weatherInFlight=false}
+}
+
+/* Mi semana: un look planificado por día (sin IA).
+   Cada plan guarda su propia copia de prendas: cambiarlo no altera el look guardado del que salió.
+   Planificado no es usado: solo «Me lo he puesto» lo pasa al historial (wearLog). Se sincroniza como lista (plans) con tomb al borrar. */
+const myPlans=()=>appState.data.plans;
+const planFor=date=>myPlans().find(p=>p.date===date);
+const planGarments=p=>(p?.garmentIds||[]).map(id=>myGarments().find(g=>g.id===id)).filter(Boolean);
+function weekStartOf(day){const d=new Date((validDay(day)?day:dayISO())+"T12:00:00");d.setDate(d.getDate()-(d.getDay()+6)%7);return dayISO(d)}
+function addDays(day,n){const d=new Date(day+"T12:00:00");d.setDate(d.getDate()+n);return dayISO(d)}
+const weekdayName=d=>new Intl.DateTimeFormat("es-ES",{weekday:"long"}).format(new Date(d+"T12:00:00"));
+const capFirst=s=>s.charAt(0).toUpperCase()+s.slice(1);
+async function setPlan(date,garmentIds,{name,lookId}={}){
+ const now=new Date().toISOString();
+ return mutate(()=>{const old=planFor(date);if(old){appState.data.plans=myPlans().filter(p=>p!==old);tomb(old.id)}
+  myPlans().push({id:uid(),date,garmentIds:[...garmentIds],name:String(name||"Look del día").slice(0,80),lookId:lookId||null,worn:false,updatedAt:now})},"Look planificado para el "+fmtDay(date));
+}
+/* Propuestas para un día: bases que combinan, completadas con calzado (y capa si hace frío), puntuadas por favoritas,
+   prendas olvidadas, «Tus gustos» y sin repetir prendas de los días cercanos de la semana. */
+function dayProposals(date,max=3){
+ const season=seasonFor(date),near=new Set(myPlans().filter(p=>p.date!==date&&Math.abs(Date.parse(p.date)-Date.parse(date))<=3*86400000).flatMap(p=>p.garmentIds||[]));
+ const gs=myGarments().filter(g=>fitsSeason(g,season)&&!["Casa","Baño"].includes(g.category)),taste=tasteProfile(),likeT=new Set(taste.likes.map(x=>x.k)),disT=new Set(taste.dislikes.map(x=>x.k));
+ const cold=date===dayISO()&&appState.data.preferences.autoWeather?currentTemperature()<17:season==="cold";
+ const gScore=g=>(g.favorite?1:0)+(forgottenStatus(g).forgotten?1.5:1/(1+wornCount(g.id)))-(near.has(g.id)?3:0);
+ const best=(cat,pieces)=>gs.filter(x=>x.category===cat&&pieces.every(p=>pairs(x,p))).sort((a,b)=>gScore(b)-gScore(a))[0];
+ const looks=outfitBases(gs).map(base=>{const l=[...base];for(const cat of ["Zapatos",cold?"Capas":null]){if(!cat)continue;const s=best(cat,l);if(s)l.push(s)}
+  let sc=l.reduce((t,g)=>t+gScore(g),0);for(const k of lookTraits({garmentIds:l.map(g=>g.id)})){if(likeT.has(k))sc+=1.5;if(disT.has(k))sc-=1.5}return {l,sc}}).sort((a,b)=>b.sc-a.sc);
+ // Variedad: cada propuesta comparte como mucho el calzado con las anteriores
+ const out=[];for(const c of looks){if(out.length>=max)break;if(out.some(o=>c.l.some(g=>g.category!=="Zapatos"&&o.includes(g))))continue;out.push(c.l)}
+ return out;
+}
+function showSheet(id,html,onClose){
+ $$("#"+id).forEach(x=>x.remove());
+ document.body.insertAdjacentHTML("beforeend",'<div id="'+id+'" class="overlay"><section class="sheet" role="dialog" aria-modal="true" aria-labelledby="'+id+'Title">'+html+'</section></div>');
+ const el=$("#"+id),close=()=>{el.remove();onClose?.()};
+ el.addEventListener("click",e=>{if(e.target===el)close()});el.addEventListener("keydown",e=>{if(e.key==="Escape")close()});
+ $$("[data-close-sheet]",el).forEach(b=>b.addEventListener("click",close));
+ setTimeout(()=>el.querySelector("button")?.focus(),0);
+ return {el,close};
+}
+const miniLook=(gs,extra="")=>'<div class="mini-look"><div class="mini-look-img">'+outfitBoard(gs)+'</div><div class="mini-look-body"><span class="muted">'+fx(gs.map(g=>g.name).join(" · "))+'</span>'+extra+'</div></div>';
+function openPlanPicker(date){
+ const props=dayProposals(date),saved=myLooks().filter(l=>(l.garmentIds||[]).some(id=>myGarments().some(g=>g.id===id))).slice(0,30);
+ const {el,close}=showSheet("planSheet",'<div class="section-head"><h2 id="planSheetTitle">'+fx(capFirst(weekdayName(date))+" "+fmtDay(date))+'</h2><button type="button" class="secondary" data-close-sheet>Cerrar</button></div>'+
+  '<h3>Propuestas para ese día</h3>'+(props.length?'<div class="plan-options">'+props.map((l,i)=>miniLook(l,'<button type="button" class="primary" data-plan-prop="'+i+'">Usar este look</button>')).join("")+'</div>':'<p class="muted">Añade prendas de arriba y de abajo (o vestidos) para recibir propuestas.</p>')+
+  '<h3>Tus looks guardados</h3>'+(saved.length?'<div class="plan-options">'+saved.map((l,i)=>miniLook((l.garmentIds||[]).map(id=>myGarments().find(g=>g.id===id)).filter(Boolean),'<strong>'+fx(l.name)+'</strong><button type="button" class="secondary" data-plan-saved="'+i+'">Usar este look</button>')).join("")+'</div>':'<p class="muted">Todavía no tienes looks guardados.</p>'));
+ $$("[data-plan-prop]",el).forEach(b=>b.addEventListener("click",async()=>{const l=props[Number(b.dataset.planProp)];close();await setPlan(date,l.map(g=>g.id),{name:"Propuesta de Atelier"})}));
+ $$("[data-plan-saved]",el).forEach(b=>b.addEventListener("click",async()=>{const l=saved[Number(b.dataset.planSaved)];close();await setPlan(date,l.garmentIds,{name:l.name,lookId:l.id})}));
+}
+function openPlanCopy(p){
+ const ws=weekStartOf(p.date),days=[0,1,2,3,4,5,6].map(i=>addDays(ws,i)).filter(d=>d!==p.date);
+ const {el,close}=showSheet("planSheet",'<div class="section-head"><h2 id="planSheetTitle">Copiar a otro día</h2><button type="button" class="secondary" data-close-sheet>Cerrar</button></div>'+
+  '<p class="muted">'+fx(p.name)+'. Si ese día ya tiene un look, se sustituye.</p><div class="swap-picks">'+days.map(d=>'<button type="button" class="chip-button" data-copy-day="'+d+'">'+fx(capFirst(weekdayName(d)).slice(0,3)+" "+fmtDay(d))+(planFor(d)?" ·":"")+'</button>').join("")+'</div>'+
+  '<label class="field"><span>Otra fecha</span><input type="date" id="copyDate" min="'+dayISO()+'"></label><button type="button" class="secondary wide" id="copyOther">Copiar a esa fecha</button>');
+ const go=async d=>{if(!validDay(d))return toast("Elige una fecha válida");close();await setPlan(d,p.garmentIds,{name:p.name,lookId:p.lookId})};
+ $$("[data-copy-day]",el).forEach(b=>b.addEventListener("click",()=>go(b.dataset.copyDay)));
+ $("#copyOther",el).addEventListener("click",()=>go($("#copyDate",el).value));
+}
+async function planWorn(p){
+ if(p.date>dayISO())return toast("Ese día todavía no ha llegado");
+ const ids=p.garmentIds.filter(id=>myGarments().some(g=>g.id===id));if(!ids.length)return toast("No hay prendas para registrar");
+ const now=new Date().toISOString();
+ await mutate(()=>{logs().unshift({id:uid(),date:p.date,garmentIds:ids,lookId:p.lookId||null,updatedAt:now});p.worn=true;p.updatedAt=now},"Registrado como puesto");
+}
+function planCardHtml(p,{compact=false}={}){
+ const gs=planGarments(p);
+ return '<div class="plan-look">'+miniLook(gs,'<strong>'+fx(p.name)+'</strong>'+(p.worn?'<span class="badge-ok">✓ Te lo has puesto</span>':''))+
+  '<div class="plan-actions">'+(!p.worn&&p.date<=dayISO()?'<button type="button" class="primary" data-plan-worn="'+fx(p.id)+'">Me lo he puesto</button>':'')+
+  (compact?'':'<button type="button" class="chip-button" data-plan-swap="'+fx(p.id)+'">↻ Cambiar prenda</button><button type="button" class="chip-button" data-plan-change="'+fx(p.date)+'">Cambiar look</button><button type="button" class="chip-button" data-plan-copy="'+fx(p.id)+'">Copiar a…</button><button type="button" class="chip-button" data-plan-remove="'+fx(p.id)+'">Quitar</button>')+'</div></div>';
+}
+function bindPlanActions(root){
+ const find=id=>myPlans().find(p=>p.id===id);
+ $$("[data-plan-worn]",root).forEach(b=>b.addEventListener("click",()=>{const p=find(b.dataset.planWorn);if(p)planWorn(p)}));
+ $$("[data-plan-swap]",root).forEach(b=>b.addEventListener("click",()=>openSwap(b.dataset.planSwap,"plan")));
+ $$("[data-plan-change]",root).forEach(b=>b.addEventListener("click",()=>openPlanPicker(b.dataset.planChange)));
+ $$("[data-plan-copy]",root).forEach(b=>b.addEventListener("click",()=>{const p=find(b.dataset.planCopy);if(p)openPlanCopy(p)}));
+ $$("[data-plan-remove]",root).forEach(b=>b.addEventListener("click",async()=>{const p=find(b.dataset.planRemove);if(!p)return;await mutate(()=>{appState.data.plans=myPlans().filter(x=>x!==p);tomb(p.id)},"Look quitado del día")}));
+ $$("[data-plan-pick]",root).forEach(b=>b.addEventListener("click",()=>openPlanPicker(b.dataset.planPick)));
+}
+function renderWeek(root){
+ const ws=ui.weekStart||weekStartOf(dayISO()),days=[0,1,2,3,4,5,6].map(i=>addDays(ws,i)),today=dayISO();
+ const range=fmtDay(days[0])+" – "+fmtDay(days[6]);
+ stylistShell(root,"Mi semana","Planifica qué te pondrás cada día. Lo planificado no cuenta como usado hasta que pulses «Me lo he puesto».",
+  '<div class="week-nav"><button type="button" class="secondary" id="weekPrev" aria-label="Semana anterior">‹</button><strong>'+fx(range)+'</strong><button type="button" class="secondary" id="weekNext" aria-label="Semana siguiente">›</button></div>'+
+  (ws!==weekStartOf(today)?'<button type="button" class="chip-button" id="weekToday">Volver a esta semana</button>':'')+
+  '<div class="week-list">'+days.map(d=>{const p=planFor(d);return '<section class="day-card'+(d===today?' is-today':'')+'" aria-label="'+fx(capFirst(weekdayName(d))+" "+fmtDay(d))+'"><div class="day-head"><strong>'+fx(capFirst(weekdayName(d)))+'</strong><span class="muted">'+fx(fmtDay(d))+(d===today?' · hoy':'')+'</span></div>'+
+   (p?planCardHtml(p):'<button type="button" class="secondary wide" data-plan-pick="'+d+'">+ Elegir look</button>')+'</section>'}).join("")+'</div>');
+ $("#weekPrev").addEventListener("click",()=>{ui.weekStart=addDays(ws,-7);render()});
+ $("#weekNext").addEventListener("click",()=>{ui.weekStart=addDays(ws,7);render()});
+ $("#weekToday")?.addEventListener("click",()=>{ui.weekStart=weekStartOf(today);render()});
+ bindPlanActions(root);
+}
+/* En «Hoy»: lo planificado para hoy y mañana */
+function plannedTodayHtml(){
+ const t=planFor(dayISO()),m=planFor(shiftDay(1));
+ if(!t&&!m)return '<div class="feature-card plan-today"><div class="section-head"><h2>Mi semana</h2></div><p class="muted">No tienes looks planificados para hoy ni mañana.</p><button type="button" class="secondary" data-open-week>Planificar mi semana</button></div>';
+ return '<div class="feature-card plan-today"><div class="section-head"><h2>Planificado</h2><button type="button" class="chip-button" data-open-week>Mi semana ›</button></div>'+
+  (t?'<p><strong>Hoy</strong></p>'+planCardHtml(t,{compact:true}):'')+(m?'<p><strong>Mañana</strong></p>'+planCardHtml(m,{compact:true}):'')+'</div>';
 }
 
 /* Maletas: lista de equipaje por viaje, calculada en el móvil (sin IA).
