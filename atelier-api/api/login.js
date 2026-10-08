@@ -38,7 +38,7 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Método no permitido." });
 
   const { profileId, password } = req.body || {};
-  if (!["noelia","ana-maria","irene"].includes(profileId) || typeof password !== "string") {
+  if (!["noelia","ana-maria","irene","eva","virginia"].includes(profileId) || typeof password !== "string") {
     return res.status(400).json({ error: "Credenciales no válidas." });
   }
 
