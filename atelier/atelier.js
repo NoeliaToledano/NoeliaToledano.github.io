@@ -710,6 +710,13 @@ const OCCASION_ALIASES={travel:null,holiday:null,gym:"sport",running:"sport",yog
 const OCCASION_BY_TYPE={"Pijama":["home"],"Camisón":["home"],"Bata":["home"],"Conjunto de estar en casa":["home"],"Zapatillas de casa":["home"],"Mallas deportivas":["sport"],"Pantalón deportivo":["sport"],"Camiseta técnica":["sport"],"Bañador":["beach"],"Bikini":["beach"],"Top de bikini":["beach"],"Braguita de bikini":["beach"],"Trikini":["beach"],"Short de baño":["beach"],"Pareos":["beach"],"Salida de baño":["beach"]};
 const normalizeOccasions=xs=>[...new Set((Array.isArray(xs)?xs:[]).map(x=>Object.hasOwn(OCCASION_ALIASES,x)?OCCASION_ALIASES[x]:x).filter(x=>occasions[x]))];
 const occasionDefaults=(category,type,ai)=>[...new Set([...(OCCASION_BY_TYPE[type]||({"Casa":["home"],"Baño":["beach"]}[category]||[])),...normalizeOccasions(ai)])];
+function suggestOccasionsForSelection(){
+ const category=$("#garmentCategory").value,type=$("#garmentType").value;
+ const current=$('[name="meta-occasion"]:checked').map(x=>x.value);
+ const selected=new Set(occasionDefaults(category,type,current));
+ $('[name="meta-occasion"]').forEach(x=>{x.checked=selected.has(x.value)});
+ updateOccasionSummary();
+}
 function populateMetadata(src){
  for(const def of META_FIELDS){const el=$("#meta-"+def[0]);if(el)el.value=metaValue(def,src?.[def[0]])}
  const occ=new Set(normalizeOccasions(src?.occasions));
@@ -1450,9 +1457,10 @@ function bind(){
  $("#togglePassword").addEventListener("click",()=>setPasswordVisible($("#password").type==="password"));
  $("#password").addEventListener("keydown",e=>{if(e.key==="Enter")login()});
  $$(".nav-btn").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.view)));
- $("#garmentCategory").addEventListener("change",()=>syncGarmentCategory(true));
+ $("#garmentCategory").addEventListener("change",()=>{syncGarmentCategory(true);suggestOccasionsForSelection()});
+ $("#garmentType").addEventListener("change",suggestOccasionsForSelection);
 
- $$("[data-garment-category]").forEach(btn=>btn.addEventListener("click",()=>{$("#garmentCategory").value=btn.dataset.garmentCategory;syncGarmentCategory(true)}));
+ $$("[data-garment-category]").forEach(btn=>btn.addEventListener("click",()=>{$("#garmentCategory").value=btn.dataset.garmentCategory;syncGarmentCategory(true);suggestOccasionsForSelection()}));
  $("#garmentForm").addEventListener("submit",saveGarment);$("#closeGarment").addEventListener("click",closeGarment);$("#deleteGarment").addEventListener("click",deleteGarment);$("#analyzeBtn").addEventListener("click",analyzeGarment);
  const onPhoto=async e=>{
   const f=e.target.files[0];e.target.value="";if(!f)return;
