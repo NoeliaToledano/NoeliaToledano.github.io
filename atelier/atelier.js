@@ -845,7 +845,7 @@ function buyCheckHtml(){
  const c=buyCheck;
  let html='<div class="feature-card" id="buyCheck"><h2>¿Lo compro?</h2><p class="muted">Haz una foto a la prenda en la tienda o sube una captura. Te digo con qué combina de tu armario y si se parece a algo que ya tienes.</p>'+
   '<div class="photo-buttons"><button type="button" class="primary" data-photo-pick="buyCamera">📷 Hacer foto</button><button type="button" class="secondary" data-photo-pick="buyImage">🖼️ Galería</button></div>'+
-  '<input id="buyCamera" class="file-hidden" type="file" accept="image/*" capture="environment" aria-label="Hacer foto con la cámara"><input id="buyImage" class="file-hidden" type="file" accept="image/*" aria-label="Elegir foto de la galería">';
+  '<input id="buyCamera" class="file-hidden" type="file" tabindex="-1" accept="image/*" capture="environment" aria-label="Hacer foto con la cámara"><input id="buyImage" class="file-hidden" type="file" tabindex="-1" accept="image/*" aria-label="Elegir foto de la galería">';
  if(!c)return html+'</div>';
  if(c.loading)return html+'<p class="muted">Analizando la prenda…</p></div>';
  const r=evaluateCandidate(c);
