@@ -695,7 +695,7 @@ function setAnalyzeStatus(t){const s=$("#autoAnalyzeStatus");if(s)s.textContent=
 const GARMENT_TYPES={
  Arriba:["Camiseta","Camisa","Blusa","Top","Jersey","Sudadera","Polo","Body","Otro"],
  Abajo:["Vaqueros","Pantalón","Leggings","Shorts","Falda","Pantalón deportivo","Otro"],
- Vestidos:["Vestido corto","Vestido midi","Vestido largo","Mono","Peto","Otro"],
+ Vestidos:["Vestido corto","Vestido midi","Vestido largo","Mono corto","Mono largo","Enterizo","Peto","Otro"],
  Capas:["Blazer","Chaqueta","Cazadora","Abrigo","Gabardina","Chaleco","Cárdigan","Otro"],
  Zapatos:["Deportivas","Zapatos","Botas","Botines","Sandalias","Tacones","Mocasines","Otro"],
  Bolsos:["Bolso de mano","Bolso de hombro","Bandolera","Mochila","Bolso de fiesta","Otro"],
