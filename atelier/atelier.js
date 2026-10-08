@@ -1052,7 +1052,7 @@ async function refreshWeatherIfNeeded(){
 /* Maletas: lista de equipaje por viaje, calculada en el móvil (sin IA).
    La sugerencia elige pocas prendas que den al menos un look por día del viaje. */
 const PACK_EXTRAS=["Pijama","Ropa interior y calcetines","Neceser","Cargador del móvil","Documentación"];
-const PACK_ORDER=["Arriba","Abajo","Vestidos","Capas","Zapatos","Bolsos","Accesorios",""];
+const PACK_ORDER=["Arriba","Abajo","Vestidos","Capas","Zapatos","Interior","Baño","Bolsos","Accesorios",""];
 const myTrips=()=>appState.data.trips;
 const fmtDay=d=>validDay(d)?new Intl.DateTimeFormat("es-ES",{day:"numeric",month:"short",year:d.slice(0,4)===dayISO().slice(0,4)?undefined:"numeric"}).format(new Date(d+"T12:00:00")):"";
 function tripDays(t){if(!validDay(t.start)||!validDay(t.end)||t.end<t.start)return 1;return Math.round((Date.parse(t.end+"T12:00:00")-Date.parse(t.start+"T12:00:00"))/86400000)+1}
@@ -1088,6 +1088,11 @@ function suggestPacking(t){
  for(let i=0;i<2&&pending.length;i++){const s=coverBest("Zapatos",pending);if(!s)break;if(i===1&&s.covers.length<pending.length/2&&pending.length<looks.length/2)break;chosen.push(s.g);pending=pending.filter(l=>!s.covers.includes(l))}
  if(season==="cold"){const c=coverBest("Capas",looks);if(c)chosen.push(c.g)}  // según la temporada del viaje, no el tiempo de hoy
  const bag=coverBest("Bolsos",looks);if(bag)chosen.push(bag.g);
+ // También contamos la ropa que no forma looks: descanso e interior.
+ for(const group of [["Pijama","Camisón"],["Braguitas","Tanga","Bóxer","Calzoncillos","Camiseta interior"]]){
+  const extra=all.find(g=>g.category==="Interior"&&group.includes(g.type)&&!chosen.includes(g));
+  if(extra)chosen.push(extra);
+ }
  return chosen.map(g=>g.id);
 }
 function tripSummary(t){const items=tripItems(t),days=tripDays(t),looks=packLooks(items).length;return {items,days,looks}}
