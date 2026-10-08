@@ -20,6 +20,13 @@ La fuente documenta el principio, **no valida nuestros pesos, umbrales ni fórmu
 | S5 | Vasileva et al., ECCV 2018, *Learning Type-Aware Embeddings for Fashion Compatibility* — https://openaccess.thecvf.com/content_ECCV_2018/html/Mariya_Vasileva_Learning_Type-Aware_Embeddings_ECCV_2018_paper.html | Distingue similitud y compatibilidad entre tipos de prenda; evaluó 68.306 outfits; [R] | Datos de Polyvore, sesgos culturales y temporalidad. |
 | S6 | Sarkar et al., WACV 2023, *OutfitTransformer* — https://openaccess.thecvf.com/content/WACV2023/html/Sarkar_OutfitTransformer_Learning_Outfit_Representations_for_Fashion_Recommendation_WACV_2023_paper.html | Compatibilidad del conjunto completo y recuperación de complemento para un look parcial; [R] | No es un módulo instalable sin adaptación ni evaluación. |
 | S7 | Selwon & Szymański, *A Review of Explainable Fashion Compatibility Modeling Methods*, ACM Computing Surveys 2024, DOI:10.1145/3664614 — https://doi.org/10.1145/3664614 | Explicabilidad, reproducibilidad, datasets y sesgos; [R] | Review metodológica, no criterios universales de estilismo. |
+| S8 | Schloss & Palmer (2011), *Aesthetic response to color combinations: preference, harmony, and similarity*, Attention, Perception & Psychophysics — https://palmerlab.berkeley.edu/pdf/Schloss&Palmer(2011).pdf | Evidencia empírica: la armonía sube con la similitud de matiz; los complementarios se valoran menos armónicos que sus vecinos; la preferencia sube con el contraste de claridad (claro sobre oscuro); la armonía, con menos saturación; [A] | Parejas de colores planos en pantalla, no prendas ni conjuntos completos. |
+| S9 | MasterClass, *How to Mix Prints and Patterns* — https://www.masterclass.com/articles/how-to-mix-prints-and-patterns-to-create-a-stylish-outfit | Escalas distintas, color compartido y ancla neutra al mezclar estampados; [E] | Consejo editorial. |
+| S10 | Stitch Fix, *Wear navy and black together* — https://www.stitchfix.com/men/blog/ask-a-stylist/wear-navy-and-black-together/ | Marino + negro con contraste visible; [E] | Consejo editorial. |
+| S11 | Eileen Fisher, *Three Easy Proportions* — https://www.eileenfisher.com/a-sustainable-life/journal/a-simple-wardrobe/three-easy-proportions.html | Regla de tercios, mitad y mitad, capa larga sobre base corta; [E] | Marca de ropa; consejo editorial. |
+| S12 | Lauren Conrad, *How to Wear Mixed Metallics* — https://laurenconrad.com/?p=38613 | Metalizado protagonista con neutros; mezcla de metales en detalles; [E] | Consejo editorial. |
+| S13 | Outfit Narrative, *Simple color theory for casual outfits* — https://outfitnarrative.com/menswear/simple-color-theory-for-casual-outfits | Neutros de vestuario (marino, oliva), complementario como acento; [E] | Blog editorial. |
+| S14 | FashionBeans, *Outdated style rules you should break* — https://www.fashionbeans.com/article/outdated-style-rules-should-break/ | «Nunca negro con marrón / marino» como norma obsoleta; [E] | Opinión editorial. |
 
 ## 2. Contrato del producto
 1. Recomendar **solo prendas existentes** del perfil, sin inventar piezas. Cuando falte algo, expresar «no hay alternativa adecuada»; las compras son otra función.
@@ -129,6 +136,40 @@ Dos objetivos: «seguro/equilibrado» y «creativo/atrevido». Mostrar razón br
 | F02 | Función requiere calzado y el conjunto carece de él | Avisar o completar si existe | Conjuntos parciales intencionales | [I] |
 | L01 | Campo silhouette desconocido | No afirmar que «equilibra figura» | Se puede explicar el color | [I] |
 | D01 | Dos looks propuestos muy similares | Reordenar por diversidad | Armario insuficiente: explicar | [I] |
+
+### 8.1 Reglas candidatas (de la antigua #26)
+Todas son **puntuación**, no restricciones, salvo que se diga. Pesos y umbrales [I], a calibrar.
+
+| ID | Condición | Acción | Excepciones | Base |
+|---|---|---|---|---|
+| C03 | Dos piezas de la misma familia de matiz con claridad distinta (tono sobre tono) | Bonificar armonía | Ninguna conocida | S8 [A], S13 |
+| C04 | Matices vecinos (≈ < 60° en OKLCH) con croma significativa | Bonificar armonía | — | S8 [A], S2 |
+| C05 | Matices opuestos en dos piezas grandes | Penalizar armonía; bonificar si uno es acento pequeño (complemento, calzado) | Perfiles creativo/maximalista: penalización menor | S8 [A], S13 [E] |
+| C06 | Contraste de claridad entre piezas principales | Bonificar | Minimalista tonal busca poco contraste | S8 [A] |
+| C07 | Vaquero, marino, oliva, camel, gris, beige, negro, blanco | Tratar como casi neutros (croma baja o uso como base) | No convierte cualquier par en bueno: seguir mirando claridad y textura (§4) | S13 [E], S12 |
+| C08 | Pieza lisa que repite un color dominante de un estampado | Bonificar (`matched_color`) | — | S9 [E] |
+| C09 | Marino + negro con poca diferencia de claridad | Penalizar | Con contraste visible: neutro | S10 [E] |
+| C10 | Negro + marrón, marino + negro | No penalizar por sí mismos | — | S14 [E] |
+| C11 | Pieza metalizada | Tratarla como protagonista (statement); bonificar apoyos neutros; mezcla de metales solo en detalles | Glam/maximalista | S12 [E] |
+| C12 | Dos cromas altas lejanas sin pieza neutra que las una | Penalizar | Maximalista/creativo | S8 [A], S9 [E] |
+| C13 | Más de 3 colores no neutros | Penalizar suavemente | Maximalista (ya en §4) | S10 [E], [I] |
+| E01 | Dos estampados que comparten color o tienen escalas distintas | Bonificar; si no, penalizar | Maximalista: penalización menor | S9 [E], S3 |
+| E02 | Estampado pequeño de bajo contraste (rayas finas, lunares, cuadro pequeño) | Tratar casi como liso | — | S9 [E] |
+| E03 | Dos estampados + pieza lisa neutra (americana, vaquero, calzado) | Bonificar (ancla) | — | S9 [E] |
+| E04 | Tres o más estampados | Penalizar fuerte | Maximalista | S9 [E], [I] |
+| P03 | Arriba que termina en la cintura o metida + abajo largo (≈ 1/3–2/3) | Bonificar | Oversize integral (P01) | S11 [E], S1 |
+| P04 | Capa larga sobre base más corta | Bonificar línea vertical | — | S11 [E] |
+| P05 | Cinturón en vestido o prenda amplia | Bonificar | Solo si el cinturón existe en el armario | S11 [E] |
+| F03 | Una sola pieza de otro nivel de formalidad (americana con vaqueros, deportivas con falda) | Bonificar como mezcla intencionada | Dress code declarado (F01) | §5 [I] |
+| F04 | Calzado | Pesa más en la formalidad final del look | — | [I] |
+
+### 8.2 Regresiones conocidas del motor actual (`pairs` / `colorsMatch` en `atelier/atelier.js`)
+Incluirlas como casos del banco de pruebas (§10):
+- Dos estampados cualesquiera se descartan siempre (contradice C02, E01–E03).
+- `GOOD_PAIRS` da como siempre buenos complementarios como azul–naranja (contradice C05 / S8).
+- Solo se usa el color principal y por palabras: se ignoran secundarios y claridad (C06, C08).
+- Todo es sí/no: no ordena por calidad ni explica (§7).
+- Sin proporciones (P01, P03–P05).
 
 ## 9. Interfaces propuestas (no implementadas)
 - `GET /stylist/rules?v=1` opcional: manifest versionado local; no hace falta backend al principio.
