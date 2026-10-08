@@ -45,3 +45,5 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #777;outline-offset:2px}
 @media(min-width:700px){.bottom-nav{width:600px}.nav-btn{font-size:12px}.filter-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:370px){.content{padding:18px 12px}.nav-btn{font-size:9px}.card-body{padding:9px}.tile-tools{padding:0 5px 7px}}
+
+.garment-preview{display:block;object-fit:contain;width:100%;max-height:230px;border-radius:15px;background:#f4f1ec;border:1px solid var(--line);margin:8px 0}
