@@ -744,7 +744,7 @@ function readMetadata(){
 const META_KEYS=new Set([...META_FIELDS.map(d=>d[0]),"occasions","confidence"]);
 function setAnalyzeStatus(t){const s=$("#autoAnalyzeStatus");if(s)s.textContent=t}
 const GARMENT_TYPES={
- Arriba:["Camiseta","Camisa","Blusa","Top","Jersey","Sudadera","Polo","Body","Camiseta técnica","Otro"],
+ Arriba:["Camiseta","Camisa","Blusa","Top","Crop top","Jersey","Sudadera","Polo","Body","Camiseta técnica","Otro"],
  Abajo:["Vaqueros","Pantalón","Leggings","Mallas deportivas","Shorts","Falda","Pantalón deportivo","Otro"],
  Vestidos:["Vestido corto","Vestido midi","Vestido largo","Mono corto","Mono largo","Enterizo","Peto","Otro"],
  Capas:["Blazer","Chaqueta","Cazadora","Abrigo","Gabardina","Chaleco","Cárdigan","Otro"],
