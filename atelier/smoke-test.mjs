@@ -1,6 +1,7 @@
-import { chromium, devices } from "playwright";
+import { chromium, webkit, devices } from "playwright";
 import assert from "node:assert/strict";
-const browser=await chromium.launch({headless:true,channel:"chrome"});
+const useWebKit=process.env.ATELIER_BROWSER==="webkit";
+const browser=await (useWebKit?webkit:chromium).launch(useWebKit?{headless:true}:{headless:true,channel:"chrome"});
 const context=await browser.newContext({...devices["iPhone 13"],browserName:undefined});
 const page=await context.newPage();
 const errors=[];
@@ -50,5 +51,5 @@ try{
  assert.equal(await page.getByText("Tu armario está vacío").count(),1);
  assert.deepEqual(errors,[]);
  await page.screenshot({path:"atelier-smoke.png",fullPage:true});
- console.log("PASS: iPhone viewport, styles, login, wardrobe CRUD, IndexedDB persistence, looks and profile isolation");
+ console.log("PASS: "+(useWebKit?"WebKit":"Chrome")+" iPhone viewport, styles, login, wardrobe CRUD, IndexedDB persistence, looks and profile isolation");
 }finally{await browser.close()}
