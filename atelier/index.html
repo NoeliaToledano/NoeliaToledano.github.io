@@ -16,20 +16,22 @@
 <body>
 <section id="auth" class="auth">
   <div class="auth-card">
-    <p class="muted">MI ARMARIO</p><h1>Atelier</h1>
-    <p class="muted">Elige tu perfil para entrar.</p>
+    <p class="auth-eyebrow">TU VESTIDOR PERSONAL <span>✦</span></p><h1>Atelier<span class="auth-dot">.</span></h1>
+    <p class="auth-subtitle">Tu estilo empieza aquí.</p>
+    <p class="auth-prompt">¿Quién va a vestirse hoy?</p>
     <div class="profiles">
-      <button class="profile-option" data-profile="noelia">Noelia</button>
-      <button class="profile-option" data-profile="ana-maria">Ana María</button>
-      <button class="profile-option" data-profile="irene">Irene</button>
-      <button class="profile-option" data-profile="eva">Eva</button>
-      <button class="profile-option" data-profile="virginia">Virginia</button>
+      <button type="button" class="profile-option" data-profile="noelia" aria-pressed="false"><span class="profile-avatar" aria-hidden="true">N</span><span class="profile-label">Noelia</span><span class="profile-check" aria-hidden="true">✓</span></button>
+      <button type="button" class="profile-option" data-profile="ana-maria" aria-pressed="false"><span class="profile-avatar" aria-hidden="true">A</span><span class="profile-label">Ana María</span><span class="profile-check" aria-hidden="true">✓</span></button>
+      <button type="button" class="profile-option" data-profile="irene" aria-pressed="false"><span class="profile-avatar" aria-hidden="true">I</span><span class="profile-label">Irene</span><span class="profile-check" aria-hidden="true">✓</span></button>
+      <button type="button" class="profile-option" data-profile="eva" aria-pressed="false"><span class="profile-avatar" aria-hidden="true">E</span><span class="profile-label">Eva</span><span class="profile-check" aria-hidden="true">✓</span></button>
+      <button type="button" class="profile-option" data-profile="virginia" aria-pressed="false"><span class="profile-avatar" aria-hidden="true">V</span><span class="profile-label">Virginia</span><span class="profile-check" aria-hidden="true">✓</span></button>
     </div>
-    <div id="passwordStep" class="hidden">
-      <div class="field"><label for="password">Contraseña</label><input id="password" type="password" autocomplete="current-password"></div>
-      <button id="loginBtn" class="primary" style="width:100%">Entrar</button>
+    <div id="passwordStep" class="hidden" aria-label="Acceso al perfil">
+      <div class="field auth-password-field"><label for="password">Tu contraseña</label><div class="password-wrap"><input id="password" type="password" autocomplete="current-password" placeholder="Introduce tu contraseña"><button type="button" id="togglePassword" class="password-toggle" aria-label="Mostrar contraseña" aria-pressed="false">Mostrar</button></div></div>
+      <button id="loginBtn" class="primary auth-submit">Entrar a mi armario <span aria-hidden="true">→</span></button>
       <div id="authError" class="error" role="alert" aria-live="polite"></div>
     </div>
+    <p class="auth-footnote">Un espacio para cada estilo. Solo vuestro.</p>
   </div>
 </section>
 
