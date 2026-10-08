@@ -619,25 +619,42 @@ function renderWardrobe(root){
 let lastAnalysis=null,metaConfidence="";
 /* Foto de la ficha abierta: la original y, si se ha podido, la versión con fondo blanco.
    mode decide cuál se guarda; changed indica que la foto es nueva o ha cambiado. */
+/* Corrección suave y local de fotos oscuras: conserva la imagen original y el color. */
+async function enhanceGarmentPhoto(src){
+ const img=await loadImg(src),w=img.naturalWidth,h=img.naturalHeight;
+ const canvas=document.createElement("canvas");canvas.width=w;canvas.height=h;
+ const ctx=canvas.getContext("2d",{willReadFrequently:true});ctx.drawImage(img,0,0);
+ const sample=document.createElement("canvas");sample.width=64;sample.height=64;
+ const sc=sample.getContext("2d",{willReadFrequently:true});sc.drawImage(img,0,0,64,64);
+ const pixels=sc.getImageData(0,0,64,64).data;let sum=0,low=0,high=0;
+ for(let i=0;i<pixels.length;i+=4){const y=.2126*pixels[i]+.7152*pixels[i+1]+.0722*pixels[i+2];sum+=y;if(y<45)low++;if(y>220)high++}
+ const mean=sum/4096;
+ // No aclarar fotos ya correctas ni quemar fondos claros.
+ if(mean>=112||high>2250)return null;
+ const gain=Math.min(1.38,Math.max(1.08,125/Math.max(mean,45)));
+ ctx.clearRect(0,0,w,h);ctx.filter="brightness("+gain.toFixed(3)+") contrast(1.035)";ctx.drawImage(img,0,0);ctx.filter="none";
+ return canvas.toDataURL("image/jpeg",IMAGE_QUALITY);
+}
 let sheetPhoto=null;
-const sheetImage=()=>sheetPhoto?(sheetPhoto.mode==="white"&&sheetPhoto.white?sheetPhoto.white:sheetPhoto.original):null;
+const sheetImage=()=>sheetPhoto?(sheetPhoto.mode==="white"&&sheetPhoto.white?sheetPhoto.white:sheetPhoto.mode==="enhanced"&&sheetPhoto.enhanced?sheetPhoto.enhanced:sheetPhoto.original):null;
 function renderPhotoControls(){
  const box=$("#photoControls");if(!box)return;
  const ph=sheetPhoto,preview=$("#garmentPreview"),img=sheetImage();
  preview.src=img||"";preview.classList.toggle("hidden",!img);preview.classList.toggle("on-white",!!img&&ph?.mode==="white");
  if(!ph||!img){box.innerHTML="";return}
  if(ph.busy){box.innerHTML='<p class="helper" role="status">Poniendo fondo blanco…</p>';return}
- box.innerHTML=ph.white&&ph.original
-  ?'<div class="seg-tabs photo-mode" role="group" aria-label="Foto que se guarda"><button type="button" class="seg-tab'+(ph.mode==="white"?' active':'')+'" data-photo-mode="white" aria-pressed="'+(ph.mode==="white")+'">Fondo blanco</button><button type="button" class="seg-tab'+(ph.mode==="original"?' active':'')+'" data-photo-mode="original" aria-pressed="'+(ph.mode==="original")+'">Original</button></div>'
-  :ph.white?'<p class="helper">Foto con fondo blanco.</p>'
-  :'<button type="button" class="secondary wide" id="makeWhite">✨ Poner fondo blanco</button>'+(ph.failed?'<p class="helper">No he podido separar la prenda del fondo. Funciona mejor con la prenda extendida sobre una superficie lisa de otro color.</p>':'');
+ const modes=[...(ph.white?[["white","Fondo blanco"]]:[]),...(ph.enhanced?[["enhanced","Mejorada"]]:[]),["original","Original"]];
+ box.innerHTML=(modes.length>1?'<div class="seg-tabs photo-mode" role="group" aria-label="Foto que se guarda">'+modes.map(([mode,label])=>'<button type="button" class="seg-tab'+(ph.mode===mode?' active':'')+'" data-photo-mode="'+mode+'" aria-pressed="'+(ph.mode===mode)+'">'+label+'</button>').join("")+'</div>':'')+
+ (!ph.white?'<button type="button" class="secondary wide" id="makeWhite">✨ Poner fondo blanco</button>':'')+
+ (ph.enhanced?'<p class="helper">La foto era oscura: hemos ajustado suavemente la luz. Puedes conservar la original.</p>':'')+
+ (ph.failed?'<p class="helper">No se pudo separar bien el fondo. Puedes guardar la foto sin fondo blanco.</p>':'');
  $$("[data-photo-mode]",box).forEach(b=>b.addEventListener("click",()=>{ph.mode=b.dataset.photoMode;ph.changed=true;renderPhotoControls()}));
  $("#makeWhite",box)?.addEventListener("click",()=>makeSheetWhite());
 }
 async function makeSheetWhite(){
  const ph=sheetPhoto;if(!ph?.original||ph.busy)return;
  ph.busy=true;ph.failed=false;renderPhotoControls();
- const white=await whiteBackground(ph.original);
+ const white=await whiteBackground(ph.enhanced||ph.original);
  if(sheetPhoto!==ph)return;
  ph.busy=false;if(white){ph.white=white;ph.mode="white";ph.changed=true}else ph.failed=true;
  renderPhotoControls();
@@ -1372,7 +1389,8 @@ function bind(){
  const onPhoto=async e=>{
   const f=e.target.files[0];e.target.value="";if(!f)return;
   let original;try{original=await readImage(f)}catch(err){return toast(err.message==="IMAGE_TOO_LARGE"?"La imagen es demasiado grande":"No se pudo leer la foto")}
-  const ph=sheetPhoto={original,white:null,mode:"original",changed:true};renderPhotoControls();
+  const ph=sheetPhoto={original,enhanced:null,white:null,mode:"original",changed:true};renderPhotoControls();
+  try{ph.enhanced=await enhanceGarmentPhoto(original);if(sheetPhoto!==ph)return;if(ph.enhanced)ph.mode="enhanced";renderPhotoControls()}catch(err){console.warn("PHOTO_ENHANCE",err)}
   if($("#autoWhite")?.checked)await makeSheetWhite();
   if(sheetPhoto===ph&&$("#autoAnalyze")?.checked)analyzeGarment()};
  $("#garmentImage").addEventListener("change",onPhoto);$("#garmentCamera").addEventListener("change",onPhoto);
