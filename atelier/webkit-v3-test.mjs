@@ -34,6 +34,7 @@ await page.addInitScript(()=>{
 const png=Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/pVYAAAAASUVORK5CYII=","base64");
 async function addGarment(name){
  await page.locator("#addGarment").click();
+ await page.locator("#autoAnalyze").uncheck();
  await page.locator("#garmentName").fill(name);
  await page.locator("#garmentCategory").selectOption("Arriba");
  await page.locator("#garmentImage").setInputFiles({name:"prenda.png",mimeType:"image/png",buffer:png});
