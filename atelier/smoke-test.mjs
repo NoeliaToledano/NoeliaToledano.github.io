@@ -8,6 +8,19 @@ const errors=[];
 page.on("pageerror",e=>errors.push(e.message));
 page.on("console",m=>{if(m.type()==="error")console.log("BROWSER_CONSOLE",m.text())});
 page.on("requestfailed",r=>console.log("FAILED_REQUEST",r.url(),r.failure()?.errorText));
+await page.addInitScript(() => {
+ const realFetch=window.fetch.bind(window);
+ window.fetch=async (input,init={})=>{
+  const url=typeof input==="string"?input:input?.url||"";
+  if(url.startsWith("https://atelier-ai-backend-pi.vercel.app/api/")){
+   const suffix=new URL(url).pathname;
+   if(suffix==="/api/login"){const data=JSON.parse(init.body||"{}");return new Response(JSON.stringify({profileId:data.profileId,token:"test-token"}),{status:200,headers:{"Content-Type":"application/json"}})}
+   if(suffix==="/api/session"){const stored=JSON.parse(sessionStorage.getItem("atelier-session")||"{}");return new Response(JSON.stringify({authenticated:true,profileId:stored.profile}),{status:200,headers:{"Content-Type":"application/json"}})}
+   return new Response(JSON.stringify({error:"Mock AI unavailable"}),{status:500,headers:{"Content-Type":"application/json"}});
+  }
+  return realFetch(input,init);
+ };
+});
 await page.route("https://atelier-ai-backend-pi.vercel.app/**",async route=>{
  const req=route.request(),url=req.url(),origin="http://127.0.0.1:8000";
  const headers={"access-control-allow-origin":origin,"access-control-allow-headers":"Content-Type, Authorization","access-control-allow-methods":"GET, POST, OPTIONS","content-type":"application/json"};
