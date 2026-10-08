@@ -5,7 +5,7 @@ on:
       - "atelier/**"
       - ".github/workflows/atelier-v2-check.yml"
   push:
-    branches: [main, atelier-security-audit]
+    branches: [main]
     paths:
       - "atelier/**"
 jobs:
@@ -28,7 +28,9 @@ jobs:
         run: |
           npm install --no-save playwright@1.56.1
           google-chrome --version
+          npx playwright install --with-deps webkit
       - name: iPhone viewport browser smoke test
         run: |
           python3 -m http.server 8000 --bind 127.0.0.1 >/tmp/atelier-http.log 2>&1 &
           node atelier/smoke-test.mjs
+          ATELIER_BROWSER=webkit node atelier/smoke-test.mjs
