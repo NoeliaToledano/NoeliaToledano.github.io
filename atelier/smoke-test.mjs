@@ -14,7 +14,7 @@ await page.route("https://atelier-ai-backend-pi.vercel.app/**",async route=>{
  console.log("MOCK",req.method(),url);if(req.method()==="OPTIONS")return route.fulfill({status:204,headers,body:""});
  if(url.endsWith("/api/login")){const body=JSON.parse(req.postData()||"{}");return route.fulfill({status:200,headers,body:JSON.stringify({profileId:body.profileId,token:"test-token"})})}
  if(url.endsWith("/api/session"))return route.fulfill({status:200,headers,body:JSON.stringify({authenticated:true,profileId:currentProfile})});
- if(url.endsWith("/api/analyze"))return route.fulfill({status:200,headers,body:JSON.stringify({garment:{name:"Camisa reconocida por IA",type:"top",color:"Azul"}})});
+ if(url.endsWith("/api/analyze"))return route.fulfill({status:200,headers,body:JSON.stringify({garment:{name:"Camisa reconocida por IA",type:"top",color:"Azul",fabric:"cotton",pattern:"stripes",fit:"regular",sleeve:"larga",subtype:"camisa",confidence:"media",details:"botones frontales",occasions:["daily","work"]}})});
  if(url.endsWith("/api/looks")&&forceUnauthorized){forceUnauthorized=false;return route.fulfill({status:401,headers,body:JSON.stringify({error:"Sesión caducada"})})}
  if(url.endsWith("/api/looks")&&forceServerError){forceServerError=false;return route.fulfill({status:503,headers,body:JSON.stringify({error:"Servicio no disponible"})})}
  if(url.endsWith("/api/looks")){const items=JSON.parse(req.postData()||"{}").items||[];return route.fulfill({status:200,headers,body:JSON.stringify({looks:[{ids:items.slice(0,2).map(x=>x.i),why:"Look de prueba IA"}]})})}
@@ -32,6 +32,7 @@ try{
  const bg=await page.locator("body").evaluate(el=>getComputedStyle(el).backgroundColor);
  assert.notEqual(bg,"rgba(0, 0, 0, 0)","CSS not applied");
  await page.locator("#addGarment").click();
+ await page.locator("#autoAnalyze").uncheck();
  await page.locator("#garmentName").fill("Prenda auditada");
  await page.locator("#garmentCategory").selectOption("Arriba");
  const tinyPng=Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/pVYAAAAASUVORK5CYII=","base64");
@@ -51,12 +52,21 @@ try{
  await page.locator("#addGarment").click();
 
  await page.locator("#garmentImage").setInputFiles({name:"foto.png",mimeType:"image/png",buffer:tinyPng});
- await page.locator("#analyzeBtn").click();
  await page.getByText("Análisis completado").waitFor();
+ assert.equal(await page.locator("#meta-fabric").inputValue(),"cotton");
+ assert.equal(await page.locator("#meta-fit").inputValue(),"regular");
+ assert.equal(await page.locator("#meta-sleeve").inputValue(),"larga");
+ assert.equal(await page.locator("#meta-subtype").inputValue(),"camisa");
+ await page.locator("#meta-brand").fill("Marca introducida a mano");
  assert.equal(await page.locator("#garmentName").inputValue(),"Camisa reconocida por IA");
  assert.equal(await page.locator("#garmentCategory").inputValue(),"Arriba");
  await page.locator("#garmentForm button[type=submit]").click();
  await page.getByText("Camisa reconocida por IA").first().waitFor();
+ await page.reload({waitUntil:"networkidle"});
+ await page.locator('[data-garment]').filter({hasText:"Camisa reconocida por IA"}).first().click();
+ assert.equal(await page.locator("#meta-fit").inputValue(),"regular");
+ assert.equal(await page.locator("#meta-brand").inputValue(),"Marca introducida a mano");
+ await page.locator("#closeGarment").click();
  await page.locator('[data-view="stylist"]').click(); await page.locator('#openLooks').click();
  await page.locator("#aiLooks").click();
  await page.getByText("Look de prueba IA").waitFor();
