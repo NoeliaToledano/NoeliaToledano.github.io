@@ -761,12 +761,12 @@ function renderPhotoControls(){
   :ph.mode==="alt"?'<p class="helper">Revisa la prenda: puede que al quitar el fondo falte algún trozo. Si no te convence, elige «Mejorada» u «Original».</p>'
   :ph.edited&&!ph.editedWhite&&ph.mode==="edited"?keep:'';
  // Versiones que se pueden elegir: mejorada (o con fondo blanco), fondo blanco dudoso y original
- const modes=[...(ph.edited?[["edited",ph.editedWhite?"Fondo blanco":"Mejorada"]]:[]),...(ph.altWhite?[["alt","Fondo blanco (revisar)"]]:[]),...(ph.original&&ph.original!==ph.edited?[["original","Original"]]:[])];
- box.innerHTML=(ph.asIs?'':modes.length>1
-  ?'<div class="seg-tabs photo-mode" role="group" aria-label="Foto que se guarda">'+modes.map(([m,label])=>'<button type="button" class="seg-tab'+(ph.mode===m?' active':'')+'" data-photo-mode="'+m+'" aria-pressed="'+(ph.mode===m)+'">'+label+'</button>').join("")+'</div>'
-  :ph.edited?'<p class="helper">Foto mejorada'+(ph.editedWhite?' con fondo blanco':'')+'.</p>'
-  :'<button type="button" class="secondary wide" id="makeWhite">✨ Mejorar foto</button>'+(ph.failed?'<p class="helper">No he podido mejorar esta foto.</p>':''))+
-  (ph.original&&!ph.asIs&&!ph.editedWhite&&!ph.altWhite?'<button type="button" class="secondary wide" id="tryWhitePreview">Ver intento de fondo blanco</button>':'')+note;
+ // La persona decide: original siempre visible, incluso cuando el algoritmo considera que ya es catálogo.
+ const modes=[...(ph.original?[["original","Original"]]:[]),...(ph.edited&&ph.edited!==ph.original?[["edited",ph.editedWhite?"Fondo blanco":"Mejorada"]]:[]),...(ph.altWhite?[["alt","Fondo blanco (revisar)"]]:[])];
+ const choices=modes.length>1?'<div class="seg-tabs photo-mode" role="group" aria-label="Elige la fotografía que quieres guardar">'+modes.map(([m,label])=>'<button type="button" class="seg-tab'+(ph.mode===m?' active':'')+'" data-photo-mode="'+m+'" aria-pressed="'+(ph.mode===m)+'">'+label+'</button>').join("")+'</div>':'';
+ const tryWhite=ph.original&&!ph.altWhite&&!ph.editedWhite?'<button type="button" class="secondary wide" id="tryWhitePreview">Probar fondo blanco y comparar</button>':'';
+ const improve=!ph.edited&&!ph.asIs?'<button type="button" class="secondary wide" id="makeWhite">✨ Mejorar foto</button>':'';
+ box.innerHTML='<p class="helper">Compara los resultados y elige cuál guardar. Tu foto original siempre estará disponible.</p>'+choices+improve+tryWhite+(ph.failed?'<p class="helper">No he podido mejorar esta foto automáticamente.</p>':'')+note;
  $$("[data-photo-mode]",box).forEach(b=>b.addEventListener("click",()=>{ph.mode=b.dataset.photoMode;ph.changed=true;renderPhotoControls()}));
  $("#makeWhite",box)?.addEventListener("click",()=>makeSheetWhite());
  $("#tryWhitePreview",box)?.addEventListener("click",async()=>{
