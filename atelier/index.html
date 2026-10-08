@@ -12,6 +12,7 @@
 <link rel="manifest" href="./manifest.json">
 <link rel="stylesheet" href="./styles-v2.css">
 <script src="./app-v2.js" defer></script>
+<script src="./features-v3.js" defer></script>
 </head>
 <body>
 <section id="auth" class="auth">
@@ -36,7 +37,9 @@
 <main id="content" class="content"></main>
 <nav class="bottom-nav" aria-label="Navegación principal">
 <button class="nav-btn active" data-view="wardrobe"><span>◇</span>Armario</button>
-<button class="nav-btn" data-view="looks"><span>✦</span>Looks</button>
+<button class="nav-btn" data-view="stylist"><span>✦</span>Estilista</button>
+<button class="nav-btn" data-view="shopping"><span>♡</span>Compras</button>
+<button class="nav-btn" data-view="insights"><span>▥</span>Análisis</button>
 <button class="nav-btn" data-view="settings"><span>○</span>Ajustes</button>
 </nav>
 </div>
@@ -50,6 +53,11 @@
 <div class="field"><label for="garmentName">Nombre</label><input id="garmentName" maxlength="80" required></div>
 <div class="field"><label for="garmentCategory">Categoría</label><select id="garmentCategory"><option value="">Sin categoría</option><option>Arriba</option><option>Abajo</option><option>Vestidos</option><option>Capas</option><option>Zapatos</option><option>Bolsos</option><option>Accesorios</option></select></div>
 <div class="field"><label for="garmentColor">Color</label><input id="garmentColor" maxlength="60"></div>
+<div class="field"><label for="garmentSeason">Temporada</label><select id="garmentSeason"><option value="all">Todo el año</option><option value="warm">Primavera / verano</option><option value="cold">Otoño / invierno</option></select></div>
+<div class="field"><label for="garmentStyle">Estilo</label><select id="garmentStyle"><option value="">Sin definir</option><option value="casual">Casual</option><option value="smart">Arreglado</option><option value="party">Fiesta</option><option value="sport">Deporte</option></select></div>
+<div class="field"><label for="garmentPrice">Precio de compra (€)</label><input id="garmentPrice" type="number" min="0" max="100000" step="0.01" inputmode="decimal"></div>
+<div class="field"><label for="garmentBought">Fecha de compra (opcional)</label><input id="garmentBought" type="date"></div>
+<label class="switch-line"><input type="checkbox" id="garmentFavorite"> Añadir a favoritos ♡</label>
 <div class="field"><label for="garmentNotes">Notas</label><textarea id="garmentNotes" rows="3" maxlength="500"></textarea></div>
 <div class="actions"><button id="deleteGarment" type="button" class="danger hidden">Eliminar</button><button type="submit" class="primary">Guardar</button></div>
 </form>
@@ -63,6 +71,8 @@
 <input type="hidden" id="lookId">
 <div class="field"><label for="lookName">Nombre</label><input id="lookName" maxlength="80" required></div>
 <div class="field"><label>Prendas</label><div id="lookGarments"></div></div>
+<div class="field"><label for="lookOccasion">Ocasión</label><select id="lookOccasion"><option value="daily">Día a día</option><option value="work">Trabajo</option><option value="dinner">Cena</option><option value="event">Evento</option><option value="travel">Viaje</option></select></div>
+<label class="switch-line"><input type="checkbox" id="lookFavorite"> Look favorito ♡</label>
 <div class="actions"><button id="deleteLook" type="button" class="danger hidden">Eliminar</button><button type="submit" class="primary">Guardar look</button></div>
 </form>
 </section>
