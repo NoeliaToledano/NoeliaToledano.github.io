@@ -100,7 +100,7 @@ try{
  await page.locator("[data-trip]").filter({hasText:"Viaje de prueba"}).click();
  assert.equal(await page.locator("[data-extra]:checked").count(),1,"La casilla de la maleta debe conservarse");
  // Mi semana: planificar hoy con un look guardado; planificado no es usado hasta «Me lo he puesto»
- await page.locator('[data-view="stylist"]').click(); await page.locator('[data-stylist-tab="week"]').click();
+ await page.locator('[data-view="stylist"]').click(); console.log("WEEK_NAV_DEBUG",await page.locator("#content").innerText(),errors,await page.evaluate(()=>({view:appState.view,tab:ui.stylistTab}))); await page.locator('[data-stylist-tab="week"]').click();
  const usesBefore=await page.evaluate(()=>logs().length);
  await page.locator("section.is-today [data-plan-pick]").click();
  await page.locator("#planSheet [data-plan-saved]").first().click();
