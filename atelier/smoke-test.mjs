@@ -5,10 +5,12 @@ const context=await browser.newContext({...devices["iPhone 13"],browserName:unde
 const page=await context.newPage();
 const errors=[];
 page.on("pageerror",e=>errors.push(e.message));
+page.on("console",m=>{if(m.type()==="error")console.log("BROWSER_CONSOLE",m.text())});
+page.on("requestfailed",r=>console.log("FAILED_REQUEST",r.url(),r.failure()?.errorText));
 await page.route("https://atelier-ai-backend-pi.vercel.app/**",async route=>{
  const req=route.request(),url=req.url(),origin="http://127.0.0.1:8000";
  const headers={"access-control-allow-origin":origin,"access-control-allow-headers":"Content-Type, Authorization","access-control-allow-methods":"GET, POST, OPTIONS","content-type":"application/json"};
- if(req.method()==="OPTIONS")return route.fulfill({status:204,headers,body:""});
+ console.log("MOCK",req.method(),url);if(req.method()==="OPTIONS")return route.fulfill({status:204,headers,body:""});
  if(url.endsWith("/api/login")){const body=JSON.parse(req.postData()||"{}");return route.fulfill({status:200,headers,body:JSON.stringify({profileId:body.profileId,token:"test-token"})})}
  if(url.endsWith("/api/session"))return route.fulfill({status:200,headers,body:JSON.stringify({authenticated:true,profileId:currentProfile})});
  return route.fulfill({status:500,headers,body:JSON.stringify({error:"Mock AI unavailable"})});
@@ -19,7 +21,7 @@ try{
  await page.getByRole("button",{name:"Noelia"}).click();
  await page.locator("#password").fill("test");
  await page.locator("#loginBtn").click();
- await page.getByRole("heading",{name:"Mi armario"}).waitFor();
+ await page.getByRole("heading",{name:"Mi armario"}).waitFor({timeout:6000}).catch(async e=>{console.log("LOGIN_DIAGNOSTIC",{error:await page.locator("#authError").textContent(),authVisible:await page.locator("#auth").isVisible(),appVisible:await page.locator("#app").isVisible(),browserErrors:errors});throw e});
  assert.equal(await page.locator("#app").isVisible(),true);
  assert.equal(await page.locator("#auth").isVisible(),false);
  const bg=await page.locator("body").evaluate(el=>getComputedStyle(el).backgroundColor);
