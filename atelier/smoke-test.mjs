@@ -60,6 +60,30 @@ try{
  await page.locator('[data-view="stylist"]').click(); await page.locator('#openLooks').click();
  await page.locator("#aiLooks").click();
  await page.getByText("Look de prueba IA").waitFor();
+
+ await page.locator('[data-view="stylist"]').click();
+ await page.locator("#openLooks").click();
+ assert.ok(await page.locator(".look-collage .look-thumb").count()>=1,"Looks must display wardrobe photos");
+ await page.locator('[data-view="wardrobe"]').click();
+ await page.locator('[data-combine]').first().click();
+ assert.equal(await page.locator("#lookSheet").isVisible(),true,"Combine button must open outfit editor");
+ assert.equal(await page.locator('#lookGarments input:checked').count(),1,"One starting garment must be selected");
+ await page.locator("#closeLook").click();
+ await page.locator('[data-view="stylist"]').click();
+ await page.locator("#openPacking").click();
+ await page.locator('[name="tripName"]').fill("Escapada familiar");
+ await page.locator('input[name="packingLook"]').first().check();
+ await page.locator('#packingForm button[type="submit"]').click();
+ await page.getByText("Maleta creada").waitFor();
+ assert.ok(await page.locator('[data-packed-id]').count()>=1,"Packed outfit must include garments");
+ await page.locator('[data-packed-id]').first().check();
+ await page.getByText("Maleta actualizada").waitFor();
+ await page.reload({waitUntil:"networkidle"});
+ await page.locator('[data-view="stylist"]').click();
+ await page.locator("#openPacking").click();
+ await page.locator('[data-packing-open]').first().click();
+ assert.equal(await page.locator('[data-packed-id]:checked').count(),1,"Packing list should survive reload");
+
  await page.locator('[data-view="wardrobe"]').click();
  await page.locator('[data-fav]').first().click();
  page.once("dialog",d=>d.accept(new Date().toISOString().slice(0,10)));
