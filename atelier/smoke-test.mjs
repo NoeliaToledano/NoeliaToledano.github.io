@@ -73,8 +73,8 @@ try{
  await page.getByText("Look de prueba IA").waitFor();
  await page.locator('[data-view="wardrobe"]').click();
  await page.locator('[data-fav]').first().click();
- page.once("dialog",d=>d.accept(new Date().toISOString().slice(0,10)));
  await page.locator('[data-wear]').first().click();
+ await page.locator("#wearSheet [data-wear-day]").first().click();
  await page.getByText("Uso registrado").waitFor();
  await page.locator('[data-view="shopping"]').click();
  await page.locator('[name="wishName"]').fill("Abrigo de prueba");
