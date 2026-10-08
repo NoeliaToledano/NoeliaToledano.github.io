@@ -1,4 +1,5 @@
 import { verifySession } from "../_lib/auth.js";
+import { dailyQuota } from "../_lib/store.js";
 
 const allowedOrigins = new Set(["https://noeliatoledano.github.io","http://localhost:8000","http://127.0.0.1:8000"]);
 
@@ -11,10 +12,17 @@ export default async function handler(req,res){
   res.setHeader("Cache-Control","no-store");
   if(req.method==="OPTIONS") return res.status(204).end();
   if(req.method!=="POST") return res.status(405).json({error:"Método no permitido."});
-  if(!verifySession(req)) return res.status(401).json({error:"Sesión no válida o caducada."});
+  const session=verifySession(req);
+  if(!session) return res.status(401).json({error:"Sesión no válida o caducada."});
   if(!process.env.OPENAI_API_KEY) return res.status(503).json({error:"Atelier AI aún no está configurado."});
+  try{const q=await dailyQuota(session.sub,"looks",20);if(!q.ok)return res.status(429).json({error:"Has llegado al límite de 20 sugerencias de hoy. Mañana podrás seguir."})}catch(e){console.error("QUOTA",e.message)}
 
-  const body=req.body||{}, items=Array.isArray(body.items)?body.items.slice(0,24):[];
+  // Todo lo que entra en el prompt se valida y se recorta (coste y seguridad)
+  const body=req.body||{}, short=(v,n)=>String(v??"").replace(/[\u0000-\u001f]/g," ").slice(0,n);
+  const OCC=new Set(["daily","work","sport","beach","home","event","party","formal"]),SEASON=new Set(["all","warm","cold"]);
+  const items=(Array.isArray(body.items)?body.items.slice(0,24):[]).filter(x=>x&&typeof x==="object").map(x=>{const o={i:short(x.i,4),n:short(x.n,40)};for(const f of ["c","color","style","pattern","formality"])if(x[f])o[f]=short(x[f],20);if(x.forgotten)o.forgotten=1;return o});
+  body.occasion=OCC.has(body.occasion)?body.occasion:"libre";body.season=SEASON.has(body.season)?body.season:"cualquiera";
+  body.weather=/^-?\d{1,2}(\.\d)? °C$/.test(String(body.weather||""))?body.weather:"25 °C";
   if(items.length<2) return res.status(400).json({error:"No hay suficientes prendas candidatas."});
   const ids=new Set(items.map(x=>String(x.i)));
   const need=Math.max(1,Math.min(5,Number(body.need)||3));
@@ -26,7 +34,7 @@ export default async function handler(req,res){
     "Reglas: looks completos (calzado y, si combinan, capa, bolso o complemento), variados y coherentes; no mezcles dos estampados ni formalidades muy distintas; evita avoid si hay alternativas.",
     liked.length?"Le gustaron (inspírate, no repitas): "+JSON.stringify(liked):"",
     disliked.length?"No le gustaron (evita parecidos): "+JSON.stringify(disliked):"",
-    "avoid="+JSON.stringify((body.avoid||[]).slice(0,12)),
+    "avoid="+JSON.stringify((Array.isArray(body.avoid)?body.avoid:[]).map(String).filter(id=>ids.has(id)).slice(0,12)),
     "items="+JSON.stringify(items),
     'Responde SOLO JSON: {"looks":[{"ids":["1","2"],"why":"máx 6 palabras"}]}'
   ].filter(Boolean).join("\n");

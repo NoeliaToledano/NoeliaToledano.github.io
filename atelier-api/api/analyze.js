@@ -1,4 +1,5 @@
 import { verifySession } from "../_lib/auth.js";
+import { dailyQuota } from "../_lib/store.js";
 
 export default async function handler(req, res) {
   const allowedOrigins = new Set([
@@ -22,6 +23,11 @@ export default async function handler(req, res) {
   if (!process.env.OPENAI_API_KEY) {
     return res.status(503).json({ error: "Atelier AI aún no tiene configurada la clave de OpenAI." });
   }
+  // Límite diario por perfil en el servidor (el del móvil no basta: hay varios dispositivos)
+  try {
+    const q = await dailyQuota(session.sub, "analyze", 40);
+    if (!q.ok) return res.status(429).json({ error: "Has llegado al límite de 40 análisis de hoy. Mañana podrás seguir." });
+  } catch (e) { console.error("QUOTA", e.message); }
 
   try {
     const { image } = req.body || {};
