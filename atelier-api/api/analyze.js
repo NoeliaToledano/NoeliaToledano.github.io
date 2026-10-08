@@ -35,7 +35,8 @@ export default async function handler(req, res) {
     const prompt = [
       "Cataloga la prenda de la foto. No inventes marca ni detalles no visibles; usa null si dudas.",
       "Responde SOLO JSON en español con estas claves y valores:",
-      'name: nombre corto; type: top|bottom|dress|outerwear|shoes|bag|accessory; color: Negro|Blanco|Gris|Beige|Marrón|Azul|Vaquero|Verde|Rojo|Rosa|Morado|Amarillo|Plateado|Dorado|Multicolor; style: casual|smart|party|sport; season: all|warm|cold; fabric: unknown|cotton|denim|linen|wool|knit|leather|satin|silk|synthetic|mixed; pattern: plain|stripes|checks|floral|animal|dots|graphic|other; length: na|cropped|regular|midi|long; formality: casual|smartcasual|formal|party|sport; occasions: lista de daily|work|dinner|event|travel; notes: máx 10 palabras o ""'
+      'name: nombre corto; type: top|bottom|dress|outerwear|shoes|bag|accessory; color: Negro|Blanco|Gris|Beige|Marrón|Azul|Vaquero|Verde|Rojo|Rosa|Morado|Amarillo|Plateado|Dorado|Multicolor; style: casual|smart|party|sport; season: all|warm|cold; fabric: unknown|cotton|denim|linen|wool|knit|leather|satin|silk|synthetic|mixed; pattern: plain|stripes|checks|floral|animal|dots|graphic|other; length: na|cropped|regular|midi|long; formality: casual|smartcasual|formal|party|sport; occasions: lista de daily|work|dinner|event|travel; notes: máx 10 palabras o ""',
+      'Si son visibles, añade también subtype (tipo específico), secondaryColor, fit (oversize|holgado|regular|entallado|ajustado|recto), sleeve (sin mangas|corta|tres cuartos|larga|no aplica), neckline (redondo|pico|camisero|alto|barco|palabra de honor|no aplica), thickness (ligero|medio|grueso), warmth (bajo|medio|alto), details (máx. 8 palabras) y confidence (alta|media|baja). Omite lo que no se pueda reconocer con fiabilidad; no adivines la composición ni la marca.'
     ].join("\n");
 
     const response = await fetch("https://api.openai.com/v1/responses", {
@@ -53,7 +54,7 @@ export default async function handler(req, res) {
             { type: "input_image", image_url: image, detail: "low" }
           ]
         }],
-        max_output_tokens: 220
+        max_output_tokens: 350
       })
     });
 

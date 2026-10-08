@@ -18,7 +18,7 @@ await page.addInitScript(()=>{
    return respond({profileId:body.profileId,token:"local-test-token"});
   }
   if(path.endsWith("/api/session")){
-   const data=JSON.parse(sessionStorage.getItem("atelier-session")||"{}");
+   const data=JSON.parse(localStorage.getItem("atelier-session")||"{}");
    return respond({authenticated:true,profileId:data.profile});
   }
   if(path.endsWith("/api/analyze"))return respond({garment:{name:"Foto analizada",type:"top",color:"Azul"}});
@@ -34,6 +34,7 @@ await page.addInitScript(()=>{
 const png=Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/pVYAAAAASUVORK5CYII=","base64");
 async function addGarment(name){
  await page.locator("#addGarment").click();
+ await page.locator("#autoAnalyze").uncheck();
  await page.locator("#garmentName").fill(name);
  await page.locator("#garmentCategory").selectOption("Arriba");
  await page.locator("#garmentImage").setInputFiles({name:"prenda.png",mimeType:"image/png",buffer:png});
@@ -56,6 +57,7 @@ try{
  await page.locator("#aiLooks").click();
  await page.getByText("Combinación de prueba",{exact:true}).waitFor();
  await page.locator('[data-view="shopping"]').click();
+ await page.locator('[data-shop-tab="wish"]').click();
  await page.locator('[name="wishName"]').fill("Zapatos de prueba");
  await page.locator('#wishlistForm button[type="submit"]').click();
  await page.getByText("Zapatos de prueba").waitFor();
@@ -66,8 +68,8 @@ try{
  assert.ok(download.suggestedFilename().startsWith("atelier-noelia"));
  const backupPath=await download.path();
  assert.ok(backupPath,"Backup download path missing");
+ page.once("dialog",d=>d.accept()); // antes de elegir el archivo: el diálogo puede aparecer enseguida
  await page.locator("#importBackup").setInputFiles(backupPath);
- page.once("dialog",d=>d.accept());
  await page.getByText("Copia restaurada").waitFor();
  await page.locator("#logout").click();
  assert.equal(await page.getByText("Camiseta WebKit").count(),0,"Logout leaked wardrobe");
@@ -78,5 +80,5 @@ try{
  assert.equal(await page.getByText("Camiseta WebKit").count(),0,"Cross-profile leak");
  assert.equal(await page.getByText("No hay prendas con estos filtros").count(),1);
  assert.deepEqual(errors,[]);
- console.log("PASS WebKit v3: login, photo import, saved wardrobe, AI looks mock, wishlist, backup export/import, logout and profile isolation");
+ console.log("PASS WebKit: login, photo import, saved wardrobe, AI looks mock, wishlist, backup export/import, logout and profile isolation");
 }finally{await browser.close()}

@@ -1,40 +1,43 @@
 # Instrucciones para asistentes de código (ChatGPT/Codex, Claude y otros)
 
-Este repositorio lo modifican varios asistentes. Antes de cambiar nada:
+Este repositorio lo modifican varios asistentes. Para no pisarse:
 
-1. Trae lo último de `main` y lee el historial reciente (`git log -10`). Otro asistente puede haber cambiado los mismos archivos.
-2. Edita solo lo necesario. **No reescribas archivos enteros** de Atelier: se pierden cambios que no conoces.
-3. Antes de subir, ejecuta `node atelier/validate-v2.mjs`. Si falla, has borrado algo que debe estar.
-4. Si cambias cualquier archivo de `atelier/`, sube la versión de `CACHE` en `atelier/sw.js` (por ejemplo `atelier-v2-shell-v10` → `-v11`) para que los móviles reciban la actualización.
+1. **Trabaja en una rama y abre una PR.** No subas directamente a `main`: `main` es lo que está publicado. Noelia decide cuándo se fusiona.
+2. Antes de empezar, trae lo último de `main` y mira las PR abiertas. Si otra PR toca los mismos archivos, coordínalo antes de seguir.
+3. Edita solo lo necesario. No reescribas archivos enteros sin decirlo en la PR.
+4. Antes de abrir la PR, ejecuta `node atelier/validate.mjs`: comprueba la app **y la sintaxis del backend** (las pruebas de navegador simulan el backend y no detectan sus errores).
+5. Si cambias algo de `atelier/`, sube la versión de `CACHE` en `atelier/sw.js` (por ejemplo `atelier-shell-v11` → `-v12`) para que los móviles reciban la actualización.
 
 ## Atelier (`atelier/`): app web estática (PWA) para 3 perfiles familiares
 
-Orden de carga en `index.html` (importa, cada archivo amplía al anterior):
+Todo el código está en **un solo archivo, `atelier.js`**, y los estilos en `atelier.css`. No se añaden archivos que redefinan funciones de otros (`x=function…`): se edita la función original. El validador lo comprueba.
 
-| Archivo | Qué contiene |
+Secciones de `atelier.js`:
+
+| Sección | Qué contiene |
 | --- | --- |
-| `app-v2.js` | Base: login, IndexedDB, prendas, looks, llamada a la API (`api()`) |
-| `features-v3.js` | Armario avanzado, Estilista, Compras, Análisis, Calendario, copias de seguridad |
-| `features-v4.js` | Redefine funciones de los anteriores (`saveState`, `loadState`, `readImage`, `lookCard`, `renderShopping`, `renderStylist`, `api`, `promptWear`…) |
-| `styles-v2.css`, `styles-v4.css` | Estilos base y de v4 |
-
-`features-v4.js` incluye:
-- Fotos a 900 px guardadas por separado en IndexedDB (`img:<perfil>:<id>`); el estado principal no lleva fotos.
-- Almacenamiento persistente, avisos de instalación y de copia de seguridad.
-- Looks con collage de fotos.
-- «¿Lo compro?» y «Te recomiendo comprar»: reglas locales de color, categoría, estilo y temporada, **sin IA**.
-- «Combina una prenda»: looks alrededor de una prenda, **sin IA**.
-- Tiempo de hoy con Open-Meteo (gratis); por defecto la temperatura es **25 °C**.
-- Ahorro de tokens: el wrapper de `api()` envía IDs cortos (1, 2, 3…), máximo 24 prendas, sin campos vacíos; fotos a 512 px; caché de análisis; límites diarios por perfil (40 análisis, 20 sugerencias).
+| 1. Configuración y utilidades | Constantes, ficha de características (`META_FIELDS`), utilidades |
+| 2. Almacenamiento local | IndexedDB; fotos a 900 px guardadas aparte (`img:<perfil>:<id>`) |
+| 3. Sincronización | `/api/sync` y `/api/sync-image`; fusión de cambios entre dispositivos; borrados con `tomb(id)` |
+| 4. API y ahorro de tokens | Todas las llamadas a ChatGPT pasan por `api()`: IDs cortos, 24 prendas máx., fotos a 512 px, caché, límites diarios |
+| 5. Sesión y navegación | Login, sesión en `localStorage` (30 días), vistas |
+| 6. Armario, prendas y looks | Ficha de prenda con foto de cámara o galería, análisis automático, reglas locales de combinación |
+| 7. Estilista | Pestañas Hoy / Combinar prenda / Mis looks; tiempo con Open-Meteo; 25 °C por defecto |
+| 8. Compras | Pestañas ¿Lo compro? / Recomendaciones / Wishlist |
+| 9–11 | Análisis, calendario, ajustes, copias y arranque |
 
 Reglas de la app:
-- La sesión se guarda en `localStorage` (no en `sessionStorage`) y dura 30 días.
+- Prioridad: **gastar pocos tokens de OpenAI**. Lo que se pueda calcular en el móvil no va a la IA («¿Lo compro?», recomendaciones y «Combinar prenda» no la usan).
+- Al borrar una prenda, look, deseo o uso, llama a `tomb(id)`; si no, la sincronización lo resucita desde otro dispositivo.
+- Al modificar una prenda o look, actualiza `updatedAt`: la sincronización se queda con la versión más reciente.
 - La CSP de `index.html` solo permite conectar con el backend de Vercel y `api.open-meteo.com`.
-- Prioridad: **gastar pocos tokens de OpenAI**. Lo que se pueda calcular en el móvil no debe ir a la IA.
+
+Pruebas: `atelier/security-test.mjs` (Node), `atelier/smoke-test.mjs` (Chrome) y `atelier/webkit-v3-test.mjs` (Safari/WebKit).
 
 ## Backend (`atelier-api/`): funciones serverless en Vercel
 
 - `/api/login`, `/api/session`: contraseñas scrypt y sesiones firmadas de 30 días.
-- `/api/analyze`: analiza una foto con OpenAI (`detail: low`, salida máx. 220 tokens).
+- `/api/analyze`: analiza una foto con OpenAI (`detail: low`).
 - `/api/looks`: crea looks con los IDs recibidos; tiene en cuenta `liked` y `disliked`; máximo 24 prendas.
-- Mantén las instrucciones cortas: cada palabra del prompt se paga en cada llamada.
+- `/api/sync`, `/api/sync-image`: guardan el armario y las fotos en Upstash Redis. Sin las variables de Upstash devuelven 503 y la app sigue funcionando solo en local.
+- Mantén las instrucciones a la IA cortas: cada palabra del prompt se paga en cada llamada.

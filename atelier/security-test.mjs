@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import assert from "node:assert/strict";
-const src=fs.readFileSync(new URL("./app-v2.js",import.meta.url),"utf8");
+const src=fs.readFileSync(new URL("./atelier.js",import.meta.url),"utf8");
 const nodes=new Map();
 const node=id=>{if(!nodes.has(id))nodes.set(id,{classList:{add(){},remove(){},toggle(){}},value:"",textContent:"",disabled:false,replaceChildren(){},reset(){}});return nodes.get(id)};
 const document={addEventListener(){},querySelector:q=>node(q),querySelectorAll:()=>[]};
