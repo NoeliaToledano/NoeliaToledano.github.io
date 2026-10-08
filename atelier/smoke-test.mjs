@@ -50,6 +50,7 @@ try{
  await page.getByText("Look auditado").waitFor();
  await page.locator('[data-view="wardrobe"]').click();
  await page.locator("#addGarment").click();
+ await page.locator("#autoAnalyze").check();
 
  await page.locator("#garmentImage").setInputFiles({name:"foto.png",mimeType:"image/png",buffer:tinyPng});
  await page.getByText("Análisis completado").waitFor();
