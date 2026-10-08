@@ -639,15 +639,15 @@ async function restoreSession(){
   appState.profile=null;appState.token=null;return false;
  }
 }
-const NAV_PARENT={looks:"stylist",calendar:"insights"};
+const NAV_PARENT={looks:"stylist",calendar:"wardrobe",insights:"wardrobe"};
 function setView(v){
  appState.view=v;
- $$(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.view===v||b.dataset.view===NAV_PARENT[v]));
+ $(".nav-btn").forEach(b=>{const active=b.dataset.view===v||b.dataset.view===NAV_PARENT[v];b.classList.toggle("active",active);if(active)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
  render();window.scrollTo?.(0,0);
 }
 function render(){
  const root=$("#content");if(!appState.profile)return;
- const views={wardrobe:renderWardrobe,stylist:renderStylist,looks:renderLooks,shopping:renderShopping,insights:renderInsights,calendar:renderCalendar,settings:renderSettings};
+ const views={today:renderToday,wardrobe:renderWardrobe,stylist:renderStylist,trips:renderTrips,looks:renderLooks,shopping:renderShopping,insights:renderInsights,calendar:renderCalendar,settings:renderSettings};
  (views[appState.view]||renderWardrobe)(root);
 }
 
@@ -988,18 +988,16 @@ function outfitBases(gs){
 }
 
 /* ===================== 7. Estilista ===================== */
-const STYLIST_TABS=[["today","Hoy"],["around","Combinar prenda"],["looks","Mis looks",' id="openLooks"'],["trips","Maletas"]];
+const STYLIST_TABS=[["around","Combinar prenda"],["looks","Mis looks",' id="openLooks"']];
 function stylistShell(root,title,subtitle,body){
- root.innerHTML=heroHtml(title,subtitle)+tabsHtml("stylist",STYLIST_TABS,appState.view==="looks"?"looks":ui.stylistTab)+body;
+ root.innerHTML=heroHtml(title,subtitle)+((appState.view==="stylist"||appState.view==="looks")?tabsHtml("stylist",STYLIST_TABS,appState.view==="looks"?"looks":"around"):"")+body;
  $$("[data-stylist-tab]",root).forEach(b=>b.addEventListener("click",()=>{const t=b.dataset.stylistTab;if(t==="looks")return setView("looks");ui.stylistTab=t;setView("stylist")}));
 }
-function renderStylist(root){
- if(ui.stylistTab==="looks")ui.stylistTab="today";
- if(ui.stylistTab==="around")return renderAround(root);
- if(ui.stylistTab==="trips")return renderTrips(root);
+function renderStylist(root){ui.stylistTab="around";return renderAround(root)}
+function renderToday(root){
  const p=appState.data.preferences,u=aiUsage(),candidates=recommendGarments().filter(g=>forgottenStatus(g).forgotten||wornCount(g.id)===0).slice(0,5);
  const info=p.autoWeather&&p.weatherDay===dayISO()?"Tiempo de hoy en tu zona: media de "+p.temperature+" °C.":p.autoWeather?"Actualizando el tiempo de hoy…":"";
- stylistShell(root,"Tu estilista","Combina lo que ya tienes. La IA no inventará prendas.",
+ stylistShell(root,"Hoy","Descubre qué ponerte con la ropa que ya tienes.",
   '<div class="feature-card"><div class="section-head"><h2>¿Qué me pongo hoy?</h2><span class="muted">IA</span></div>'+
   '<div class="filter-grid"><label class="field"><span>Ocasión</span><select id="prefOccasion">'+optionList(Object.entries(occasions),p.occasion)+'</select></label>'+
   '<label class="field"><span>Temporada</span><select id="prefSeason">'+optionList(Object.entries(seasons),p.season)+'</select></label></div>'+
