@@ -223,9 +223,10 @@ function garmentMask(d,w,h,stats){
  // No se recorta si: casi nada o casi todo es prenda; la «prenda» toca mucho borde (llena la foto);
  // o el fondo no es liso (colores muy variados en el borde, como un cuarto desordenado)
  if(frac<.04||frac>.9||edge>.3||spread>22||borderBg<.85)return null;
- // Recorte poco fiable (probado con fotos reales de ropa): se ha quedado con poca prenda tras limpiar,
- // la silueta es muy irregular o el borde está «mordido», o la prenda es casi del color del fondo y los bordes son blandos
- if(kept<.8||solidity<.68||rough>7||(softFrac>.5&&nearFrac>.9))return null;
+ // Recorte dudoso (probado con fotos reales de ropa): se ha quedado con poca prenda tras limpiar,
+ // la silueta es muy irregular o el borde está «mordido», o la prenda es casi del color del fondo y los bordes son blandos.
+ // No se usa por defecto, pero se ofrece para que decida la usuaria.
+ const doubtful=kept<.8||solidity<.68||rough>7||(softFrac>.5&&nearFrac>.9);
  // Borde suave: se encoge un poco (quita el halo del fondo) y se difumina
  // Con fondo de color fuerte (una tela roja) se encoge 1 px más, para que no quede un hilo de ese color
  if(Math.hypot(ba,bb)>25)mask=morph(mask,1);
@@ -235,7 +236,7 @@ function garmentMask(d,w,h,stats){
   alpha[i]=sum===cnt?1:Math.max(0,(sum-3)/(cnt-3))}
  // Color del fondo (para corregir el tono de la luz si el fondo es neutro)
  const rgb=[0,1,2].map(c=>quantile(border.filter(i=>bg[i]).map(i=>d[i*4+c]),.5));
- return {alpha,w,h,x0,y0,x1,y1,neutral:Math.hypot(ba,bb)<20&&bl>35,rgb};
+ return {alpha,w,h,x0,y0,x1,y1,doubtful,neutral:Math.hypot(ba,bb)<20&&bl>35,rgb};
 }
 /* Retoque de la foto (sin IA): luz, contraste suave, color algo más vivo y nitidez.
    curveLUT: tablas por canal con ganancia de color (gain), punto negro (lo) y estiramiento (scale), más una curva en S suave. */
@@ -250,6 +251,7 @@ function sharpen(ctx,w,h,amount=.45){
   for(let c=0;c<3;c++){const k=j+c,blur=(s[k-4]+s[k+4]+s[k-row]+s[k+row]+4*s[k])/8;p[k]=s[k]+amount*(s[k]-blur)}}
  ctx.putImageData(id,0,0);
 }
+/* Fondo blanco → {image, doubtful} o null. doubtful: puede que falte algún trozo de la prenda */
 async function whiteBackground(src){
  try{
   const img=await loadImg(src),W=img.naturalWidth||img.width,H=img.naturalHeight||img.height;
@@ -282,7 +284,7 @@ async function whiteBackground(src){
   const sc=Math.min(WHITE_W*.86/cw,WHITE_H*.86/ch,2.2),dw=cw*sc,dh=ch*sc;
   o.drawImage(fc,(WHITE_W-dw)/2,(WHITE_H-dh)/2,dw,dh);
   sharpen(o,WHITE_W,WHITE_H);
-  return out.toDataURL("image/jpeg",.86);
+  return {image:out.toDataURL("image/jpeg",.86),doubtful:!!m.doubtful};
  }catch(e){console.warn("WHITE_BG",e);return null}
 }
 /* Solo retoque, cuando no se puede quitar el fondo: niveles de luz (sin pasarse), curva suave, color y nitidez */
@@ -324,10 +326,12 @@ async function isCatalogPhoto(src){
 }
 /* Mejora completa: si ya parece de catálogo se deja tal cual; si no, fondo blanco o solo retoque.
    → {image, white, asIs} o null */
-async function enhancePhoto(src){
+async function enhancePhoto(src){ // → {image, white, asIs?, doubtfulWhite?} o null
+
  if(await isCatalogPhoto(src))return {image:src,white:true,asIs:true};
- const white=await whiteBackground(src);if(white)return {image:white,white:true};
- const tuned=await retouchOnly(src);return tuned?{image:tuned,white:false}:null;
+ const white=await whiteBackground(src);if(white&&!white.doubtful)return {image:white.image,white:true};
+ // Recorte dudoso: por defecto solo retoque; el fondo blanco se ofrece aparte (doubtfulWhite) para que decida la usuaria
+ const tuned=await retouchOnly(src);return tuned?{image:tuned,white:false,doubtfulWhite:white?.image||null}:null;
 }
 async function loadState(){
  appState.data=emptyData();storedImages=new Map();let migrate=false;
@@ -722,16 +726,21 @@ let lastAnalysis=null,metaConfidence="";
 /* Foto de la ficha abierta: la original y, si se ha podido, la versión mejorada (con fondo blanco o solo retocada).
    mode decide cuál se guarda; changed indica que la foto es nueva o ha cambiado. */
 let sheetPhoto=null;
-const sheetImage=()=>sheetPhoto?(sheetPhoto.mode==="edited"&&sheetPhoto.edited?sheetPhoto.edited:sheetPhoto.original):null;
+const sheetImage=()=>sheetPhoto?(sheetPhoto.mode==="alt"&&sheetPhoto.altWhite?sheetPhoto.altWhite:sheetPhoto.mode==="edited"&&sheetPhoto.edited?sheetPhoto.edited:sheetPhoto.original):null;
 function renderPhotoControls(){
  const box=$("#photoControls");if(!box)return;
  const ph=sheetPhoto,preview=$("#garmentPreview"),img=sheetImage();
- preview.src=img||"";preview.classList.toggle("hidden",!img);preview.classList.toggle("on-white",!!img&&ph?.mode==="edited"&&!!ph.editedWhite);
+ preview.src=img||"";preview.classList.toggle("hidden",!img);preview.classList.toggle("on-white",!!img&&(ph?.mode==="alt"||ph?.mode==="edited"&&!!ph.editedWhite));
  if(!ph||!img){box.innerHTML="";return}
  if(ph.busy){box.innerHTML='<p class="helper" role="status">Mejorando la foto…</p>';return}
- const note=ph.asIs&&ph.mode==="edited"?'<p class="helper">La foto ya tenía aspecto de catálogo: se usa tal cual, sin retocar.</p>':ph.edited&&!ph.editedWhite&&ph.mode==="edited"?'<p class="helper">Hemos mejorado la fotografía, pero hemos conservado el fondo para no alterar la prenda. Para fondo blanco, extiéndela sobre una superficie lisa de otro color.</p>':'';
- box.innerHTML=(ph.asIs?'':ph.edited&&ph.original&&ph.original!==ph.edited
-  ?'<div class="seg-tabs photo-mode" role="group" aria-label="Foto que se guarda"><button type="button" class="seg-tab'+(ph.mode==="edited"?' active':'')+'" data-photo-mode="edited" aria-pressed="'+(ph.mode==="edited")+'">'+(ph.editedWhite?"Fondo blanco":"Mejorada")+'</button><button type="button" class="seg-tab'+(ph.mode==="original"?' active':'')+'" data-photo-mode="original" aria-pressed="'+(ph.mode==="original")+'">Original</button></div>'
+ const keep='<p class="helper">Hemos mejorado la fotografía, pero hemos conservado el fondo para no alterar la prenda.'+(ph.altWhite?' Si prefieres, prueba «Fondo blanco (revisar)».':' Para fondo blanco, extiéndela sobre una superficie lisa de otro color.')+'</p>';
+ const note=ph.asIs&&ph.mode==="edited"?'<p class="helper">La foto ya tenía aspecto de catálogo: se usa tal cual, sin retocar.</p>'
+  :ph.mode==="alt"?'<p class="helper">Revisa la prenda: puede que al quitar el fondo falte algún trozo. Si no te convence, elige «Mejorada» u «Original».</p>'
+  :ph.edited&&!ph.editedWhite&&ph.mode==="edited"?keep:'';
+ // Versiones que se pueden elegir: mejorada (o con fondo blanco), fondo blanco dudoso y original
+ const modes=[...(ph.edited?[["edited",ph.editedWhite?"Fondo blanco":"Mejorada"]]:[]),...(ph.altWhite?[["alt","Fondo blanco (revisar)"]]:[]),...(ph.original&&ph.original!==ph.edited?[["original","Original"]]:[])];
+ box.innerHTML=(ph.asIs?'':modes.length>1
+  ?'<div class="seg-tabs photo-mode" role="group" aria-label="Foto que se guarda">'+modes.map(([m,label])=>'<button type="button" class="seg-tab'+(ph.mode===m?' active':'')+'" data-photo-mode="'+m+'" aria-pressed="'+(ph.mode===m)+'">'+label+'</button>').join("")+'</div>'
   :ph.edited?'<p class="helper">Foto mejorada'+(ph.editedWhite?' con fondo blanco':'')+'.</p>'
   :'<button type="button" class="secondary wide" id="makeWhite">✨ Mejorar foto</button>'+(ph.failed?'<p class="helper">No he podido mejorar esta foto.</p>':''))+note;
  $$("[data-photo-mode]",box).forEach(b=>b.addEventListener("click",()=>{ph.mode=b.dataset.photoMode;ph.changed=true;renderPhotoControls()}));
@@ -742,7 +751,7 @@ async function makeSheetWhite(){
  ph.busy=true;ph.failed=false;renderPhotoControls();
  const res=await enhancePhoto(ph.original);
  if(sheetPhoto!==ph)return;
- ph.busy=false;if(res){ph.edited=res.image;ph.editedWhite=res.white;ph.asIs=!!res.asIs;ph.mode="edited";ph.changed=true}else ph.failed=true;
+ ph.busy=false;if(res){ph.edited=res.image;ph.editedWhite=res.white;ph.asIs=!!res.asIs;ph.altWhite=res.doubtfulWhite||null;ph.mode="edited";ph.changed=true}else ph.failed=true;
  renderPhotoControls();
 }
 /* Ficha de características dentro de la hoja de la prenda (se crea una vez) */
@@ -838,13 +847,13 @@ async function saveGarment(e){
  e.preventDefault();
  const id=$("#garmentId").value||uid(),old=myGarments().find(x=>x.id===id),ph=sheetPhoto;
  if(ph?.busy)return toast("Espera a que termine de mejorar la foto");
- const image=sheetImage()||old?.image||"",changed=!!ph?.changed&&image!==old?.image,edited=!!ph&&ph.mode==="edited"&&!!ph.edited;
+ const image=sheetImage()||old?.image||"",changed=!!ph?.changed&&image!==old?.image,edited=!!ph&&(ph.mode==="edited"&&!!ph.edited||ph.mode==="alt"&&!!ph.altWhite);
  if(!validImage(image)&&!old?.hasImage)return toast("Añade una fotografía de la prenda antes de guardarla");
  if($("#garmentCategory").value==="Interior")return toast("La ropa interior no está admitida");
  const kept=Object.fromEntries(Object.entries(old||{}).filter(([k])=>!META_KEYS.has(k)));
  const g={...kept,...readMetadata(),id,name:$("#garmentName").value.trim()||"Sin nombre",category:$("#garmentCategory").value,type:$("#garmentType").value,color:$("#garmentColor").value.trim(),notes:$("#garmentNotes").value.trim(),season:$("#garmentSeason").value,style:$("#garmentStyle").value,price:$("#garmentPrice").value===""?null:Number($("#garmentPrice").value),boughtAt:$("#garmentBought").value,favorite:$("#garmentFavorite").checked,createdAt:old?.createdAt||new Date().toISOString(),image,updatedAt:new Date().toISOString()};
  if(!validImage(image)&&old?.hasImage)g.hasImage=true;
- if(ph){g.bgWhite=edited&&!!ph.editedWhite;if(edited)g.photoFx=1;else delete g.photoFx;if(edited&&ph.asIs)g.catalogPhoto=1;else delete g.catalogPhoto}
+ if(ph){g.bgWhite=edited&&(ph.mode==="alt"||!!ph.editedWhite);if(edited)g.photoFx=1;else delete g.photoFx;if(edited&&ph.asIs)g.catalogPhoto=1;else delete g.catalogPhoto}
  g.imageAt=changed?new Date().toISOString():old?.imageAt;if(!g.imageAt)delete g.imageAt;
  const i=myGarments().findIndex(x=>x.id===id);if(i>=0)myGarments()[i]=g;else myGarments().unshift(g);
  if(!await saveState())return;
