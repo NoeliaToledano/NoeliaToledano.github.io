@@ -6,9 +6,9 @@ Este repositorio lo modifican varios asistentes. Para no pisarse:
 2. Antes de empezar, trae lo último de `main` y mira las PR abiertas. Si otra PR toca los mismos archivos, coordínalo antes de seguir.
 3. Edita solo lo necesario. No reescribas archivos enteros sin decirlo en la PR.
 4. Antes de abrir la PR, ejecuta `node atelier/validate.mjs`: comprueba la app **y la sintaxis del backend** (las pruebas de navegador simulan el backend y no detectan sus errores).
-5. Si cambias algo de `atelier/`, sube la versión de `CACHE` en `atelier/sw.js` (por ejemplo `atelier-shell-v15` → `-v16`) para que los móviles reciban la actualización.
+5. Si cambias algo de `atelier/`, sube la versión de `CACHE` en `atelier/sw.js` (por ejemplo `atelier-shell-v18` → `-v19`) para que los móviles reciban la actualización.
 
-## Atelier (`atelier/`): app web estática (PWA) para 3 perfiles familiares
+## Atelier (`atelier/`): app web estática (PWA) para los perfiles de la familia (Noelia, Ana María, Irene, Eva y Virginia)
 
 Todo el código está en **un solo archivo, `atelier.js`**, y los estilos en `atelier.css`. No se añaden archivos que redefinan funciones de otros (`x=function…`): se edita la función original. El validador lo comprueba.
 
@@ -36,7 +36,7 @@ Pruebas: `atelier/security-test.mjs` (Node), `atelier/smoke-test.mjs` (Chrome) y
 
 ## Backend (`atelier-api/`): funciones serverless en Vercel
 
-- `/api/login`, `/api/session`: contraseñas scrypt y sesiones firmadas de 30 días.
+- `/api/login`, `/api/session`: contraseñas scrypt y sesiones firmadas de 30 días. Para añadir un perfil, ver «Añadir un perfil nuevo» en `atelier-api/README.md`.
 - `/api/analyze`: analiza una foto con OpenAI (`detail: low`).
 - `/api/looks`: crea looks con los IDs recibidos; tiene en cuenta `liked` y `disliked`; máximo 24 prendas.
 - `/api/sync`, `/api/sync-image`: guardan el armario y las fotos en Upstash Redis. Sin las variables de Upstash devuelven 503 y la app sigue funcionando solo en local.
