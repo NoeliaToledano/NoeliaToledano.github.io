@@ -263,17 +263,26 @@ async function retouchOnly(src){
  }catch(e){console.warn("RETOUCH",e);return null}
 }
 /* Mejora completa: fondo blanco si se puede; si no, solo retoque. → {image, white} o null */
-/* ¿La foto ya parece de catálogo? Borde casi todo blanco puro y algo de prenda dentro (fotos de tienda).
-   Entonces se usa tal cual, sin retocar, para no cambiar sus colores. */
+/* ¿La foto ya parece de catálogo? (fotos de tienda) Se usa tal cual, sin retocar, para no cambiar sus colores.
+   Pide: borde casi todo blanco puro, fondo blanco conectado con el borde que rodea a la prenda, algo de prenda,
+   y que lo de dentro no sea un rectángulo lleno (una captura con márgenes blancos y otra foto dentro). */
 async function isCatalogPhoto(src){
  try{
   const img=await loadImg(src),W=img.naturalWidth||img.width,H=img.naturalHeight||img.height,k=Math.min(1,160/Math.max(W,H));
-  const w=Math.max(8,Math.round(W*k)),h=Math.max(8,Math.round(H*k)),c=document.createElement("canvas");c.width=w;c.height=h;
+  const w=Math.max(8,Math.round(W*k)),h=Math.max(8,Math.round(H*k)),n=w*h,c=document.createElement("canvas");c.width=w;c.height=h;
   const cx=c.getContext("2d",{willReadFrequently:true});cx.drawImage(img,0,0,w,h);const d=cx.getImageData(0,0,w,h).data;
-  const b=Math.max(2,Math.round(Math.min(w,h)*.04));let edge=0,edgeWhite=0,content=0;
-  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const j=(y*w+x)*4,mn=Math.min(d[j],d[j+1],d[j+2]),mx=Math.max(d[j],d[j+1],d[j+2]),white=mn>=236&&mx-mn<=14;
-   if(x<b||y<b||x>=w-b||y>=h-b){edge++;if(white)edgeWhite++}else if(!white)content++}
-  return edgeWhite/edge>=.9&&content/((w-2*b)*(h-2*b))>=.05;
+  const white=new Uint8Array(n);for(let i=0;i<n;i++){const j=i*4,mn=Math.min(d[j],d[j+1],d[j+2]),mx=Math.max(d[j],d[j+1],d[j+2]);white[i]=mn>=236&&mx-mn<=14?1:0}
+  const b=Math.max(2,Math.round(Math.min(w,h)*.04));let edge=0,edgeWhite=0;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(x<b||y<b||x>=w-b||y>=h-b){edge++;edgeWhite+=white[y*w+x]}
+  if(edgeWhite/edge<.9)return false;
+  // Fondo = blanco conectado con el borde; el resto es la prenda (aunque tenga partes blancas dentro)
+  const bg=new Uint8Array(n),st=[];for(let x=0;x<w;x++)st.push(x,(h-1)*w+x);for(let y=0;y<h;y++)st.push(y*w,y*w+w-1);
+  while(st.length){const i=st.pop();if(bg[i]||!white[i])continue;bg[i]=1;const x=i%w;if(x>0)st.push(i-1);if(x<w-1)st.push(i+1);if(i>=w)st.push(i-w);if(i<n-w)st.push(i+w)}
+  let fg=0,x0=w,y0=h,x1=-1,y1=-1;for(let i=0;i<n;i++)if(!bg[i]){fg++;const x=i%w,y=(i-x)/w;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}
+  if(fg/n<.05||fg/n>.8)return false;
+  // Esquinas del recuadro de la prenda: si casi todas son «prenda», es un bloque rectangular (otra foto dentro)
+  const corner=(cx0,cy0)=>{let f=0;for(let dy=0;dy<3;dy++)for(let dx=0;dx<3;dx++){const x=Math.min(x1,Math.max(x0,cx0+(cx0===x0?dx:-dx))),y=Math.min(y1,Math.max(y0,cy0+(cy0===y0?dy:-dy)));f+=bg[y*w+x]?0:1}return f>=5};
+  return [corner(x0,y0),corner(x1,y0),corner(x0,y1),corner(x1,y1)].filter(Boolean).length<3;
  }catch{return false}
 }
 /* Mejora completa: si ya parece de catálogo se deja tal cual; si no, fondo blanco o solo retoque.
