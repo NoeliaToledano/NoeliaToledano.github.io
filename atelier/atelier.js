@@ -765,9 +765,21 @@ function renderPhotoControls(){
  box.innerHTML=(ph.asIs?'':modes.length>1
   ?'<div class="seg-tabs photo-mode" role="group" aria-label="Foto que se guarda">'+modes.map(([m,label])=>'<button type="button" class="seg-tab'+(ph.mode===m?' active':'')+'" data-photo-mode="'+m+'" aria-pressed="'+(ph.mode===m)+'">'+label+'</button>').join("")+'</div>'
   :ph.edited?'<p class="helper">Foto mejorada'+(ph.editedWhite?' con fondo blanco':'')+'.</p>'
-  :'<button type="button" class="secondary wide" id="makeWhite">✨ Mejorar foto</button>'+(ph.failed?'<p class="helper">No he podido mejorar esta foto.</p>':''))+note;
+  :'<button type="button" class="secondary wide" id="makeWhite">✨ Mejorar foto</button>'+(ph.failed?'<p class="helper">No he podido mejorar esta foto.</p>':''))+
+  (ph.original&&!ph.asIs&&!ph.editedWhite&&!ph.altWhite?'<button type="button" class="secondary wide" id="tryWhitePreview">Ver intento de fondo blanco</button>':'')+note;
  $$("[data-photo-mode]",box).forEach(b=>b.addEventListener("click",()=>{ph.mode=b.dataset.photoMode;ph.changed=true;renderPhotoControls()}));
  $("#makeWhite",box)?.addEventListener("click",()=>makeSheetWhite());
+ $("#tryWhitePreview",box)?.addEventListener("click",async()=>{
+  if(ph.busy||!ph.original)return;
+  ph.busy=true;renderPhotoControls();
+  try{
+   const candidate=await whiteBackground(ph.original);
+   if(sheetPhoto!==ph)return;
+   if(candidate?.image){ph.altWhite=candidate.image;ph.mode="alt";ph.changed=true}
+   else toast("No se pudo separar la prenda del fondo en esta foto");
+  }catch(e){console.warn("WHITE_PREVIEW",e);toast("No se pudo generar la vista previa del fondo blanco")}
+  finally{ph.busy=false;if(sheetPhoto===ph)renderPhotoControls()}
+ });
 }
 async function makeSheetWhite(){
  const ph=sheetPhoto;if(!ph?.original||ph.busy)return;
