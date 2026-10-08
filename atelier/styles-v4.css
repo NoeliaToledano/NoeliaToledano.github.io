@@ -1,0 +1,30 @@
+/* Atelier v4: avisos de datos, looks con fotos y comprobador de compras */
+.notice-card{display:grid;gap:10px;background:#fbf6ea;border:1px solid #eadcb8;border-radius:var(--radius);padding:14px 16px;margin:16px 0 4px;font-size:13px;line-height:1.5}
+.notice-card p{margin:0 0 4px}.notice-actions{display:flex;flex-wrap:wrap;gap:6px}
+
+.look-collage{display:grid;gap:2px;aspect-ratio:1/1;background:var(--line)}
+.look-collage.n1{grid-template-columns:1fr}
+.look-collage.n2{grid-template-columns:1fr 1fr}
+.look-collage.n3{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
+.look-collage.n3 .look-thumb:first-child{grid-row:span 2}
+.look-collage.n4{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
+.look-thumb{position:relative;background:#f4f1ec center/cover no-repeat;min-height:0}
+.look-thumb span{position:absolute;inset:0;display:grid;place-items:center;background:rgba(23,22,20,.45);color:#fff;font-weight:700;font-size:18px}
+
+.buy-head{display:grid;grid-template-columns:1fr;gap:10px;margin-top:6px}
+.buy-img{width:140px;aspect-ratio:4/5;object-fit:cover;border-radius:14px;border:1px solid var(--line);background:#f4f1ec}
+.buy-fields .field{margin:4px 0 10px}
+.verdict{border-radius:16px;padding:14px 16px;margin:14px 0;border:1px solid var(--line)}
+.verdict strong{display:block;font-family:Georgia,serif;font-size:24px;margin-bottom:4px}
+.verdict p{margin:2px 0;font-size:14px}
+.verdict.good{background:#eaf2e6;border-color:#b8d0b2}
+.verdict.mid{background:#fbf6ea;border-color:#eadcb8}
+.verdict.bad{background:#fbecea;border-color:#e6c2bd}
+.mini-title{font-size:14px;margin:16px 0 8px}
+.thumb-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;align-items:center}
+.thumb{flex:none;width:72px;height:90px;border:1px solid var(--line);border-radius:12px;background:#f4f1ec center/cover no-repeat;position:relative;padding:0;overflow:hidden}
+.thumb span{position:absolute;left:0;right:0;bottom:0;background:rgba(255,255,255,.88);font-size:10px;padding:3px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
+.thumb-more{font-size:12px;padding:0 6px}
+.buy-looks{margin:12px 0}
+button:disabled{opacity:.5;cursor:default}
+@media(min-width:560px){.buy-head{grid-template-columns:160px minmax(0,1fr);gap:16px}.buy-img{width:100%}}
