@@ -1,0 +1,52 @@
+import { chromium, devices } from "playwright";
+import assert from "node:assert/strict";
+const browser=await chromium.launch({headless:true});
+const context=await browser.newContext({...devices["iPhone 13"],browserName:undefined});
+const page=await context.newPage();
+const errors=[];
+page.on("pageerror",e=>errors.push(e.message));
+await page.route("https://atelier-ai-backend-pi.vercel.app/**",async route=>{
+ const req=route.request(),url=req.url(),origin="http://127.0.0.1:8000";
+ const headers={"access-control-allow-origin":origin,"access-control-allow-headers":"Content-Type, Authorization","access-control-allow-methods":"GET, POST, OPTIONS","content-type":"application/json"};
+ if(req.method()==="OPTIONS")return route.fulfill({status:204,headers,body:""});
+ if(url.endsWith("/api/login")){const body=JSON.parse(req.postData()||"{}");return route.fulfill({status:200,headers,body:JSON.stringify({profileId:body.profileId,token:"test-token"})})}
+ if(url.endsWith("/api/session"))return route.fulfill({status:200,headers,body:JSON.stringify({authenticated:true,profileId:currentProfile})});
+ return route.fulfill({status:500,headers,body:JSON.stringify({error:"Mock AI unavailable"})});
+});
+let currentProfile="noelia";
+try{
+ await page.goto("http://127.0.0.1:8000/atelier/",{waitUntil:"networkidle"});
+ await page.getByRole("button",{name:"Noelia"}).click();
+ await page.locator("#password").fill("test");
+ await page.locator("#loginBtn").click();
+ await page.getByRole("heading",{name:"Mi armario"}).waitFor();
+ assert.equal(await page.locator("#app").isVisible(),true);
+ assert.equal(await page.locator("#auth").isVisible(),false);
+ const bg=await page.locator("body").evaluate(el=>getComputedStyle(el).backgroundColor);
+ assert.notEqual(bg,"rgba(0, 0, 0, 0)","CSS not applied");
+ await page.locator("#addGarment").click();
+ await page.locator("#garmentName").fill("Prenda auditada");
+ await page.locator("#garmentCategory").selectOption("Arriba");
+ await page.locator("#garmentForm button[type=submit]").click();
+ await page.getByText("Prenda auditada").waitFor();
+ await page.reload({waitUntil:"networkidle"});
+ await page.getByText("Prenda auditada").waitFor();
+ await page.locator('[data-view="looks"]').click();
+ await page.locator("#newLook").click();
+ await page.locator("#lookName").fill("Look auditado");
+ await page.locator('#lookGarments input[type="checkbox"]').first().check();
+ await page.locator("#lookForm button[type=submit]").click();
+ await page.getByText("Look auditado").waitFor();
+ await page.locator('[data-view="settings"]').click();
+ await page.locator("#logout").click();
+ currentProfile="irene";
+ await page.getByRole("button",{name:"Irene"}).click();
+ await page.locator("#password").fill("test");
+ await page.locator("#loginBtn").click();
+ await page.getByRole("heading",{name:"Mi armario"}).waitFor();
+ assert.equal(await page.getByText("Prenda auditada").count(),0,"Profile isolation broken");
+ assert.equal(await page.getByText("Tu armario está vacío").count(),1);
+ assert.deepEqual(errors,[]);
+ await page.screenshot({path:"atelier-smoke.png",fullPage:true});
+ console.log("PASS: iPhone viewport, styles, login, wardrobe CRUD, IndexedDB persistence, looks and profile isolation");
+}finally{await browser.close()}
