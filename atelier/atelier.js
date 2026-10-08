@@ -15,7 +15,7 @@ const DB_NAME="atelier-armario-db",DB_VERSION=2,STORE="kv";
 const IMAGE_MAX=900,IMAGE_QUALITY=.8,AI_IMAGE_MAX=512;
 const AI_LIMITS={analyze:40,looks:20},DEFAULT_TEMPERATURE=25;
 const CATEGORIES=["Arriba","Abajo","Vestidos","Capas","Zapatos","Bolsos","Accesorios"];
-const occasions={daily:"Día a día",work:"Trabajo",dinner:"Cena",event:"Evento",travel:"Viaje"};
+const occasions={daily:"Día a día",work:"Trabajo",dinner:"Cena",event:"Evento",travel:"Viaje",sport:"Deporte"};
 const seasons={all:"Todo el año",warm:"Primavera / verano",cold:"Otoño / invierno"};
 const styleNames={casual:"casual",smart:"arreglado",party:"fiesta",sport:"deporte"};
 const ANALYSIS_FIELDS={pattern:["plain","stripes","checks","floral","animal","dots","graphic","other"],fabric:["unknown","cotton","denim","linen","wool","knit","leather","satin","silk","synthetic","mixed"],length:["na","cropped","regular","midi","long"],formality:["casual","smartcasual","formal","party","sport"]};
