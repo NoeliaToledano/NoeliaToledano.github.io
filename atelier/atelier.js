@@ -398,10 +398,16 @@ function showAuth(){
  $("#content").replaceChildren();$("#profileName").textContent="";$("#garmentForm").reset();$("#lookForm").reset();$("#lookGarments").replaceChildren();
  $("#garmentSheet").classList.add("hidden");$("#lookSheet").classList.add("hidden");$$("#wearSheet").forEach(x=>x.remove());
  try{localStorage.removeItem("atelier-session")}catch{}
- $("#auth").classList.remove("hidden");$("#app").classList.add("hidden");$("#passwordStep").classList.add("hidden");$("#password").value="";$("#authError").textContent="";
- $$(".profile-option").forEach(x=>x.classList.remove("selected"));
+ $("#auth").classList.remove("hidden");$("#app").classList.add("hidden");$("#passwordStep").classList.add("hidden");$("#password").value="";setPasswordVisible(false);$("#authError").textContent="";
+ $$(".profile-option").forEach(x=>{x.classList.remove("selected");x.setAttribute("aria-pressed","false")});
 }
-function selectProfile(id){appState.profile=PROFILES.find(p=>p.id===id);$$(".profile-option").forEach(x=>x.classList.toggle("selected",x.dataset.profile===id));$("#passwordStep").classList.remove("hidden");$("#password").focus()}
+/* Botón «Mostrar/Ocultar» de la contraseña; al cerrar sesión vuelve a ocultarse */
+function setPasswordVisible(visible){
+ const input=$("#password"),btn=$("#togglePassword");if(!input)return;
+ input.type=visible?"text":"password";
+ if(btn){btn.textContent=visible?"Ocultar":"Mostrar";btn.setAttribute("aria-pressed",String(visible));btn.setAttribute("aria-label",visible?"Ocultar contraseña":"Mostrar contraseña")}
+}
+function selectProfile(id){appState.profile=PROFILES.find(p=>p.id===id);$$(".profile-option").forEach(x=>{const on=x.dataset.profile===id;x.classList.toggle("selected",on);x.setAttribute("aria-pressed",String(on))});setPasswordVisible(false);$("#passwordStep").classList.remove("hidden");$("#password").focus()}
 async function login(){
  if(!appState.profile||$("#loginBtn").disabled)return;
  const profileId=appState.profile.id,btn=$("#loginBtn"),err=$("#authError");err.textContent="";btn.disabled=true;$$(".profile-option").forEach(b=>b.disabled=true);btn.textContent="Entrando…";
@@ -1203,7 +1209,7 @@ function renderSettings(root){
 function bind(){
  $$(".profile-option").forEach(b=>b.addEventListener("click",()=>selectProfile(b.dataset.profile)));
  $("#loginBtn").addEventListener("click",login);
- $("#togglePassword").addEventListener("click",()=>{let p=$("#password");p.type=p.type==="password"?"text":"password";$("#togglePassword").textContent=p.type==="password"?"Mostrar":"Ocultar"});
+ $("#togglePassword").addEventListener("click",()=>setPasswordVisible($("#password").type==="password"));
  $("#password").addEventListener("keydown",e=>{if(e.key==="Enter")login()});
  $$(".nav-btn").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.view)));
  $("#garmentForm").addEventListener("submit",saveGarment);$("#closeGarment").addEventListener("click",closeGarment);$("#deleteGarment").addEventListener("click",deleteGarment);$("#analyzeBtn").addEventListener("click",analyzeGarment);
