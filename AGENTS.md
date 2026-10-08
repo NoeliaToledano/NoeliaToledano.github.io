@@ -6,7 +6,7 @@ Este repositorio lo modifican varios asistentes. Para no pisarse:
 2. Antes de empezar, trae lo último de `main` y mira las PR abiertas. Si otra PR toca los mismos archivos, coordínalo antes de seguir.
 3. Edita solo lo necesario. No reescribas archivos enteros sin decirlo en la PR.
 4. Antes de abrir la PR, ejecuta `node atelier/validate.mjs`: comprueba la app **y la sintaxis del backend** (las pruebas de navegador simulan el backend y no detectan sus errores).
-5. Si cambias algo de `atelier/`, sube la versión de `CACHE` en `atelier/sw.js` (por ejemplo `atelier-shell-v11` → `-v12`) para que los móviles reciban la actualización.
+5. Si cambias algo de `atelier/`, sube la versión de `CACHE` en `atelier/sw.js` (por ejemplo `atelier-shell-v13` → `-v14`) para que los móviles reciban la actualización.
 
 ## Atelier (`atelier/`): app web estática (PWA) para 3 perfiles familiares
 
