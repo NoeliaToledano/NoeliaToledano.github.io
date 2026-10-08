@@ -39,7 +39,7 @@ async function addGarment(name){
  await page.locator("#garmentImage").setInputFiles({name:"prenda.png",mimeType:"image/png",buffer:png});
  await page.locator("#garmentPreview").waitFor({state:"visible"});
  await page.getByText("Análisis completado").waitFor();
- await page.getByText("Foto de catálogo lista").waitFor();
+ await page.locator('[data-photo-mode="generated"]').waitFor();
  await page.locator("#garmentName").fill(name);
  await page.locator('#garmentForm button[type="submit"]').click();
  await page.getByText(name,{exact:true}).first().waitFor();
