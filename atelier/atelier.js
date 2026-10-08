@@ -15,7 +15,7 @@ const DB_NAME="atelier-armario-db",DB_VERSION=2,STORE="kv";
 const IMAGE_MAX=900,IMAGE_QUALITY=.8,AI_IMAGE_MAX=512;
 const AI_LIMITS={analyze:40,looks:20},DEFAULT_TEMPERATURE=25;
 const CATEGORIES=["Arriba","Abajo","Vestidos","Capas","Zapatos","Bolsos","Accesorios","Interior","Baño"];
-const occasions={daily:"Día a día",work:"Trabajo",sport:"Deporte",beach:"Playa y piscina",home:"Estar en casa",sleep:"Dormir",event:"Eventos y celebraciones",party:"Fiesta y salir",formal:"Formal"};
+const occasions={daily:"Día a día",work:"Trabajo",sport:"Deporte",beach:"Playa y piscina",home:"Estar en casa",event:"Eventos y celebraciones",party:"Fiesta y salir",formal:"Formal"};
 const seasons={all:"Todo el año",warm:"Primavera / verano",cold:"Otoño / invierno"};
 const styleNames={casual:"casual",smart:"arreglado",party:"fiesta",sport:"deporte"};
 const ANALYSIS_FIELDS={pattern:["plain","stripes","checks","floral","animal","dots","graphic","other"],fabric:["unknown","cotton","denim","linen","wool","knit","leather","satin","silk","synthetic","mixed"],length:["na","cropped","regular","midi","long"],formality:["casual","smartcasual","formal","party","sport"]};
@@ -701,7 +701,7 @@ function updateOccasionSummary(){
 }
 /* Reglas estables de uso: complementan a la IA, sin impedir cambios manuales. */
 const OCCASION_BY_TYPE={
- "Pijama":["home","sleep"],"Camisón":["home","sleep"],"Bata":["home","sleep"],
+ "Pijama":["home"],"Camisón":["home"],"Bata":["home"],
  "Zapatillas de casa":["home"],"Sujetador deportivo":["sport"],
  "Mallas deportivas":["sport"],"Pantalón deportivo":["sport"],"Camiseta técnica":["sport"],
  "Bañador":["beach"],"Bikini":["beach"],
@@ -710,7 +710,7 @@ const OCCASION_BY_TYPE={
  "Pareos":["beach"],"Salida de baño":["beach"]
 };
 const OCCASION_BY_CATEGORY={Baño:["beach"],Interior:["home"]};
-const OCCASION_ALIASES={gym:"sport",running:"sport",yoga:"sport",tennis:"sport",hiking:"sport",pool:"beach",spa:"beach",dinner:"party",night:"party",date:"party",wedding:"event",ceremony:"event",school:"daily",cold:"daily",rain:"daily"};
+const OCCASION_ALIASES={sleep:"home",gym:"sport",running:"sport",yoga:"sport",tennis:"sport",hiking:"sport",pool:"beach",spa:"beach",dinner:"party",night:"party",date:"party",wedding:"event",ceremony:"event",school:"daily",cold:"daily",rain:"daily"};
 function normalizedOccasions(values){
  return [...new Set((Array.isArray(values)?values:[]).map(x=>OCCASION_ALIASES[x]||x).filter(x=>occasions[x]))];
 }
