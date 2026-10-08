@@ -78,6 +78,7 @@ try{
  await page.locator("#garmentForm button[type=submit]").click();
  await page.getByText("Camisa reconocida por IA").first().waitFor();
  await page.reload({waitUntil:"networkidle"});
+ await page.locator('[data-view="wardrobe"]').click();
  await page.locator('[data-garment]').filter({hasText:"Camisa reconocida por IA"}).first().click();
  assert.equal(await page.locator("#meta-fit").inputValue(),"regular");
  assert.equal(await page.locator("#meta-brand").inputValue(),"Marca introducida a mano");
