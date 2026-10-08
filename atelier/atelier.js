@@ -1257,7 +1257,7 @@ async function refreshWeatherIfNeeded(){
  const p=appState.data.preferences;
  if(weatherInFlight||!p.autoWeather||!p.weatherPlace||p.weatherDay===dayISO())return;
  weatherInFlight=true;
- try{await fetchTodayTemperature(false);if(appState.view==="stylist")render()}catch(e){console.warn("WEATHER",e)}finally{weatherInFlight=false}
+ try{await fetchTodayTemperature(false);if(appState.view==="today"||appState.view==="stylist")render()}catch(e){console.warn("WEATHER",e)}finally{weatherInFlight=false}
 }
 
 /* Mi semana: un look planificado por día (sin IA).
