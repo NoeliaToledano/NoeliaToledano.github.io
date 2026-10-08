@@ -491,7 +491,7 @@ function setPasswordVisible(visible){
  input.type=visible?"text":"password";
  if(btn){btn.textContent=visible?"Ocultar":"Mostrar";btn.setAttribute("aria-pressed",String(visible));btn.setAttribute("aria-label",visible?"Ocultar contraseña":"Mostrar contraseña")}
 }
-function selectProfile(id){appState.profile=PROFILES.find(p=>p.id===id);$$(".profile-option").forEach(x=>{const on=x.dataset.profile===id;x.classList.toggle("selected",on);x.setAttribute("aria-pressed",String(on))});setPasswordVisible(false);$("#passwordStep").classList.remove("hidden");$("#password").focus()}
+function selectProfile(id){appState.profile=PROFILES.find(p=>p.id===id);$$(".profile-option").forEach(x=>{const on=x.dataset.profile===id;x.classList.toggle("selected",on);x.setAttribute("aria-pressed",String(on))});setPasswordVisible(false);$("#password").value="";$("#authError").textContent="";$("#selectedProfileName").textContent=appState.profile.name;$("#selectedProfileAvatar").textContent=appState.profile.name.charAt(0);$("#passwordStep").classList.remove("hidden");$("#password").focus()}
 async function login(){
  if(!appState.profile||$("#loginBtn").disabled)return;
  const profileId=appState.profile.id,btn=$("#loginBtn"),err=$("#authError");err.textContent="";btn.disabled=true;$$(".profile-option").forEach(b=>b.disabled=true);btn.textContent="Entrando…";
@@ -1363,6 +1363,7 @@ function renderSettings(root){
 /* ===================== 11. Arranque ===================== */
 function bind(){
  $$(".profile-option").forEach(b=>b.addEventListener("click",()=>selectProfile(b.dataset.profile)));
+ $("#backToProfiles").addEventListener("click",()=>{appState.profile=null;$("#passwordStep").classList.add("hidden");$("#password").value="";$("#authError").textContent="";setPasswordVisible(false);$(".profile-option").forEach(x=>{x.classList.remove("selected");x.setAttribute("aria-pressed","false")});$(".profile-option")?.focus()});
  $("#loginBtn").addEventListener("click",login);
  $("#togglePassword").addEventListener("click",()=>setPasswordVisible($("#password").type==="password"));
  $("#password").addEventListener("keydown",e=>{if(e.key==="Enter")login()});
