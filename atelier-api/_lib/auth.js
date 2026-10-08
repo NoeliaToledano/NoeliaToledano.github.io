@@ -3,7 +3,9 @@ import crypto from "node:crypto";
 const PROFILE_HASH_ENV = {
   noelia: "ATELIER_PASSWORD_NOELIA",
   "ana-maria": "ATELIER_PASSWORD_ANA_MARIA",
-  irene: "ATELIER_PASSWORD_IRENE"
+  irene: "ATELIER_PASSWORD_IRENE",
+  eva: "ATELIER_PASSWORD_EVA",
+  virginia: "ATELIER_PASSWORD_VIRGINIA"
 };
 
 function b64url(input) {
