@@ -49,7 +49,7 @@ try{
  await page.getByText("Prenda auditada").waitFor();
  await page.reload({waitUntil:"networkidle"});
  await page.getByText("Prenda auditada").waitFor();
- await page.locator('[data-view="stylist"]').click(); console.log("NAV_DIAGNOSTIC",await page.locator("#content").innerText(),await page.locator(".seg-tabs").count(),errors,await page.evaluate(()=>({view:appState.view,tab:ui.stylistTab}))); await page.locator('#openLooks').click();
+ await page.locator('[data-view="stylist"]').click(); await page.locator("#openLooks").click();
  await page.locator("#newLook").click();
  await page.locator("#lookName").fill("Look auditado");
  await page.locator('#lookGarments input[type="checkbox"]').first().check();
@@ -76,7 +76,7 @@ try{
  assert.equal(await page.locator("#meta-fit").inputValue(),"regular");
  assert.equal(await page.locator("#meta-brand").inputValue(),"Marca introducida a mano");
  await page.locator("#closeGarment").click();
- await page.locator('[data-view="stylist"]').click(); console.log("STYLIST_DEBUG",await page.locator("#content").innerText(),await page.locator("#content").locator("[role=tab]").count()); await page.locator("#openLooks").click();
+ await page.locator('[data-view="stylist"]').click(); await page.locator("#openLooks").click();
  await page.locator("#aiLooks").click();
  await page.getByText("Look de prueba IA").waitFor();
  await page.locator('[data-view="wardrobe"]').click();
@@ -100,7 +100,7 @@ try{
  await page.locator("[data-trip]").filter({hasText:"Viaje de prueba"}).click();
  assert.equal(await page.locator("[data-extra]:checked").count(),1,"La casilla de la maleta debe conservarse");
  // Mi semana: planificar hoy con un look guardado; planificado no es usado hasta «Me lo he puesto»
- await page.locator('[data-stylist-tab="week"]').click();
+ await page.locator('[data-view="stylist"]').click(); await page.locator('[data-stylist-tab="week"]').click();
  const usesBefore=await page.evaluate(()=>logs().length);
  await page.locator("section.is-today [data-plan-pick]").click();
  await page.locator("#planSheet [data-plan-saved]").first().click();
