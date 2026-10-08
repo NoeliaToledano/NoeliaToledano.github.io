@@ -69,7 +69,7 @@ try{
  await page.locator("#goCalendar").click();
  await page.getByRole("heading",{name:"Calendario de looks"}).waitFor();
  await page.locator('[data-view="stylist"]').click();
- await page.locator("#prefDiversity").fill("80");
+ await page.locator("#prefDiversity").evaluate(el=>{el.value="80";el.dispatchEvent(new Event("input",{bubbles:true}))});
  await page.locator("#openLooks").click();
  const existingLooks=await page.locator("[data-look]").count();
  forceServerError=true;
@@ -77,7 +77,7 @@ try{
  await page.getByText("No se pudieron generar looks").waitFor();
  assert.equal(await page.locator("[data-look]").count(),existingLooks,"Server failures must not create looks");
  await page.locator('[data-view="stylist"]').click();
- await page.locator("#prefDiversity").fill("90");
+ await page.locator("#prefDiversity").evaluate(el=>{el.value="90";el.dispatchEvent(new Event("input",{bubbles:true}))});
  await page.locator("#openLooks").click();
  forceUnauthorized=true;
  await page.locator("#aiLooks").click();
