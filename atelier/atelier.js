@@ -14,7 +14,7 @@ const PROFILES=[{id:"noelia",name:"Noelia"},{id:"ana-maria",name:"Ana María"},{
 const DB_NAME="atelier-armario-db",DB_VERSION=2,STORE="kv";
 const IMAGE_MAX=900,IMAGE_QUALITY=.8,AI_IMAGE_MAX=512;
 const AI_LIMITS={analyze:40,looks:20},DEFAULT_TEMPERATURE=25;
-const CATEGORIES=["Arriba","Abajo","Vestidos","Capas","Zapatos","Bolsos","Accesorios"];
+const CATEGORIES=["Arriba","Abajo","Vestidos","Capas","Zapatos","Bolsos","Accesorios","Interior","Baño"];
 const occasions={daily:"Día a día",work:"Trabajo",dinner:"Cena",event:"Evento",travel:"Viaje",sport:"Deporte"};
 const seasons={all:"Todo el año",warm:"Primavera / verano",cold:"Otoño / invierno"};
 const styleNames={casual:"casual",smart:"arreglado",party:"fiesta",sport:"deporte"};
@@ -693,13 +693,15 @@ function readMetadata(){
 const META_KEYS=new Set([...META_FIELDS.map(d=>d[0]),"occasions","confidence"]);
 function setAnalyzeStatus(t){const s=$("#autoAnalyzeStatus");if(s)s.textContent=t}
 const GARMENT_TYPES={
- Arriba:["Camiseta","Camisa","Blusa","Top","Jersey","Sudadera","Polo","Body","Otro"],
- Abajo:["Vaqueros","Pantalón","Leggings","Shorts","Falda","Pantalón deportivo","Otro"],
+ Arriba:["Camiseta","Camisa","Blusa","Top","Jersey","Sudadera","Polo","Body","Camiseta técnica","Otro"],
+ Abajo:["Vaqueros","Pantalón","Leggings","Mallas deportivas","Shorts","Falda","Pantalón deportivo","Otro"],
  Vestidos:["Vestido corto","Vestido midi","Vestido largo","Mono corto","Mono largo","Enterizo","Peto","Otro"],
  Capas:["Blazer","Chaqueta","Cazadora","Abrigo","Gabardina","Chaleco","Cárdigan","Otro"],
- Zapatos:["Deportivas","Zapatos","Botas","Botines","Sandalias","Tacones","Mocasines","Otro"],
+ Zapatos:["Deportivas","Zapatos","Botas","Botines","Sandalias","Tacones","Mocasines","Bailarinas","Alpargatas","Zuecos","Zapatillas de casa","Otro"],
  Bolsos:["Bolso de mano","Bolso de hombro","Bandolera","Mochila","Bolso de fiesta","Otro"],
- Accesorios:["Cinturón","Gafas","Pañuelo","Bufanda","Gorro","Sombrero","Joyería","Otro"]
+ Accesorios:["Cinturón","Gafas","Pañuelo","Bufanda","Gorro","Sombrero","Joyería","Reloj","Calcetines","Medias","Accesorio de pelo","Otro"],
+ Interior:["Sujetador","Sujetador deportivo","Braguitas","Calzoncillos","Pijama","Camisón","Bata","Otro"],
+ Baño:["Bañador","Bikini","Trikini","Pareos","Otro"]
 };
 function syncGarmentCategory(resetType=false){
  const value=$("#garmentCategory").value;
