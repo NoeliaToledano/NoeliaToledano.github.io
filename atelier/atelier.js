@@ -14,8 +14,8 @@ const PROFILES=[{id:"noelia",name:"Noelia"},{id:"ana-maria",name:"Ana María"},{
 const DB_NAME="atelier-armario-db",DB_VERSION=2,STORE="kv";
 const IMAGE_MAX=900,IMAGE_QUALITY=.8,AI_IMAGE_MAX=512;
 const AI_LIMITS={analyze:40,looks:20},DEFAULT_TEMPERATURE=25;
-const CATEGORIES=["Arriba","Abajo","Vestidos","Capas","Zapatos","Bolsos","Accesorios","Interior","Baño"];
-const occasions={daily:"Día a día",work:"Trabajo",dinner:"Cena",event:"Evento",travel:"Viaje",sport:"Deporte",gym:"Gimnasio",running:"Running",yoga:"Yoga / pilates",tennis:"Tenis / pádel",hiking:"Senderismo",beach:"Playa",pool:"Piscina",spa:"Spa",home:"Estar en casa",sleep:"Dormir",formal:"Formal",wedding:"Boda",ceremony:"Ceremonia",party:"Fiesta",night:"Salir de noche",date:"Cita",school:"Estudios",holiday:"Vacaciones",cold:"Frío / nieve",rain:"Lluvia"};
+const CATEGORIES=["Arriba","Abajo","Vestidos","Capas","Zapatos","Bolsos","Accesorios","Casa","Baño"];
+const occasions={daily:"Día a día",work:"Trabajo",sport:"Deporte",beach:"Playa y piscina",home:"Estar en casa",event:"Eventos y celebraciones",party:"Fiesta y salir",formal:"Formal"};
 const seasons={all:"Todo el año",warm:"Primavera / verano",cold:"Otoño / invierno"};
 const styleNames={casual:"casual",smart:"arreglado",party:"fiesta",sport:"deporte"};
 const ANALYSIS_FIELDS={pattern:["plain","stripes","checks","floral","animal","dots","graphic","other"],fabric:["unknown","cotton","denim","linen","wool","knit","leather","satin","silk","synthetic","mixed"],length:["na","cropped","regular","midi","long"],formality:["casual","smartcasual","formal","party","sport"]};
@@ -509,7 +509,7 @@ async function api(path,options={}){
  return out;
 }
 function mapAnalysis(d){
- const map={top:"Arriba",bottom:"Abajo",dress:"Vestidos",outerwear:"Capas",shoes:"Zapatos",bag:"Bolsos",accessory:"Accesorios",underwear:"Interior",swimwear:"Baño"};
+ const map={top:"Arriba",bottom:"Abajo",dress:"Vestidos",outerwear:"Capas",shoes:"Zapatos",bag:"Bolsos",accessory:"Accesorios",homewear:"Casa",underwear:"",swimwear:"Baño"};
  const cat=map[d.category]||d.category||map[d.type],st=d.style==="basic"?"casual":d.style;
  return {name:String(d.name||"").slice(0,80),garmentType:typeof d.garmentType==="string"?d.garmentType:"",category:CATEGORIES.includes(cat)?cat:"",color:d.color?(Array.isArray(d.color)?d.color.join(", "):String(d.color)).slice(0,60):"",style:STYLE_OK[st]?st:"",season:seasons[d.season]?d.season:"",notes:d.notes?String(d.notes).slice(0,500):"",...cleanAnalysis(d)};
 }
@@ -706,9 +706,20 @@ function updateOccasionSummary(){
  const values=$$('[name="meta-occasion"]:checked').map(x=>occasions[x.value]||x.value);
  const el=$("#occasionSummary");if(el)el.textContent=values.length?values.slice(0,3).join(" · ")+(values.length>3?" +"+(values.length-3):""):"Sin ocasiones sugeridas · puedes elegirlas";
 }
+const OCCASION_ALIASES={travel:null,holiday:null,gym:"sport",running:"sport",yoga:"sport",tennis:"sport",hiking:"sport",pool:"beach",spa:"beach",sleep:"home",dinner:"party",night:"party",date:"party",wedding:"event",ceremony:"event",school:"daily",cold:"daily",rain:"daily"};
+const OCCASION_BY_TYPE={"Pijama":["home"],"Camisón":["home"],"Bata":["home"],"Conjunto de estar en casa":["home"],"Zapatillas de casa":["home"],"Mallas deportivas":["sport"],"Pantalón deportivo":["sport"],"Camiseta técnica":["sport"],"Bañador":["beach"],"Bikini":["beach"],"Top de bikini":["beach"],"Braguita de bikini":["beach"],"Trikini":["beach"],"Short de baño":["beach"],"Pareos":["beach"],"Salida de baño":["beach"]};
+const normalizeOccasions=xs=>[...new Set((Array.isArray(xs)?xs:[]).map(x=>Object.hasOwn(OCCASION_ALIASES,x)?OCCASION_ALIASES[x]:x).filter(x=>occasions[x]))];
+const occasionDefaults=(category,type,ai)=>[...new Set([...(OCCASION_BY_TYPE[type]||({"Casa":["home"],"Baño":["beach"]}[category]||[])),...normalizeOccasions(ai)])];
+function suggestOccasionsForSelection(){
+ const category=$("#garmentCategory").value,type=$("#garmentType").value;
+ const current=Array.from(document.querySelectorAll('[name="meta-occasion"]:checked'),x=>x.value);
+ const selected=new Set(occasionDefaults(category,type,current));
+ document.querySelectorAll('[name="meta-occasion"]').forEach(x=>{x.checked=selected.has(x.value)});
+ updateOccasionSummary();
+}
 function populateMetadata(src){
  for(const def of META_FIELDS){const el=$("#meta-"+def[0]);if(el)el.value=metaValue(def,src?.[def[0]])}
- const occ=new Set(Array.isArray(src?.occasions)?src.occasions:[]);
+ const occ=new Set(normalizeOccasions(src?.occasions));
  $$('[name="meta-occasion"]').forEach(x=>x.checked=occ.has(x.value));
  updateOccasionSummary();
  metaConfidence=CONFIDENCE.includes(src?.confidence)?src.confidence:"";
@@ -724,14 +735,14 @@ function readMetadata(){
 const META_KEYS=new Set([...META_FIELDS.map(d=>d[0]),"occasions","confidence"]);
 function setAnalyzeStatus(t){const s=$("#autoAnalyzeStatus");if(s)s.textContent=t}
 const GARMENT_TYPES={
- Arriba:["Camiseta","Camisa","Blusa","Top","Jersey","Sudadera","Polo","Body","Camiseta técnica","Otro"],
+ Arriba:["Camiseta","Camisa","Blusa","Top","Crop top","Jersey","Sudadera","Polo","Body","Camiseta técnica","Otro"],
  Abajo:["Vaqueros","Pantalón","Leggings","Mallas deportivas","Shorts","Falda","Pantalón deportivo","Otro"],
  Vestidos:["Vestido corto","Vestido midi","Vestido largo","Mono corto","Mono largo","Enterizo","Peto","Otro"],
  Capas:["Blazer","Chaqueta","Cazadora","Abrigo","Gabardina","Chaleco","Cárdigan","Otro"],
  Zapatos:["Deportivas","Zapatos","Botas","Botines","Sandalias","Tacones","Mocasines","Bailarinas","Alpargatas","Zuecos","Zapatillas de casa","Otro"],
  Bolsos:["Bolso de mano","Bolso de hombro","Bandolera","Mochila","Bolso de fiesta","Otro"],
- Accesorios:["Cinturón","Gafas de sol","Gafas","Pañuelo","Bufanda","Guantes","Gorro","Sombrero","Collar","Pendientes","Pulsera","Anillo","Joyería","Reloj","Calcetines","Medias","Corbata","Pajarita","Diadema","Pinza de pelo","Coletero","Accesorio de pelo","Otro"],
- Interior:["Sujetador","Sujetador deportivo","Braguitas","Tanga","Bóxer","Calzoncillos","Camiseta interior","Faja","Pijama","Camisón","Bata","Otro"],
+ Accesorios:["Cinturón","Gafas de sol","Gafas","Pañuelo","Bufanda","Guantes","Gorro","Sombrero","Collar","Pendientes","Pulsera","Anillo","Joyería","Reloj","Corbata","Pajarita","Diadema","Pinza de pelo","Coletero","Accesorio de pelo","Otro"],
+ Casa:["Pijama","Camisón","Bata","Conjunto de estar en casa","Otro"],
  Baño:["Bañador","Bikini","Top de bikini","Braguita de bikini","Trikini","Short de baño","Pareos","Salida de baño","Otro"]
 };
 function syncGarmentCategory(resetType=false){
@@ -767,6 +778,7 @@ async function saveGarment(e){
  if(ph?.busy)return toast("Espera a que termine de mejorar la foto");
  const image=sheetImage()||old?.image||"",changed=!!ph?.changed&&image!==old?.image,edited=!!ph&&ph.mode==="edited"&&!!ph.edited;
  if(!validImage(image)&&!old?.hasImage)return toast("Añade una fotografía de la prenda antes de guardarla");
+ if($("#garmentCategory").value==="Interior")return toast("La ropa interior no está admitida");
  const kept=Object.fromEntries(Object.entries(old||{}).filter(([k])=>!META_KEYS.has(k)));
  const g={...kept,...readMetadata(),id,name:$("#garmentName").value.trim()||"Sin nombre",category:$("#garmentCategory").value,type:$("#garmentType").value,color:$("#garmentColor").value.trim(),notes:$("#garmentNotes").value.trim(),season:$("#garmentSeason").value,style:$("#garmentStyle").value,price:$("#garmentPrice").value===""?null:Number($("#garmentPrice").value),boughtAt:$("#garmentBought").value,favorite:$("#garmentFavorite").checked,createdAt:old?.createdAt||new Date().toISOString(),image,updatedAt:new Date().toISOString()};
  if(!validImage(image)&&old?.hasImage)g.hasImage=true;
@@ -790,13 +802,15 @@ async function analyzeGarment(){
  try{
   const out=await api("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image})});
   if(sheetPhoto!==ph)return; // No aplicar un análisis antiguo a una foto nueva.
-  const d=mapAnalysis(out.garment||out.result||out);lastAnalysis=cleanAnalysis(d);
+  const raw=out.garment||out.result||out;
+  if(raw?.type==="underwear"||raw?.category==="Interior"){setAnalyzeStatus("La ropa interior no se añade a Atelier.");toast("Ropa interior no admitida");return}
+  const d=mapAnalysis(raw);lastAnalysis=cleanAnalysis(d);
   // Solo se rellena lo que la IA reconoce: no se borra lo que ya estaba escrito
   if(d.name||!$("#garmentName").value.trim())$("#garmentName").value=d.name||"Prenda sin identificar";if(d.category){$("#garmentCategory").value=d.category;syncGarmentCategory(true)}const typeOptions=GARMENT_TYPES[d.category]||[];const detected=[d.garmentType,d.subtype].find(t=>typeof t==="string"&&typeOptions.some(o=>o.toLocaleLowerCase("es")===t.trim().toLocaleLowerCase("es")));if(detected)$("#garmentType").value=typeOptions.find(t=>t.toLocaleLowerCase("es")===detected.trim().toLocaleLowerCase("es"));if(d.color)$("#garmentColor").value=d.color;
   if(d.style)$("#garmentStyle").value=d.style;if(d.season)$("#garmentSeason").value=d.season;if(d.notes&&!$("#garmentNotes").value.trim())$("#garmentNotes").value=d.notes;
   if(sheetPhoto===ph){
    const manual=Object.fromEntries(Object.entries(readMetadata()).filter(([k])=>META_FIELDS.find(x=>x[0]===k)?.[3]==="manual"));
-   populateMetadata({...manual,...lastAnalysis});const details=$("#metadataDetails");if(details)details.open=true;
+   populateMetadata({...manual,...lastAnalysis,occasions:occasionDefaults(d.category,$("#garmentType").value,lastAnalysis?.occasions)});const details=$("#metadataDetails");if(details)details.open=true;
    setAnalyzeStatus("Ficha completada. Revisa los datos y pulsa Confirmar y guardar.");
   }
   toast("Análisis completado");
@@ -1038,8 +1052,8 @@ async function refreshWeatherIfNeeded(){
 
 /* Maletas: lista de equipaje por viaje, calculada en el móvil (sin IA).
    La sugerencia elige pocas prendas que den al menos un look por día del viaje. */
-const PACK_EXTRAS=["Pijama","Ropa interior y calcetines","Neceser","Cargador del móvil","Documentación"];
-const PACK_ORDER=["Arriba","Abajo","Vestidos","Capas","Zapatos","Bolsos","Accesorios",""];
+const PACK_EXTRAS=["Ropa interior y calcetines","Neceser","Cargador del móvil","Documentación"];
+const PACK_ORDER=["Arriba","Abajo","Vestidos","Capas","Zapatos","Casa","Baño","Bolsos","Accesorios",""];
 const myTrips=()=>appState.data.trips;
 const fmtDay=d=>validDay(d)?new Intl.DateTimeFormat("es-ES",{day:"numeric",month:"short",year:d.slice(0,4)===dayISO().slice(0,4)?undefined:"numeric"}).format(new Date(d+"T12:00:00")):"";
 function tripDays(t){if(!validDay(t.start)||!validDay(t.end)||t.end<t.start)return 1;return Math.round((Date.parse(t.end+"T12:00:00")-Date.parse(t.start+"T12:00:00"))/86400000)+1}
@@ -1075,6 +1089,7 @@ function suggestPacking(t){
  for(let i=0;i<2&&pending.length;i++){const s=coverBest("Zapatos",pending);if(!s)break;if(i===1&&s.covers.length<pending.length/2&&pending.length<looks.length/2)break;chosen.push(s.g);pending=pending.filter(l=>!s.covers.includes(l))}
  if(season==="cold"){const c=coverBest("Capas",looks);if(c)chosen.push(c.g)}  // según la temporada del viaje, no el tiempo de hoy
  const bag=coverBest("Bolsos",looks);if(bag)chosen.push(bag.g);
+ const rest=all.find(g=>g.category==="Casa"&&!chosen.includes(g));if(rest)chosen.push(rest);
  return chosen.map(g=>g.id);
 }
 function tripSummary(t){const items=tripItems(t),days=tripDays(t),looks=packLooks(items).length;return {items,days,looks}}
@@ -1442,9 +1457,10 @@ function bind(){
  $("#togglePassword").addEventListener("click",()=>setPasswordVisible($("#password").type==="password"));
  $("#password").addEventListener("keydown",e=>{if(e.key==="Enter")login()});
  $$(".nav-btn").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.view)));
- $("#garmentCategory").addEventListener("change",()=>syncGarmentCategory(true));
+ $("#garmentCategory").addEventListener("change",()=>{syncGarmentCategory(true);suggestOccasionsForSelection()});
+ $("#garmentType").addEventListener("change",suggestOccasionsForSelection);
 
- $$("[data-garment-category]").forEach(btn=>btn.addEventListener("click",()=>{$("#garmentCategory").value=btn.dataset.garmentCategory;syncGarmentCategory(true)}));
+ $$("[data-garment-category]").forEach(btn=>btn.addEventListener("click",()=>{$("#garmentCategory").value=btn.dataset.garmentCategory;syncGarmentCategory(true);suggestOccasionsForSelection()}));
  $("#garmentForm").addEventListener("submit",saveGarment);$("#closeGarment").addEventListener("click",closeGarment);$("#deleteGarment").addEventListener("click",deleteGarment);$("#analyzeBtn").addEventListener("click",analyzeGarment);
  const onPhoto=async e=>{
   const f=e.target.files[0];e.target.value="";if(!f)return;
