@@ -32,11 +32,12 @@ try{
  await page.getByRole("button",{name:"Noelia"}).click();
  await page.locator("#password").fill("test");
  await page.locator("#loginBtn").click();
- await page.getByRole("heading",{name:"Mi armario"}).waitFor({timeout:6000}).catch(async e=>{console.log("LOGIN_DIAGNOSTIC",{error:await page.locator("#authError").textContent(),authVisible:await page.locator("#auth").isVisible(),appVisible:await page.locator("#app").isVisible(),browserErrors:errors});throw e});
+ await page.getByRole("heading",{name:"Hoy"}).waitFor({timeout:6000}).catch(async e=>{console.log("LOGIN_DIAGNOSTIC",{error:await page.locator("#authError").textContent(),authVisible:await page.locator("#auth").isVisible(),appVisible:await page.locator("#app").isVisible(),browserErrors:errors});throw e});
  assert.equal(await page.locator("#app").isVisible(),true);
  assert.equal(await page.locator("#auth").isVisible(),false);
  const bg=await page.locator("body").evaluate(el=>getComputedStyle(el).backgroundColor);
  assert.notEqual(bg,"rgba(0, 0, 0, 0)","CSS not applied");
+ await page.locator('[data-view="wardrobe"]').click();
  await page.locator("#addGarment").click();
  console.log("GARMENT_DIAGNOSTIC",{classes:await page.locator("#garmentSheet").getAttribute("class"),visible:await page.locator("#garmentName").isVisible(),errors});
  await page.locator("#autoAnalyze").evaluate(el=>{el.checked=false;el.dispatchEvent(new Event("change",{bubbles:true}))});
@@ -48,6 +49,11 @@ try{
  await page.locator("#garmentForm button[type=submit]").click();
  await page.getByText("Prenda auditada").waitFor();
  await page.reload({waitUntil:"networkidle"});
+ await page.locator('[data-view="today"]').click();
+ await page.locator('[data-open-week]').first().click();
+ assert.equal(await page.evaluate(()=>appState.view),"stylist");
+ assert.equal(await page.evaluate(()=>ui.stylistTab),"week");
+ await page.locator('[data-view="wardrobe"]').click();
  await page.getByText("Prenda auditada").waitFor();
  await page.locator('[data-view="stylist"]').click(); await page.locator("#openLooks").click();
  await page.locator("#newLook").click();
@@ -100,7 +106,7 @@ try{
  await page.locator("[data-trip]").filter({hasText:"Viaje de prueba"}).click();
  assert.equal(await page.locator("[data-extra]:checked").count(),1,"La casilla de la maleta debe conservarse");
  // Mi semana: planificar hoy con un look guardado; planificado no es usado hasta «Me lo he puesto»
- await page.locator('[data-view="stylist"]').click(); console.log("WEEK_NAV_DEBUG",await page.locator("#content").innerText(),errors,await page.evaluate(()=>({view:appState.view,tab:ui.stylistTab}))); await page.locator('[data-stylist-tab="week"]').click();
+ await page.locator('[data-view="stylist"]').click(); await page.locator('[data-stylist-tab="week"]').click();
  const usesBefore=await page.evaluate(()=>logs().length);
  await page.locator("section.is-today [data-plan-pick]").click();
  await page.locator("#planSheet [data-plan-saved]").first().click();
