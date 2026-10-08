@@ -23,6 +23,12 @@ await page.route("https://atelier-ai-backend-pi.vercel.app/**",async route=>{
 let currentProfile="noelia";
 try{
  await page.goto("http://127.0.0.1:8000/atelier/",{waitUntil:"networkidle"});
+ // «Volver a perfiles» quita la selección sin errores y se puede volver a elegir
+ await page.getByRole("button",{name:"Noelia"}).click();
+ await page.locator("#backToProfiles").click();
+ assert.equal(await page.locator("#passwordStep").isVisible(),false);
+ assert.equal(await page.locator(".profile-option.selected").count(),0);
+ assert.deepEqual(errors,[]);
  await page.getByRole("button",{name:"Noelia"}).click();
  await page.locator("#password").fill("test");
  await page.locator("#loginBtn").click();

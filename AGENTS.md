@@ -6,7 +6,7 @@ Este repositorio lo modifican varios asistentes. Para no pisarse:
 2. Antes de empezar, trae lo último de `main` y mira las PR abiertas. Si otra PR toca los mismos archivos, coordínalo antes de seguir.
 3. Edita solo lo necesario. No reescribas archivos enteros sin decirlo en la PR.
 4. Antes de abrir la PR, ejecuta `node atelier/validate.mjs`: comprueba la app **y la sintaxis del backend** (las pruebas de navegador simulan el backend y no detectan sus errores).
-5. Si cambias algo de `atelier/`, sube la versión de `CACHE` en `atelier/sw.js` (por ejemplo `atelier-shell-v19` → `-v20`) para que los móviles reciban la actualización.
+5. Si cambias algo de `atelier/`, sube en uno la versión de `CACHE` en `atelier/sw.js` (por ejemplo `atelier-shell-v29` → `-v30`; mira antes el valor actual) para que los móviles reciban la actualización.
 
 ## Atelier (`atelier/`): app web estática (PWA) para los perfiles de la familia (Noelia, Ana María, Irene, Eva y Virginia)
 
@@ -21,7 +21,7 @@ Secciones de `atelier.js`:
 | 3. Sincronización | `/api/sync` y `/api/sync-image`; fusión de cambios entre dispositivos; borrados con `tomb(id)` |
 | 4. API y ahorro de tokens | Todas las llamadas a ChatGPT pasan por `api()`: IDs cortos, 24 prendas máx., fotos a 512 px, caché, límites diarios |
 | 5. Sesión y navegación | Login, sesión en `localStorage` (30 días), vistas |
-| 6. Armario, prendas y looks | Ficha de prenda con foto de cámara o galería, fondo blanco (`whiteBackground`, sin IA), análisis automático, looks como composición (`outfitBoard`), reglas locales de combinación |
+| 6. Armario, prendas y looks | Ficha de prenda con foto de cámara o galería, mejora de fotos (`enhancePhoto`: fondo blanco y retoque, sin IA), análisis automático, looks como composición (`outfitBoard`), reglas locales de combinación |
 | 7. Estilista | Pestañas Hoy / Combinar prenda / Mis looks / Maletas; tiempo con Open-Meteo; 25 °C por defecto |
 | 8. Compras | Pestañas ¿Lo compro? / Recomendaciones / Wishlist |
 | 9–11 | Análisis, calendario, ajustes, copias y arranque |
