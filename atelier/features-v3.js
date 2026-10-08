@@ -1,6 +1,6 @@
 
 /* Atelier v3: advanced wardrobe and styling features. Local-only, profile-scoped data. */
-const featureState={search:"",category:"",season:"",onlyFavorites:false,onlyForgotten:false,sort:"recent",calendarMonth:new Date().toISOString().slice(0,7),lookFilter:"all",wishlistFilter:"all"};
+const featureState={search:"",category:"",season:"",onlyFavorites:false,onlyForgotten:false,sort:"recent",calendarMonth:new Date().toISOString().slice(0,7),lookFilter:"all",wishlistFilter:"all",selectedGarment:null,activePackingId:null};
 const fx=(v)=>esc(v==null?"":v);
 const dayISO=(date=new Date())=>new Date(date.getTime()-date.getTimezoneOffset()*60000).toISOString().slice(0,10);
 const euro=(n)=>new Intl.NumberFormat("es-ES",{style:"currency",currency:"EUR"}).format(Number(n)||0);
@@ -47,6 +47,7 @@ render=function(){
  if(appState.view==="insights")return renderInsights(root);
  if(appState.view==="looks")return renderAdvancedLooks(root);
  if(appState.view==="calendar")return renderCalendar(root);
+ if(appState.view==="packing")return renderPacking(root);
  if(appState.view==="settings")return renderAdvancedSettings(root);
  return previousRender();
 };
@@ -84,7 +85,7 @@ function renderAdvancedWardrobe(root){
   const f=forgottenStatus(g),n=wornCount(g.id);
   return '<div class="garment-tile">'+garmentCard(g)+'<div class="tile-tools">'+
    '<button class="chip-button" data-fav="'+fx(g.id)+'" aria-label="Favorito">'+(g.favorite?'♥':'♡')+'</button>'+
-   '<button class="chip-button" data-wear="'+fx(g.id)+'" aria-label="Registrar uso">✓ Usada</button></div>'+
+   '<button class="chip-button" data-wear="'+fx(g.id)+'" aria-label="Registrar uso">✓ Usada</button>'+ '<button class="chip-button" data-combine="'+fx(g.id)+'" aria-label="Combinar esta prenda">✦ Combinar</button></div>'+
    '<div class="tile-hints">'+fx(n+' usos registrados')+(f.forgotten?' · ✦ Olvidada':'')+'</div></div>';
  }).join("");
  setContent(root,featureHeader("Mi armario","Toda tu ropa, aprovechada al máximo.")+
@@ -101,6 +102,7 @@ function renderAdvancedWardrobe(root){
  $$("[data-garment]",root).forEach(x=>x.addEventListener("click",()=>openGarment(x.dataset.garment)));
  $$("[data-fav]",root).forEach(b=>b.addEventListener("click",async()=>{const g=myGarments().find(x=>x.id===b.dataset.fav);if(g)await mutate(()=>{g.favorite=!g.favorite},"Favoritos actualizados")}));
  $$("[data-wear]",root).forEach(b=>b.addEventListener("click",()=>promptWear([b.dataset.wear],null)));
+ $$("[data-combine]",root).forEach(b=>b.addEventListener("click",()=>{featureState.selectedGarment=b.dataset.combine;openLook()}));
 }
 function promptWear(ids,lookId){
  const date=prompt("¿Qué día llevaste este conjunto? (AAAA-MM-DD)",dayISO());
@@ -126,7 +128,7 @@ function renderStylist(root){
  '<button class="primary wide" id="suggestSmart">✦ Generar looks con mi ropa</button>'+
  '<p class="helper">Se utilizan únicamente los nombres y atributos de tus prendas. Las fotos no se envían para generar looks.</p></div>'+
  '<div class="section-head"><h2>Mis looks</h2><button class="secondary" id="openLooks">Ver todos →</button></div>'+
- '<div class="actions"><button class="secondary" id="createManual">+ Crear look manual</button><button class="secondary" id="openCalendar">Calendario de uso</button></div>'+
+ '<div class="actions"><button class="secondary" id="createManual">+ Crear look manual</button><button class="secondary" id="openCalendar">Calendario de uso</button><button class="secondary" id="openPacking">Preparar maleta</button></div>'+
  '<div class="section-head"><h2>Rescata una prenda olvidada</h2></div>'+
  (candidates.length?'<div class="insight-list">'+candidates.map(g=>'<div class="list-line"><strong>'+fx(g.name)+'</strong><span class="muted">'+fx(wornCount(g.id)+' usos')+'</span></div>').join("")+'</div>':'<div class="empty">Añade prendas para recibir sugerencias.</div>'));
  $("#prefOccasion")?.addEventListener("change",e=>setPref("occasion",e.target.value,false));
@@ -138,6 +140,7 @@ function renderStylist(root){
  $("#openLooks")?.addEventListener("click",()=>setView("looks"));
  $("#createManual")?.addEventListener("click",()=>openLook());
  $("#openCalendar")?.addEventListener("click",()=>setView("calendar"));
+ $("#openPacking")?.addEventListener("click",()=>setView("packing"));
 }
 async function setPref(key,val,rerender=true){appState.data.preferences[key]=val;if(await saveState()&&rerender)render()}
 function renderAdvancedLooks(root){
@@ -249,4 +252,53 @@ function renderAdvancedSettings(root){
  $("#exportBackup")?.addEventListener("click",downloadBackup);
  $("#importBackup")?.addEventListener("change",e=>importBackup(e.target.files[0]));
  $("#logout")?.addEventListener("click",showAuth);
+}
+
+/* Family MVP: private, offline packing lists, independent for each profile. */
+function packingItems(list){
+ const valid=new Map(myGarments().map(g=>[g.id,g]));
+ return [...new Set(Array.isArray(list.garmentIds)?list.garmentIds:[])].map(id=>valid.get(id)).filter(Boolean);
+}
+function renderPacking(root){
+ const packs=Array.isArray(appState.data.packingLists)?appState.data.packingLists:[];
+ const selected=packs.find(x=>x.id===featureState.activePackingId);
+ const names=selected?packingItems(selected):[];
+ const selectedNames=selected?.checkedIds||[];
+ setContent(root,featureHeader("Mis maletas","Prepara tus viajes con prendas reales de tu armario.")+
+ '<div class="feature-card"><h2>Nueva maleta</h2><form id="packingForm">'+
+ '<label class="field"><span>Nombre del viaje</span><input name="tripName" required maxlength="75" placeholder="Ej. Escapada de fin de semana"></label>'+
+ '<label class="field"><span>Fecha de salida (opcional)</span><input type="date" name="tripDate"></label>'+
+ '<p class="helper">Elige looks completos y añade cualquier otra prenda. No se comparte con otros perfiles.</p>'+
+ (myLooks().length?'<details class="packing-picker"><summary>Elegir looks guardados</summary>'+myLooks().map(l=>'<label class="switch-line"><input type="checkbox" name="packingLook" value="'+fx(l.id)+'"> '+fx(l.name)+'</label>').join("")+'</details>':'')+
+ '<details class="packing-picker"><summary>Elegir prendas sueltas</summary>'+ (myGarments().length?myGarments().map(g=>'<label class="switch-line"><input type="checkbox" name="packingGarment" value="'+fx(g.id)+'"> '+fx(g.name)+'</label>').join(""):'<p class="helper">Añade prendas al armario primero.</p>')+'</details>'+
+ '<button class="primary wide" type="submit">Crear lista de maleta</button></form></div>'+
+ '<div class="section-head"><h2>Mis viajes ('+packs.length+')</h2></div>'+
+ (packs.length?'<div class="filter-tabs">'+packs.map(p=>'<button class="chip-button" data-packing-open="'+fx(p.id)+'"'+(selected?.id===p.id?' aria-current="true"':'')+'>'+fx(p.title)+'</button>').join("")+'</div>':'<div class="empty">Todavía no has preparado ninguna maleta.</div>')+
+ (selected?'<section class="feature-card"><div class="section-head"><h2>'+fx(selected.title)+'</h2><button id="deletePacking" class="danger small">Eliminar</button></div>'+
+ (selected.departure?'<p class="muted">Salida: '+fx(selected.departure)+'</p>':'')+
+ '<p class="helper">'+selectedNames.filter(id=>names.some(g=>g.id===id)).length+' de '+names.length+' prendas preparadas</p>'+
+ (names.length?names.map(g=>'<label class="packing-item"><input type="checkbox" data-packed-id="'+fx(g.id)+'"'+(selectedNames.includes(g.id)?' checked':'')+'><span>'+fx(g.name)+'</span></label>').join(""):'<p class="muted">Estas prendas ya no están en el armario.</p>')+
+ '</section>':''));
+ $("#packingForm")?.addEventListener("submit",async e=>{
+  e.preventDefault();
+  const form=e.target,fd=new FormData(form),title=String(fd.get("tripName")||"").trim();
+  if(!title)return;
+  const chosenLooks=fd.getAll("packingLook").map(String);
+  const chosenGarments=fd.getAll("packingGarment").map(String);
+  const knownGarments=new Set(myGarments().map(g=>g.id));
+  const lookIds=myLooks().filter(l=>chosenLooks.includes(l.id)).flatMap(l=>Array.isArray(l.garmentIds)?l.garmentIds:[]);
+  const garmentIds=[...new Set([...chosenGarments,...lookIds])].filter(id=>knownGarments.has(id));
+  if(!garmentIds.length)return toast("Elige al menos una prenda o un look");
+  const id=uid(),departure=String(fd.get("tripDate")||"");
+  await mutate(()=>{appState.data.packingLists.unshift({id,title,departure,garmentIds,checkedIds:[],createdAt:new Date().toISOString()});featureState.activePackingId=id},"Maleta creada");
+ });
+ $$("[data-packing-open]",root).forEach(b=>b.addEventListener("click",()=>{featureState.activePackingId=b.dataset.packingOpen;render()}));
+ $$("[data-packed-id]",root).forEach(b=>b.addEventListener("change",async()=>{const id=b.dataset.packedId;await mutate(()=>{
+  const list=appState.data.packingLists.find(p=>p.id===featureState.activePackingId);
+  if(!list)return;list.checkedIds=b.checked?[...new Set([...(list.checkedIds||[]),id])]: (list.checkedIds||[]).filter(x=>x!==id);
+ },"Maleta actualizada")}));
+ $("#deletePacking")?.addEventListener("click",async()=>{
+  if(!confirm("¿Eliminar esta lista de maleta?"))return;
+  await mutate(()=>{appState.data.packingLists=appState.data.packingLists.filter(p=>p.id!==featureState.activePackingId);featureState.activePackingId=null},"Maleta eliminada");
+ });
 }
