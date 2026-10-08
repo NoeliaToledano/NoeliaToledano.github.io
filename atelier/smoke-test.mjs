@@ -86,7 +86,7 @@ try{
  await page.locator("#toast",{hasText:"Uso registrado"}).waitFor();
  // Maletas: crear un viaje, marcar una prenda como preparada y comprobar que se conserva
  await page.locator('[data-view="stylist"]').click();
- await page.locator('[data-stylist-tab="trips"]').click();
+ await page.locator('[data-view="trips"]').click();
  await page.locator("#tripName").fill("Viaje de prueba");
  await page.locator("#tripStart").fill("2026-12-04");
  await page.locator("#tripEnd").fill("2026-12-06");
@@ -99,14 +99,14 @@ try{
  await page.locator("#tripBack").click();
  await page.locator("[data-trip]").filter({hasText:"Viaje de prueba"}).click();
  assert.equal(await page.locator("[data-extra]:checked").count(),1,"La casilla de la maleta debe conservarse");
- await page.locator('[data-stylist-tab="today"]').click();
+ await page.locator('[data-view="today"]').click();
  await page.locator('[data-view="shopping"]').click();
  await page.locator('[data-shop-tab="wish"]').click();
  await page.locator('[name="wishName"]').fill("Abrigo de prueba");
  await page.locator('[name="wishPrice"]').fill("80");
  await page.locator('#wishlistForm button[type="submit"]').click();
  await page.getByText("Abrigo de prueba").waitFor();
- await page.locator('[data-view="insights"]').click();
+ await page.locator('[data-view="wardrobe"]').click(); await page.locator('#wardrobeInsights').click();
  await page.getByRole("heading",{name:"Prendas olvidadas"}).waitFor();
  await page.locator("#goCalendar").click();
  await page.getByRole("heading",{name:"Calendario de looks"}).waitFor();
