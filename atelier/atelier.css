@@ -228,3 +228,16 @@ p.notice-card{display:block}
 .category-choices button:focus-visible{outline:3px solid #a57c63;outline-offset:2px}
 @media(min-width:560px){.category-choices{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(prefers-reduced-motion:reduce){.category-choices button{transition:none}}
+
+/* Las ocasiones sugeridas se revisan sin abrir los detalles técnicos. */
+.garment-occasions{border:1px solid #e8e0d9;border-radius:14px;margin:15px 0 0;background:#fcfaf8;overflow:hidden}
+.garment-occasions>summary{display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer;padding:14px;list-style:none}
+.garment-occasions>summary::-webkit-details-marker{display:none}
+.garment-occasions>summary strong{font-size:13px}
+.garment-occasions>summary span{font-size:11px;color:var(--muted);text-align:right;max-width:65%;line-height:1.4}
+#occasionSlot{padding:0 14px 14px;border-top:1px solid #eee7e0}
+#occasionSlot .field{margin:10px 0 0}
+#occasionSlot .field-title{display:none}
+#occasionSlot .occ-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+#occasionSlot .switch-line{font-size:12px;min-width:0;padding:8px}
+@media(max-width:360px){#occasionSlot .occ-grid{grid-template-columns:1fr}}
