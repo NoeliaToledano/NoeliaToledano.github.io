@@ -76,6 +76,22 @@ try{
  await page.locator('[data-wear]').first().click();
  await page.locator("#wearSheet [data-wear-day]").first().click();
  await page.locator("#toast",{hasText:"Uso registrado"}).waitFor();
+ // Maletas: crear un viaje, marcar una prenda como preparada y comprobar que se conserva
+ await page.locator('[data-view="stylist"]').click();
+ await page.locator('[data-stylist-tab="trips"]').click();
+ await page.locator("#tripName").fill("Viaje de prueba");
+ await page.locator("#tripStart").fill("2026-12-04");
+ await page.locator("#tripEnd").fill("2026-12-06");
+ await page.locator('#tripForm button[type="submit"]').click();
+ await page.locator("#tripBack").waitFor();
+ assert.match(await page.locator(".hero p").textContent(),/3 días/);
+ await page.locator("#extraText").fill("Paraguas");
+ await page.locator('#extraForm button[type="submit"]').click();
+ await page.locator("[data-extra]").last().check();
+ await page.locator("#tripBack").click();
+ await page.locator("[data-trip]").filter({hasText:"Viaje de prueba"}).click();
+ assert.equal(await page.locator("[data-extra]:checked").count(),1,"La casilla de la maleta debe conservarse");
+ await page.locator('[data-stylist-tab="today"]').click();
  await page.locator('[data-view="shopping"]').click();
  await page.locator('[data-shop-tab="wish"]').click();
  await page.locator('[name="wishName"]').fill("Abrigo de prueba");
@@ -113,5 +129,5 @@ try{
  assert.equal(await page.getByText("No hay prendas con estos filtros").count(),1);
  assert.deepEqual(errors,[]);
  await page.screenshot({path:"atelier-smoke.png",fullPage:true});
- console.log("PASS: iPhone viewport, styles, login, wardrobe CRUD, IndexedDB persistence, manual looks, AI garment recognition, AI looks, AI outages, expired sessions, profile isolation");
+ console.log("PASS: iPhone viewport, styles, login, wardrobe CRUD, packing lists, IndexedDB persistence, manual looks, AI garment recognition, AI looks, AI outages, expired sessions, profile isolation");
 }finally{await browser.close()}

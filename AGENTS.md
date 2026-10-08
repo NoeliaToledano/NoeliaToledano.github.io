@@ -6,7 +6,7 @@ Este repositorio lo modifican varios asistentes. Para no pisarse:
 2. Antes de empezar, trae lo último de `main` y mira las PR abiertas. Si otra PR toca los mismos archivos, coordínalo antes de seguir.
 3. Edita solo lo necesario. No reescribas archivos enteros sin decirlo en la PR.
 4. Antes de abrir la PR, ejecuta `node atelier/validate.mjs`: comprueba la app **y la sintaxis del backend** (las pruebas de navegador simulan el backend y no detectan sus errores).
-5. Si cambias algo de `atelier/`, sube la versión de `CACHE` en `atelier/sw.js` (por ejemplo `atelier-shell-v13` → `-v14`) para que los móviles reciban la actualización.
+5. Si cambias algo de `atelier/`, sube la versión de `CACHE` en `atelier/sw.js` (por ejemplo `atelier-shell-v15` → `-v16`) para que los móviles reciban la actualización.
 
 ## Atelier (`atelier/`): app web estática (PWA) para 3 perfiles familiares
 
@@ -22,12 +22,12 @@ Secciones de `atelier.js`:
 | 4. API y ahorro de tokens | Todas las llamadas a ChatGPT pasan por `api()`: IDs cortos, 24 prendas máx., fotos a 512 px, caché, límites diarios |
 | 5. Sesión y navegación | Login, sesión en `localStorage` (30 días), vistas |
 | 6. Armario, prendas y looks | Ficha de prenda con foto de cámara o galería, análisis automático, reglas locales de combinación |
-| 7. Estilista | Pestañas Hoy / Combinar prenda / Mis looks; tiempo con Open-Meteo; 25 °C por defecto |
+| 7. Estilista | Pestañas Hoy / Combinar prenda / Mis looks / Maletas; tiempo con Open-Meteo; 25 °C por defecto |
 | 8. Compras | Pestañas ¿Lo compro? / Recomendaciones / Wishlist |
 | 9–11 | Análisis, calendario, ajustes, copias y arranque |
 
 Reglas de la app:
-- Prioridad: **gastar pocos tokens de OpenAI**. Lo que se pueda calcular en el móvil no va a la IA («¿Lo compro?», recomendaciones y «Combinar prenda» no la usan).
+- Prioridad: **gastar pocos tokens de OpenAI**. Lo que se pueda calcular en el móvil no va a la IA («¿Lo compro?», recomendaciones, «Combinar prenda» y maletas no la usan).
 - Al borrar una prenda, look, deseo o uso, llama a `tomb(id)`; si no, la sincronización lo resucita desde otro dispositivo.
 - Al modificar una prenda o look, actualiza `updatedAt`: la sincronización se queda con la versión más reciente.
 - La CSP de `index.html` solo permite conectar con el backend de Vercel y `api.open-meteo.com`.

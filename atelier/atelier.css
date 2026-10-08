@@ -112,3 +112,21 @@ button:disabled{opacity:.5;cursor:default}
 .photo-buttons{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:4px 0 6px}
 .photo-buttons button{padding:13px 10px}
 .file-hidden{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none}
+
+/* Maletas */
+.pack-list{display:grid;gap:2px;margin:10px 0}
+.pack-row{display:grid;grid-template-columns:22px 44px minmax(0,1fr) auto;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.pack-row:last-child{border-bottom:0}
+.pack-row.extra{grid-template-columns:22px minmax(0,1fr) auto}
+.pack-row input{width:20px;height:20px;accent-color:var(--ink)}
+.pack-thumb{width:44px;height:55px;border-radius:9px;background:#f4f1ec center/cover no-repeat;border:1px solid var(--line)}
+.pack-name{display:grid;font-size:14px;overflow-wrap:anywhere}.pack-name small{font-size:11px}
+.pack-row input:checked~.pack-name{text-decoration:line-through;color:var(--muted)}
+.pack-add{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin:8px 0}
+.pack-add select,.pack-add input{width:100%;border:1px solid var(--line);border-radius:12px;padding:11px;background:#fff;color:var(--ink);font:inherit}
+p.notice-card{display:block}
+
+/* Presupuesto en la wishlist */
+.budget-line{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin:-8px 0 16px;font-size:13px}
+.budget-line.over{background:#fbecea;border-color:#e6c2bd;color:#7a2a22}
+.budget-line .chip-button{flex:none}

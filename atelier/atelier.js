@@ -20,10 +20,10 @@ const seasons={all:"Todo el año",warm:"Primavera / verano",cold:"Otoño / invie
 const styleNames={casual:"casual",smart:"arreglado",party:"fiesta",sport:"deporte"};
 const ANALYSIS_FIELDS={pattern:["plain","stripes","checks","floral","animal","dots","graphic","other"],fabric:["unknown","cotton","denim","linen","wool","knit","leather","satin","silk","synthetic","mixed"],length:["na","cropped","regular","midi","long"],formality:["casual","smartcasual","formal","party","sport"]};
 
-const emptyData=()=>({garments:[],looks:[],wishlist:[],wearLog:[],feedback:{},deleted:{},preferences:{forgottenDays:60,diversity:65,occasion:"daily",season:"all",budget:100,avoidRepeats:true,temperature:DEFAULT_TEMPERATURE}});
+const emptyData=()=>({garments:[],looks:[],wishlist:[],wearLog:[],trips:[],feedback:{},deleted:{},preferences:{forgottenDays:60,diversity:65,occasion:"daily",season:"all",budget:100,avoidRepeats:true,temperature:DEFAULT_TEMPERATURE}});
 function normalizeData(v){
  const d=emptyData();if(!v||typeof v!=="object")return d;
- for(const key of ["garments","looks","wishlist","wearLog"])if(Array.isArray(v[key]))d[key]=v[key].filter(x=>x&&typeof x==="object"&&x.id);
+ for(const key of ["garments","looks","wishlist","wearLog","trips"])if(Array.isArray(v[key]))d[key]=v[key].filter(x=>x&&typeof x==="object"&&x.id);
  for(const key of ["feedback","deleted"])if(v[key]&&typeof v[key]==="object"&&!Array.isArray(v[key]))d[key]=v[key];
  if(v.preferences&&typeof v.preferences==="object")d.preferences={...d.preferences,...v.preferences};
  return d;
@@ -31,7 +31,7 @@ function normalizeData(v){
 const copyData=d=>structuredClone(d);
 const appState={profile:null,token:null,data:emptyData(),view:"wardrobe",authExpired:false};
 let lastSavedData=emptyData();
-const ui={search:"",category:"",season:"",onlyFavorites:false,onlyForgotten:false,sort:"recent",calendarMonth:new Date().toISOString().slice(0,7),lookFilter:"all",wishlistFilter:"all",stylistTab:"today",shopTab:"buy",aroundId:""};
+const ui={search:"",category:"",season:"",onlyFavorites:false,onlyForgotten:false,sort:"recent",calendarMonth:new Date().toISOString().slice(0,7),lookFilter:"all",wishlistFilter:"all",stylistTab:"today",shopTab:"buy",aroundId:"",tripId:""};
 
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
 function uid(){return crypto.randomUUID?.()||Date.now().toString(36)+Math.random().toString(36).slice(2)}
@@ -228,7 +228,7 @@ function mergeData(local,remote){
  const deleted={...(remote.deleted||{}),...(local.deleted||{})},cutoff=new Date(Date.now()-90*86400000).toISOString();
  for(const [id,at] of Object.entries(deleted))if(String(at)<cutoff)delete deleted[id];
  const m=normalizeData({...local,deleted});
- for(const key of ["garments","looks","wishlist","wearLog"])m[key]=mergeLists(local[key]||[],remote[key]||[],deleted);
+ for(const key of ["garments","looks","wishlist","wearLog","trips"])m[key]=mergeLists(local[key]||[],remote[key]||[],deleted);
  m.feedback={...(remote.feedback||{}),...(local.feedback||{})};
  m.preferences={...(remote.preferences||{}),...(local.preferences||{})};
  return m;
@@ -283,7 +283,7 @@ async function syncNow(){
    if(g.status===503){s.status="off";s.error=g.body.error||"";return}
    if(g.status!==200)throw new Error(g.body.error||"SYNC_"+g.status);
    const serverRev=Number(g.body.rev)||0,serverData=g.body.data?normalizeData(g.body.data):null,serverImages=new Set(Array.isArray(g.body.images)?g.body.images:[]);
-   const local=appState.data,localHasData=local.garments.length||local.looks.length||local.wishlist.length||local.wearLog.length;
+   const local=appState.data,localHasData=local.garments.length||local.looks.length||local.wishlist.length||local.wearLog.length||local.trips.length;
    let incoming=null,needPush=false;
    if(!serverData)needPush=!!localHasData||s.dirty;
    else if(!s.ever){incoming=localHasData?mergeData(local,serverData):serverData;needPush=!!localHasData}  // primera vez en este dispositivo
@@ -693,7 +693,7 @@ function outfitBases(gs){
 }
 
 /* ===================== 7. Estilista ===================== */
-const STYLIST_TABS=[["today","Hoy"],["around","Combinar prenda"],["looks","Mis looks",' id="openLooks"']];
+const STYLIST_TABS=[["today","Hoy"],["around","Combinar prenda"],["looks","Mis looks",' id="openLooks"'],["trips","Maletas"]];
 function stylistShell(root,title,subtitle,body){
  root.innerHTML=heroHtml(title,subtitle)+tabsHtml("stylist",STYLIST_TABS,appState.view==="looks"?"looks":ui.stylistTab)+body;
  $$("[data-stylist-tab]",root).forEach(b=>b.addEventListener("click",()=>{const t=b.dataset.stylistTab;if(t==="looks")return setView("looks");ui.stylistTab=t;setView("stylist")}));
@@ -701,6 +701,7 @@ function stylistShell(root,title,subtitle,body){
 function renderStylist(root){
  if(ui.stylistTab==="looks")ui.stylistTab="today";
  if(ui.stylistTab==="around")return renderAround(root);
+ if(ui.stylistTab==="trips")return renderTrips(root);
  const p=appState.data.preferences,u=aiUsage(),candidates=recommendGarments().filter(g=>forgottenStatus(g).forgotten||wornCount(g.id)===0).slice(0,5);
  const info=p.autoWeather&&p.weatherDay===dayISO()?"Tiempo de hoy en tu zona: media de "+p.temperature+" °C.":p.autoWeather?"Actualizando el tiempo de hoy…":"";
  stylistShell(root,"Tu estilista","Combina lo que ya tienes. La IA no inventará prendas.",
@@ -823,6 +824,103 @@ async function refreshWeatherIfNeeded(){
  if(weatherInFlight||!p.autoWeather||!p.weatherPlace||p.weatherDay===dayISO())return;
  weatherInFlight=true;
  try{await fetchTodayTemperature(false);if(appState.view==="stylist")render()}catch(e){console.warn("WEATHER",e)}finally{weatherInFlight=false}
+}
+
+/* Maletas: lista de equipaje por viaje, calculada en el móvil (sin IA).
+   La sugerencia elige pocas prendas que den al menos un look por día del viaje. */
+const PACK_EXTRAS=["Pijama","Ropa interior y calcetines","Neceser","Cargador del móvil","Documentación"];
+const PACK_ORDER=["Arriba","Abajo","Vestidos","Capas","Zapatos","Bolsos","Accesorios",""];
+const myTrips=()=>appState.data.trips;
+const fmtDay=d=>validDay(d)?new Intl.DateTimeFormat("es-ES",{day:"numeric",month:"short",year:d.slice(0,4)===dayISO().slice(0,4)?undefined:"numeric"}).format(new Date(d+"T12:00:00")):"";
+function tripDays(t){if(!validDay(t.start)||!validDay(t.end)||t.end<t.start)return 1;return Math.round((Date.parse(t.end+"T12:00:00")-Date.parse(t.start+"T12:00:00"))/86400000)+1}
+function seasonFor(day){const m=validDay(day)?Number(day.slice(5,7))-1:new Date().getMonth();return m>=3&&m<=9?"warm":"cold"}
+const fitsSeason=(g,season)=>!g.season||g.season==="all"||g.season===season;
+const tripItems=t=>(t.garmentIds||[]).map(id=>myGarments().find(g=>g.id===id)).filter(Boolean);
+/* Looks posibles con lo que va en la maleta: arriba + abajo, o vestido; con calzado y capa si encajan */
+function packLooks(items){
+ const looks=[];
+ for(const t of items.filter(g=>g.category==="Arriba"))for(const b of items.filter(g=>g.category==="Abajo"))if(pairs(t,b))looks.push([t,b]);
+ for(const d of items.filter(g=>g.category==="Vestidos"))looks.push([d]);
+ return looks.map(l=>{const out=[...l];for(const cat of ["Zapatos","Capas"]){const x=items.find(g=>g.category===cat&&out.every(p=>pairs(g,p)));if(x)out.push(x)}return out});
+}
+function suggestPacking(t){
+ const season=seasonFor(t.start),days=tripDays(t),all=myGarments().filter(g=>fitsSeason(g,season));
+ const core=all.filter(g=>["Arriba","Abajo","Vestidos"].includes(g.category)),chosen=[],max=Math.min(12,days+4);
+ const looksOf=list=>packLooks(list).length;
+ // Versatilidad: con cuántas prendas complementarias combina (desempata cuando aún no suma looks)
+ const partner={Arriba:"Abajo",Abajo:"Arriba"},versatility=g=>core.filter(o=>o.category===partner[g.category]&&pairs(g,o)).length;
+ while(looksOf(chosen)<days&&chosen.length<max){
+  const now=looksOf(chosen);let best=null,bestScore=-1;
+  for(const g of core){
+   if(chosen.includes(g))continue;
+   const score=(looksOf([...chosen,g])-now)*100+versatility(g)+(g.favorite?.5:0);
+   if(score>bestScore){best=g;bestScore=score}
+  }
+  if(!best)break;chosen.push(best);
+ }
+ // Complementos: el calzado que más looks cubre (y otro si quedan muchos sin calzado), capa si hace frío, un bolso
+ const looks=packLooks(chosen).map(l=>l.filter(x=>["Arriba","Abajo","Vestidos"].includes(x.category)));
+ const coverBest=(cat,need)=>{const opts=all.filter(g=>g.category===cat&&!chosen.includes(g));let best=null,n=0;for(const g of opts){const c=need.filter(l=>l.every(p=>pairs(g,p))).length;if(c>n){best=g;n=c}}return best?{g:best,covers:need.filter(l=>l.every(p=>pairs(best,p)))}:null};
+ let pending=looks;
+ for(let i=0;i<2&&pending.length;i++){const s=coverBest("Zapatos",pending);if(!s)break;if(i===1&&s.covers.length<pending.length/2&&pending.length<looks.length/2)break;chosen.push(s.g);pending=pending.filter(l=>!s.covers.includes(l))}
+ if(season==="cold"){const c=coverBest("Capas",looks);if(c)chosen.push(c.g)}  // según la temporada del viaje, no el tiempo de hoy
+ const bag=coverBest("Bolsos",looks);if(bag)chosen.push(bag.g);
+ return chosen.map(g=>g.id);
+}
+function tripSummary(t){const items=tripItems(t),days=tripDays(t),looks=packLooks(items).length;return {items,days,looks}}
+function renderTrips(root){
+ const trip=myTrips().find(t=>t.id===ui.tripId);
+ if(trip)return renderTrip(root,trip);
+ const today=dayISO(),list=myTrips().slice().sort((a,b)=>String(a.start).localeCompare(String(b.start)));
+ stylistShell(root,"Maletas","Prepara el equipaje con la ropa que ya tienes.",
+  '<div class="feature-card"><h2>Nuevo viaje</h2><form id="tripForm"><label class="field"><span>Destino o nombre</span><input id="tripName" maxlength="60" required placeholder="Por ejemplo, Lisboa"></label>'+
+  '<div class="filter-grid"><label class="field"><span>Ida</span><input id="tripStart" type="date" required value="'+today+'"></label><label class="field"><span>Vuelta</span><input id="tripEnd" type="date" required value="'+shiftDay(2)+'"></label></div>'+
+  '<button class="primary wide" type="submit">✦ Preparar maleta</button></form>'+
+  '<p class="helper">Te propongo pocas prendas que den al menos un look por día, según la temporada del viaje. Se calcula en tu móvil, sin gastar tokens.</p></div>'+
+  (list.length?'<div class="section-head"><h2>Mis maletas</h2></div><div class="insight-list">'+list.map(t=>{const s=tripSummary(t),packed=s.items.filter(g=>t.packed?.[g.id]).length;return '<button class="list-line link-line" data-trip="'+fx(t.id)+'"><strong>'+fx(t.name)+'</strong><span class="muted">'+fx(fmtDay(t.start)+" · "+plural(s.days,"día","días")+" · "+packed+"/"+s.items.length+" preparadas")+' ›</span></button>'}).join("")+'</div>':''));
+ $("#tripForm")?.addEventListener("submit",async e=>{
+  e.preventDefault();
+  const name=$("#tripName").value.trim(),start=$("#tripStart").value,end=$("#tripEnd").value;
+  if(!name||!validDay(start)||!validDay(end))return toast("Completa el nombre y las fechas");
+  if(end<start)return toast("La vuelta no puede ser antes de la ida");
+  const now=new Date().toISOString(),t={id:uid(),name,start,end,garmentIds:[],packed:{},extras:PACK_EXTRAS.map(text=>({id:uid(),text,done:false})),createdAt:now,updatedAt:now};
+  t.garmentIds=suggestPacking(t);
+  if(await mutate(()=>myTrips().unshift(t),t.garmentIds.length?"Maleta preparada":"Maleta creada")){ui.tripId=t.id;render()}
+ });
+ $$("[data-trip]",root).forEach(b=>b.addEventListener("click",()=>{ui.tripId=b.dataset.trip;render()}));
+}
+function renderTrip(root,t){
+ const {items,days,looks}=tripSummary(t),season=seasonFor(t.start),packed=items.filter(g=>t.packed?.[g.id]).length;
+ const extras=t.extras||[],done=extras.filter(x=>x.done).length,total=items.length+extras.length,ready=packed+done;
+ const order=g=>PACK_ORDER.indexOf(g.category||""),sorted=items.slice().sort((a,b)=>order(a)-order(b)||String(a.name).localeCompare(String(b.name),"es"));
+ const others=myGarments().filter(g=>!(t.garmentIds||[]).includes(g.id)).sort((a,b)=>order(a)-order(b)||String(a.name).localeCompare(String(b.name),"es"));
+ const examples=packLooks(items).slice(0,6);
+ stylistShell(root,t.name,(validDay(t.start)?fmtDay(t.start)+" – "+fmtDay(t.end)+" · ":"")+plural(days,"día","días")+" · "+seasons[season],
+  '<div class="actions"><button class="secondary" id="tripBack">← Mis maletas</button><button class="secondary" id="tripResuggest">✦ Volver a sugerir</button></div>'+
+  '<div class="stats">'+miniStat("prendas",items.length)+miniStat("looks posibles",looks)+'</div>'+
+  (items.length&&looks<days?'<p class="notice-card">Con estas prendas tienes '+plural(looks,"look","looks")+' para '+plural(days,"día","días")+'. Repetirás alguno, o añade más prendas.</p>':'')+
+  (!items.length?'<p class="notice-card">No he encontrado prendas de '+fx(seasons[season].toLocaleLowerCase("es"))+' que combinen entre sí. Añádelas a mano abajo.</p>':'')+
+  '<div class="feature-card"><div class="section-head"><h2>Equipaje</h2><span class="muted">'+ready+' de '+total+'</span></div>'+
+  '<div class="progress-track"><div style="width:'+(total?Math.round(100*ready/total):0)+'%"></div></div>'+
+  '<div class="pack-list">'+sorted.map(g=>'<div class="pack-row"><input type="checkbox" data-pack="'+fx(g.id)+'" aria-label="Preparada: '+fx(g.name)+'"'+(t.packed?.[g.id]?' checked':'')+'><span class="pack-thumb"'+(validImage(g.image)?' style="background-image:url('+g.image+')"':'')+'></span><span class="pack-name">'+fx(g.name)+'<small class="muted">'+fx(g.category||"")+'</small></span><button class="chip-button" data-unpack="'+fx(g.id)+'" aria-label="Quitar '+fx(g.name)+'">✕</button></div>').join("")+'</div>'+
+  (others.length?'<div class="pack-add"><select id="tripAddSelect" aria-label="Prenda para añadir">'+optionList([["","Añadir otra prenda…"],...others.map(g=>[g.id,g.name+(g.category?" · "+g.category:"")])],"")+'</select><button class="secondary" id="tripAdd">Añadir</button></div>':'')+
+  '<h3 class="mini-title">Además</h3><div class="pack-list">'+extras.map(x=>'<div class="pack-row extra"><input type="checkbox" data-extra="'+fx(x.id)+'" aria-label="Preparado: '+fx(x.text)+'"'+(x.done?' checked':'')+'><span class="pack-name">'+fx(x.text)+'</span><button class="chip-button" data-extra-remove="'+fx(x.id)+'" aria-label="Quitar '+fx(x.text)+'">✕</button></div>').join("")+'</div>'+
+  '<form id="extraForm" class="pack-add"><input id="extraText" maxlength="60" placeholder="Añadir algo (gafas de sol, bañador…)" aria-label="Otra cosa para la maleta"><button class="secondary" type="submit">Añadir</button></form></div>'+
+  (examples.length?'<div class="section-head"><h2>Looks con tu maleta</h2></div><div class="grid">'+examples.map((l,i)=>{const imgs=l.map(x=>x.image).filter(validImage);return '<div class="look-tile"><article class="card">'+collage(imgs,imgs.length-4)+'<div class="card-body"><div class="look-items">'+l.map(x=>'<span class="look-chip">'+fx(x.name)+'</span>').join("")+'</div></div></article><div class="tile-tools"><button class="chip-button" data-trip-look="'+i+'">Guardar look</button></div></div>'}).join("")+'</div>':'')+
+  '<button class="danger wide" id="tripDelete">Eliminar maleta</button>');
+ const touch=fn=>mutate(()=>{fn();t.updatedAt=new Date().toISOString()});
+ $("#tripBack")?.addEventListener("click",()=>{ui.tripId="";render()});
+ $("#tripResuggest")?.addEventListener("click",async()=>{if(!confirm("¿Sustituir las prendas de la maleta por una nueva sugerencia?"))return;const ids=suggestPacking(t);await touch(()=>{t.garmentIds=ids;t.packed=Object.fromEntries(Object.entries(t.packed||{}).filter(([id])=>ids.includes(id)))});toast("Maleta actualizada")});
+ $$("[data-pack]",root).forEach(c=>c.addEventListener("change",()=>touch(()=>{t.packed={...(t.packed||{})};if(c.checked)t.packed[c.dataset.pack]=true;else delete t.packed[c.dataset.pack]})));
+ $$("[data-unpack]",root).forEach(b=>b.addEventListener("click",()=>touch(()=>{const id=b.dataset.unpack;t.garmentIds=t.garmentIds.filter(x=>x!==id);if(t.packed)delete t.packed[id]})));
+ $("#tripAdd")?.addEventListener("click",()=>{const id=$("#tripAddSelect").value;if(id)touch(()=>{t.garmentIds=[...t.garmentIds,id]})});
+ $$("[data-extra]",root).forEach(c=>c.addEventListener("change",()=>touch(()=>{const x=t.extras.find(e=>e.id===c.dataset.extra);if(x)x.done=c.checked})));
+ $$("[data-extra-remove]",root).forEach(b=>b.addEventListener("click",()=>touch(()=>{t.extras=t.extras.filter(e=>e.id!==b.dataset.extraRemove)})));
+ $("#extraForm")?.addEventListener("submit",e=>{e.preventDefault();const text=$("#extraText").value.trim();if(text)touch(()=>{t.extras=[...(t.extras||[]),{id:uid(),text,done:false}]})});
+ $$("[data-trip-look]",root).forEach(b=>b.addEventListener("click",async()=>{const l=examples[Number(b.dataset.tripLook)];if(!l)return;
+  const sig=l.map(x=>x.id).sort().join("|");if(myLooks().some(x=>(x.garmentIds||[]).slice().sort().join("|")===sig))return toast("Ese look ya está guardado");
+  await mutate(()=>myLooks().unshift({id:uid(),name:"Viaje: "+t.name,garmentIds:l.map(x=>x.id),occasion:"travel",ai:false,updatedAt:new Date().toISOString()}),"Look guardado")}));
+ $("#tripDelete")?.addEventListener("click",async()=>{if(!confirm("¿Eliminar la maleta «"+t.name+"»?"))return;const id=t.id;if(await mutate(()=>{appState.data.trips=myTrips().filter(x=>x.id!==id);tomb(id)},"Maleta eliminada")){ui.tripId="";render()}});
 }
 
 /* ===================== 8. Compras ===================== */
@@ -977,7 +1075,9 @@ function wishlistHtml(){
  const wishlist=appState.data.wishlist.filter(w=>ui.wishlistFilter!=="pending"||!w.bought);
  const existingCats=new Set(myGarments().map(g=>g.category)),total=appState.data.wishlist.filter(w=>!w.bought).reduce((s,w)=>s+(Number(w.price)||0),0);
  const gaps=[["Zapatos","Zapatos"],["Arriba","Prendas superiores"],["Abajo","Prendas inferiores"],["Capas","Capas y abrigos"],["Accesorios","Accesorios"]].filter(x=>!existingCats.has(x[0]));
+ const budget=Number(appState.data.preferences.budget)||0,over=total>budget;
  return '<div class="stats">'+miniStat("pendientes",appState.data.wishlist.filter(w=>!w.bought).length)+miniStat("total previsto",euro(total))+'</div>'+
+  '<div class="budget-line'+(over?' over':'')+'"><span>'+fx(over?"Tu wishlist pendiente supera tu presupuesto de "+euro(budget)+" en "+euro(total-budget)+".":"Tu wishlist cabe en tu presupuesto de "+euro(budget)+".")+'</span><button class="chip-button" id="editBudget">Cambiar</button></div>'+
   '<div class="feature-card"><h2>Mi wishlist</h2><form id="wishlistForm"><label class="field"><span>Prenda que quiero</span><input name="wishName" maxlength="80" required placeholder="Por ejemplo, abrigo camel"></label>'+
   '<div class="filter-grid"><label class="field"><span>Precio (€)</span><input name="wishPrice" type="number" min="0" max="100000" step=".01" inputmode="decimal"></label>'+
   '<label class="field"><span>Categoría</span><select name="wishCategory">'+optionList([["","Sin categoría"],...CATEGORIES.map(x=>[x,x])],"")+'</select></label></div>'+
@@ -985,9 +1085,7 @@ function wishlistHtml(){
   '<button class="primary wide" type="submit">Añadir a mi lista</button></form></div>'+
   '<div class="section-head"><h2>Mis deseos</h2><button id="wishPending" class="secondary">'+(ui.wishlistFilter==="pending"?"Ver todos":"Solo pendientes")+'</button></div>'+
   (wishlist.length?'<div class="insight-list">'+wishlist.map(w=>{const similar=myGarments().filter(g=>g.category&&g.category===w.category).length,link=/^https?:\/\//i.test(w.url||"")?'<a href="'+fx(w.url)+'" rel="noopener noreferrer" target="_blank">Ver tienda ↗</a>':"";return '<div class="wish-row"><div><strong>'+fx(w.name)+'</strong><p class="muted">'+euro(w.price)+(w.verdict?' · '+fx(w.verdict):'')+(w.bought?' · Comprada':'')+(similar?' · '+plural(similar,"prenda","prendas")+' de esa categoría en tu armario':'')+'</p>'+link+'</div><div class="wish-actions"><button class="chip-button" data-wish-bought="'+fx(w.id)+'">'+(w.bought?'Pendiente':'Comprada ✓')+'</button><button class="chip-button" data-wish-remove="'+fx(w.id)+'" aria-label="Quitar">✕</button></div></div>'}).join("")+'</div>':'<div class="empty">Tu lista está vacía.</div>')+
-  '<div class="feature-card"><h2>Presupuesto</h2>'+(gaps.length?'<p class="muted">Categorías que aún no tienes registradas: '+fx(gaps.map(x=>x[1].toLocaleLowerCase("es")).join(", "))+'.</p>':'')+
-  '<label class="field"><span>Presupuesto de compras (€)</span><input id="shoppingBudget" type="number" min="0" max="100000" value="'+fx(appState.data.preferences.budget)+'"></label>'+
-  (total>Number(appState.data.preferences.budget)?'<p class="error">Tu wishlist pendiente supera tu presupuesto.</p>':'<p class="muted">Tu wishlist cabe dentro del presupuesto indicado.</p>')+'</div>';
+  (gaps.length?'<p class="helper">Categorías que aún no tienes en el armario: '+fx(gaps.map(x=>x[1].toLocaleLowerCase("es")).join(", "))+'.</p>':'');
 }
 function renderShopping(root){
  const pending=appState.data.wishlist.filter(w=>!w.bought).length;
@@ -1014,7 +1112,7 @@ function renderShopping(root){
  $("#wishlistForm")?.addEventListener("submit",async e=>{e.preventDefault();const fd=new FormData(e.target),name=String(fd.get("wishName")||"").trim(),url=String(fd.get("wishUrl")||"").trim();if(!name)return;if(url&&!/^https?:\/\//i.test(url))return toast("El enlace debe ser HTTPS o HTTP");
   await mutate(()=>appState.data.wishlist.unshift({id:uid(),name,price:Number(fd.get("wishPrice"))||0,category:String(fd.get("wishCategory")||""),url,bought:false,addedAt:dayISO(),updatedAt:new Date().toISOString()}),"Añadido a la wishlist")});
  $("#wishPending")?.addEventListener("click",()=>{ui.wishlistFilter=ui.wishlistFilter==="all"?"pending":"all";render()});
- $("#shoppingBudget")?.addEventListener("change",e=>setPref("budget",Math.max(0,Number(e.target.value)||0)));
+ $("#editBudget")?.addEventListener("click",()=>{setView("settings");setTimeout(()=>{const i=$("#shoppingBudget");i?.scrollIntoView?.({block:"center"});i?.focus()},50)});
  $$("[data-wish-bought]",root).forEach(b=>b.addEventListener("click",async()=>{const w=appState.data.wishlist.find(w=>w.id===b.dataset.wishBought);if(w)await mutate(()=>{w.bought=!w.bought;w.updatedAt=new Date().toISOString()},"Compra actualizada")}));
  $$("[data-wish-remove]",root).forEach(b=>b.addEventListener("click",async()=>{if(!confirm("¿Quitar de la wishlist?"))return;const id=b.dataset.wishRemove;await mutate(()=>{appState.data.wishlist=appState.data.wishlist.filter(w=>w.id!==id);tomb(id)},"Eliminado")}));
 }
@@ -1070,7 +1168,8 @@ async function importBackup(file){
   const obj=JSON.parse(await file.text());
   if(obj?.type!=="atelier-backup"||obj.profile!==appState.profile.id||!obj.data||!Array.isArray(obj.data.garments)||!Array.isArray(obj.data.looks))return toast("Copia inválida o perteneciente a otro perfil");
   if(!confirm("¿Sustituir todos los datos actuales de "+appState.profile.name+" por esta copia? Esta acción no se puede deshacer."))return;
-  const current=new Set(myGarments().map(g=>g.id).concat(myLooks().map(l=>l.id))),data=normalizeData(obj.data),kept=new Set(data.garments.map(g=>g.id).concat(data.looks.map(l=>l.id)));
+  const ids=d=>[...d.garments,...d.looks,...d.wishlist,...d.wearLog,...d.trips].map(x=>x.id);
+  const current=new Set(ids(appState.data)),data=normalizeData(obj.data),kept=new Set(ids(data));
   await mutate(()=>{appState.data=data;for(const id of current)if(!kept.has(id))tomb(id)},"Copia restaurada");
  }catch(e){console.error("BACKUP",e);toast("No se pudo importar la copia")}
 }
@@ -1080,6 +1179,7 @@ function renderSettings(root){
  root.innerHTML=heroHtml("Ajustes","Perfil "+appState.profile.name)+
   '<div class="feature-card"><h2>Sincronización</h2><p class="muted" id="syncStatus">'+fx(syncStatusText())+'</p>'+
   (sync.status!=="off"?'<p class="helper">Tu armario y tus fotos se guardan en el servidor de Atelier, solo accesibles con tu contraseña. Así puedes cambiar de móvil o usar varios dispositivos.</p><button class="secondary wide" id="syncButton"'+(sync.status==="syncing"?' disabled':'')+'>↻ Sincronizar ahora</button>':'')+'</div>'+
+  '<div class="feature-card"><h2>Compras</h2><label class="field"><span>Presupuesto de compras (€)</span><input id="shoppingBudget" type="number" min="0" max="100000" step="1" inputmode="numeric" value="'+fx(p.budget)+'"></label><p class="helper">Lo uso en la wishlist y en «¿Lo compro?» para avisarte si una compra te haría pasarte.</p></div>'+
   '<div class="feature-card"><h2>Preferencias del estilista</h2>'+
   '<label class="field"><span>Prenda olvidada tras (días)</span><input id="settingsForget" type="number" min="30" max="365" value="'+fx(p.forgottenDays)+'"></label>'+
   '<label class="field"><span>Diversidad de combinaciones: <strong id="settingsDiversityText">'+fx(p.diversity)+'</strong>%</span><input id="settingsDiversity" type="range" min="0" max="100" step="5" value="'+fx(p.diversity)+'"></label></div>'+
@@ -1091,6 +1191,7 @@ function renderSettings(root){
   '<p class="helper">La copia incluye fotografías y datos personales. Guárdala en un lugar privado.</p></div>'+
   '<button id="logout" class="danger wide">Cerrar sesión</button>';
  $("#syncButton")?.addEventListener("click",async e=>{e.target.disabled=true;e.target.textContent="Sincronizando…";$("#syncStatus").textContent="Sincronizando…";await syncNow();render()});
+ $("#shoppingBudget")?.addEventListener("change",e=>{const n=Number(e.target.value);if(e.target.value===""||!Number.isFinite(n)||n<0)return toast("Introduce un importe en euros");setPref("budget",Math.round(n*100)/100,false);toast("Presupuesto guardado: "+euro(n))});
  $("#settingsForget")?.addEventListener("change",e=>{const n=Number(e.target.value);if(Number.isInteger(n)&&n>=30&&n<=365)setPref("forgottenDays",n);else toast("Introduce entre 30 y 365 días")});
  $("#settingsDiversity")?.addEventListener("input",e=>{$("#settingsDiversityText").textContent=e.target.value;setPref("diversity",Number(e.target.value),false)});
  $("#exportBackup")?.addEventListener("click",downloadBackup);
