@@ -99,7 +99,18 @@ try{
  await page.locator("#tripBack").click();
  await page.locator("[data-trip]").filter({hasText:"Viaje de prueba"}).click();
  assert.equal(await page.locator("[data-extra]:checked").count(),1,"La casilla de la maleta debe conservarse");
+ // Mi semana: planificar hoy con un look guardado; planificado no es usado hasta «Me lo he puesto»
+ await page.locator('[data-stylist-tab="week"]').click();
+ const usesBefore=await page.evaluate(()=>logs().length);
+ await page.locator("section.is-today [data-plan-pick]").click();
+ await page.locator("#planSheet [data-plan-saved]").first().click();
+ await page.locator("section.is-today [data-plan-worn]").waitFor();
+ assert.equal(await page.evaluate(()=>logs().length),usesBefore,"Planificar no debe registrar un uso");
+ await page.locator("section.is-today [data-plan-worn]").click();
+ await page.locator("section.is-today .badge-ok").waitFor();
+ assert.equal(await page.evaluate(()=>logs().length),usesBefore+1);
  await page.locator('[data-view="today"]').click();
+ await page.locator(".plan-today .badge-ok").waitFor();
  await page.locator('[data-view="shopping"]').click();
  await page.locator('[data-shop-tab="wish"]').click();
  await page.locator('[name="wishName"]').fill("Abrigo de prueba");
