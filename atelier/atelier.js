@@ -671,15 +671,22 @@ function buildMetadataSection(){
   '<div class="field"><span class="field-title">Ocasiones</span><div class="occ-grid">'+Object.entries(occasions).map(([k,t])=>'<label class="switch-line"><input type="checkbox" name="meta-occasion" value="'+k+'"> '+fx(t)+'</label>').join("")+'</div></div>'+
   '<div class="filter-grid">'+META_FIELDS.filter(d=>d[3]==="manual").map(field).join("")+'</div></details>');
  $("#garmentImage")?.closest(".field")?.insertAdjacentHTML("beforeend",'<div id="photoControls"></div><label class="switch-line" id="autoWhiteOption"><input type="checkbox" id="autoWhite" checked> Poner fondo blanco automáticamente</label><label class="switch-line" id="autoAnalyzeOption"><input type="checkbox" id="autoAnalyze" checked> Analizar automáticamente al elegir la foto</label><p class="helper" id="autoAnalyzeStatus" role="status" aria-live="polite"></p>');
+ const occasionField=$("#metadataDetails .occ-grid")?.closest(".field"),occasionSlot=$("#occasionSlot");
+ if(occasionField&&occasionSlot){occasionSlot.append(occasionField);$(`[name="meta-occasion"]`,occasionSlot).forEach(input=>input.addEventListener("change",updateOccasionSummary));updateOccasionSummary()}
  $("#autoAnalyze")?.addEventListener("change",e=>{if(appState.profile)setPref("autoAnalyze",e.target.checked,false)});
  $("#autoWhite")?.addEventListener("change",e=>{if(appState.profile)setPref("autoWhite",e.target.checked,false)});
  // La vista previa va justo encima de los controles de la foto
  const pv=$("#garmentPreview"),pc=$("#photoControls");if(pv&&pc)pc.before(pv);
 }
+function updateOccasionSummary(){
+ const values=$('[name="meta-occasion"]:checked').map(x=>occasions[x.value]||x.value);
+ const el=$("#occasionSummary");if(el)el.textContent=values.length?values.slice(0,3).join(" · ")+(values.length>3?" +"+(values.length-3):""):"Sin ocasiones sugeridas · puedes elegirlas";
+}
 function populateMetadata(src){
  for(const def of META_FIELDS){const el=$("#meta-"+def[0]);if(el)el.value=metaValue(def,src?.[def[0]])}
  const occ=new Set(Array.isArray(src?.occasions)?src.occasions:[]);
- $$('[name="meta-occasion"]').forEach(x=>x.checked=occ.has(x.value));
+ $('[name="meta-occasion"]').forEach(x=>x.checked=occ.has(x.value));
+ updateOccasionSummary();
  metaConfidence=CONFIDENCE.includes(src?.confidence)?src.confidence:"";
  const c=$("#metaConfidence");if(c)c.textContent=metaConfidence?"Confianza de la IA en este análisis: "+metaConfidence+".":"";
 }
