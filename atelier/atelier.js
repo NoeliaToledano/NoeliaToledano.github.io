@@ -29,7 +29,7 @@ function normalizeData(v){
  return d;
 }
 const copyData=d=>structuredClone(d);
-const appState={profile:null,token:null,data:emptyData(),view:"wardrobe",authExpired:false};
+const appState={profile:null,token:null,data:emptyData(),view:"today",authExpired:false};
 let lastSavedData=emptyData();
 const ui={search:"",category:"",season:"",onlyFavorites:false,onlyForgotten:false,sort:"recent",calendarMonth:new Date().toISOString().slice(0,7),lookFilter:"all",wishlistFilter:"all",stylistTab:"today",shopTab:"buy",aroundId:"",tripId:""};
 
@@ -616,7 +616,9 @@ async function enterApp(){
  const p=appState.data.preferences;
  // Una vez por perfil: las temperaturas antiguas escritas a mano pasan a 25 °C.
  if(p.tempDefault25!==true){if(!p.autoWeather)p.temperature=DEFAULT_TEMPERATURE;p.tempDefault25=true;await saveState({fromSync:true})}
- $("#auth").classList.add("hidden");$("#app").classList.remove("hidden");$("#profileName").textContent=appState.profile.name;
+ $("#auth").classList.add("hidden");$("#app").classList.remove("hidden");$("#profileName").textContent=appState.profile.name+" · Ajustes";
+ appState.view="today";
+ $(".nav-btn").forEach(b=>{const active=b.dataset.view==="today";b.classList.toggle("active",active);if(active)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
  render();
  await ensurePersistence();
  syncNow();
@@ -1027,8 +1029,8 @@ function renderToday(root){
  $("#suggestSmart")?.addEventListener("click",()=>suggestLooks());
  $("#createManual")?.addEventListener("click",()=>openLook());
  $("#openCalendar")?.addEventListener("click",()=>setView("calendar"));
- bindPlanActions(root);$$("[data-open-week]",root).forEach(b=>b.addEventListener("click",()=>{ui.stylistTab="week";render()}));
- $$("[data-rescue]",root).forEach(b=>b.addEventListener("click",()=>{ui.aroundId=b.dataset.rescue;ui.stylistTab="around";render()}));
+ bindPlanActions(root);$$("[data-open-week]",root).forEach(b=>b.addEventListener("click",()=>{ui.stylistTab="week";setView("stylist")}));
+ $$("[data-rescue]",root).forEach(b=>b.addEventListener("click",()=>{ui.aroundId=b.dataset.rescue;ui.stylistTab="around";setView("stylist")}));
  $("#useWeather")?.addEventListener("click",async e=>{e.target.disabled=true;e.target.textContent="Consultando…";
   try{const w=await fetchTodayTemperature(true);toast("Hoy: entre "+w.min+" y "+w.max+" °C (media "+w.mean+" °C)");render()}
   catch(err){console.warn("WEATHER",err);toast(err?.code===1?"Sin permiso de ubicación: sigo usando "+DEFAULT_TEMPERATURE+" °C":"No se pudo consultar el tiempo");e.target.disabled=false;e.target.textContent="📍 Usar el tiempo de hoy"}});
@@ -1057,7 +1059,7 @@ async function suggestLooks(){
   }
   if(!added)return toast("Estas combinaciones ya están guardadas. Cambia la ocasión o la diversidad.");
   if(!await saveState())return;
-  if(appState.view==="stylist")setView("looks");else render();
+  setView("looks");
   toast(plural(added,"look sugerido","looks sugeridos"));
  }catch(e){console.error("LOOKS_AI",e);if(e.message!=="AI_QUOTA")toast(e.message==="SESSION_EXPIRED"?"La sesión ha caducado":"No se pudieron generar looks")}
  finally{const a=$("#aiLooks"),s=$("#suggestSmart");if(a){a.disabled=false;a.textContent="✦ Sugerir nuevos looks"}if(s){s.disabled=false;s.textContent="✦ Generar looks con mi ropa"}}
