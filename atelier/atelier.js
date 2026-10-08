@@ -263,7 +263,32 @@ async function retouchOnly(src){
  }catch(e){console.warn("RETOUCH",e);return null}
 }
 /* Mejora completa: fondo blanco si se puede; si no, solo retoque. → {image, white} o null */
+/* ¿La foto ya parece de catálogo? (fotos de tienda) Se usa tal cual, sin retocar, para no cambiar sus colores.
+   Pide: borde casi todo blanco puro, fondo blanco conectado con el borde que rodea a la prenda, algo de prenda,
+   y que lo de dentro no sea un rectángulo lleno (una captura con márgenes blancos y otra foto dentro). */
+async function isCatalogPhoto(src){
+ try{
+  const img=await loadImg(src),W=img.naturalWidth||img.width,H=img.naturalHeight||img.height,k=Math.min(1,160/Math.max(W,H));
+  const w=Math.max(8,Math.round(W*k)),h=Math.max(8,Math.round(H*k)),n=w*h,c=document.createElement("canvas");c.width=w;c.height=h;
+  const cx=c.getContext("2d",{willReadFrequently:true});cx.drawImage(img,0,0,w,h);const d=cx.getImageData(0,0,w,h).data;
+  const white=new Uint8Array(n);for(let i=0;i<n;i++){const j=i*4,mn=Math.min(d[j],d[j+1],d[j+2]),mx=Math.max(d[j],d[j+1],d[j+2]);white[i]=mn>=236&&mx-mn<=14?1:0}
+  const b=Math.max(2,Math.round(Math.min(w,h)*.04));let edge=0,edgeWhite=0;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(x<b||y<b||x>=w-b||y>=h-b){edge++;edgeWhite+=white[y*w+x]}
+  if(edgeWhite/edge<.9)return false;
+  // Fondo = blanco conectado con el borde; el resto es la prenda (aunque tenga partes blancas dentro)
+  const bg=new Uint8Array(n),st=[];for(let x=0;x<w;x++)st.push(x,(h-1)*w+x);for(let y=0;y<h;y++)st.push(y*w,y*w+w-1);
+  while(st.length){const i=st.pop();if(bg[i]||!white[i])continue;bg[i]=1;const x=i%w;if(x>0)st.push(i-1);if(x<w-1)st.push(i+1);if(i>=w)st.push(i-w);if(i<n-w)st.push(i+w)}
+  let fg=0,x0=w,y0=h,x1=-1,y1=-1;for(let i=0;i<n;i++)if(!bg[i]){fg++;const x=i%w,y=(i-x)/w;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}
+  if(fg/n<.05||fg/n>.8)return false;
+  // Esquinas del recuadro de la prenda: si casi todas son «prenda», es un bloque rectangular (otra foto dentro)
+  const corner=(cx0,cy0)=>{let f=0;for(let dy=0;dy<3;dy++)for(let dx=0;dx<3;dx++){const x=Math.min(x1,Math.max(x0,cx0+(cx0===x0?dx:-dx))),y=Math.min(y1,Math.max(y0,cy0+(cy0===y0?dy:-dy)));f+=bg[y*w+x]?0:1}return f>=5};
+  return [corner(x0,y0),corner(x1,y0),corner(x0,y1),corner(x1,y1)].filter(Boolean).length<3;
+ }catch{return false}
+}
+/* Mejora completa: si ya parece de catálogo se deja tal cual; si no, fondo blanco o solo retoque.
+   → {image, white, asIs} o null */
 async function enhancePhoto(src){
+ if(await isCatalogPhoto(src))return {image:src,white:true,asIs:true};
  const white=await whiteBackground(src);if(white)return {image:white,white:true};
  const tuned=await retouchOnly(src);return tuned?{image:tuned,white:false}:null;
 }
@@ -667,8 +692,8 @@ function renderPhotoControls(){
  preview.src=img||"";preview.classList.toggle("hidden",!img);preview.classList.toggle("on-white",!!img&&ph?.mode==="edited"&&!!ph.editedWhite);
  if(!ph||!img){box.innerHTML="";return}
  if(ph.busy){box.innerHTML='<p class="helper" role="status">Mejorando la foto…</p>';return}
- const note=ph.edited&&!ph.editedWhite&&ph.mode==="edited"?'<p class="helper">No he podido quitar el fondo (funciona mejor con la prenda extendida sobre una superficie lisa de otro color); he mejorado la luz y el color.</p>':'';
- box.innerHTML=(ph.edited&&ph.original
+ const note=ph.asIs&&ph.mode==="edited"?'<p class="helper">La foto ya tenía aspecto de catálogo: se usa tal cual, sin retocar.</p>':ph.edited&&!ph.editedWhite&&ph.mode==="edited"?'<p class="helper">No he podido quitar el fondo (funciona mejor con la prenda extendida sobre una superficie lisa de otro color); he mejorado la luz y el color.</p>':'';
+ box.innerHTML=(ph.asIs?'':ph.edited&&ph.original&&ph.original!==ph.edited
   ?'<div class="seg-tabs photo-mode" role="group" aria-label="Foto que se guarda"><button type="button" class="seg-tab'+(ph.mode==="edited"?' active':'')+'" data-photo-mode="edited" aria-pressed="'+(ph.mode==="edited")+'">'+(ph.editedWhite?"Fondo blanco":"Mejorada")+'</button><button type="button" class="seg-tab'+(ph.mode==="original"?' active':'')+'" data-photo-mode="original" aria-pressed="'+(ph.mode==="original")+'">Original</button></div>'
   :ph.edited?'<p class="helper">Foto mejorada'+(ph.editedWhite?' con fondo blanco':'')+'.</p>'
   :'<button type="button" class="secondary wide" id="makeWhite">✨ Mejorar foto</button>'+(ph.failed?'<p class="helper">No he podido mejorar esta foto.</p>':''))+note;
@@ -680,7 +705,7 @@ async function makeSheetWhite(){
  ph.busy=true;ph.failed=false;renderPhotoControls();
  const res=await enhancePhoto(ph.original);
  if(sheetPhoto!==ph)return;
- ph.busy=false;if(res){ph.edited=res.image;ph.editedWhite=res.white;ph.mode="edited";ph.changed=true}else ph.failed=true;
+ ph.busy=false;if(res){ph.edited=res.image;ph.editedWhite=res.white;ph.asIs=!!res.asIs;ph.mode="edited";ph.changed=true}else ph.failed=true;
  renderPhotoControls();
 }
 /* Ficha de características dentro de la hoja de la prenda (se crea una vez) */
@@ -757,8 +782,8 @@ function openGarment(id){
  const g=myGarments().find(x=>x.id===id);
  $("#garmentTitle").textContent=g?"Editar prenda":"Nueva prenda";$("#garmentId").value=g?.id||"";$("#garmentName").value=g?.name||"";$("#garmentCategory").value=g?.category||"";$("#garmentColor").value=g?.color||"";$("#garmentNotes").value=g?.notes||"";$("#garmentSeason").value=g?.season||"all";$("#garmentStyle").value=g?.style||"";$("#garmentPrice").value=g?.price??"";$("#garmentBought").value=g?.boughtAt||"";$("#garmentFavorite").checked=!!g?.favorite;$("#garmentImage").value="";$("#garmentCamera").value="";
  const edited=!!(g?.photoFx||g?.bgWhite);
- sheetPhoto=validImage(g?.image)?(edited?{original:null,edited:g.image,editedWhite:!!g.bgWhite,mode:"edited",changed:false}:{original:g.image,edited:null,mode:"original",changed:false}):null;
- if(sheetPhoto&&edited){const ph=sheetPhoto;dbGet(origKey(g.id)).then(o=>{if(sheetPhoto===ph&&validImage(o)){ph.original=o;renderPhotoControls()}}).catch(()=>{})}
+ sheetPhoto=validImage(g?.image)?(edited?{original:null,edited:g.image,editedWhite:!!g.bgWhite,asIs:!!g.catalogPhoto,mode:"edited",changed:false}:{original:g.image,edited:null,mode:"original",changed:false}):null;
+ if(sheetPhoto&&edited&&!g.catalogPhoto){const ph=sheetPhoto;dbGet(origKey(g.id)).then(o=>{if(sheetPhoto===ph&&validImage(o)){ph.original=o;renderPhotoControls()}}).catch(()=>{})}
  syncGarmentCategory();$("#garmentType").value=g?.type||"";
  $("#deleteGarment").classList.toggle("hidden",!g);
  let btn=$("#garmentAround");
@@ -782,12 +807,12 @@ async function saveGarment(e){
  const kept=Object.fromEntries(Object.entries(old||{}).filter(([k])=>!META_KEYS.has(k)));
  const g={...kept,...readMetadata(),id,name:$("#garmentName").value.trim()||"Sin nombre",category:$("#garmentCategory").value,type:$("#garmentType").value,color:$("#garmentColor").value.trim(),notes:$("#garmentNotes").value.trim(),season:$("#garmentSeason").value,style:$("#garmentStyle").value,price:$("#garmentPrice").value===""?null:Number($("#garmentPrice").value),boughtAt:$("#garmentBought").value,favorite:$("#garmentFavorite").checked,createdAt:old?.createdAt||new Date().toISOString(),image,updatedAt:new Date().toISOString()};
  if(!validImage(image)&&old?.hasImage)g.hasImage=true;
- if(ph){g.bgWhite=edited&&!!ph.editedWhite;if(edited)g.photoFx=1;else delete g.photoFx}
+ if(ph){g.bgWhite=edited&&!!ph.editedWhite;if(edited)g.photoFx=1;else delete g.photoFx;if(edited&&ph.asIs)g.catalogPhoto=1;else delete g.catalogPhoto}
  g.imageAt=changed?new Date().toISOString():old?.imageAt;if(!g.imageAt)delete g.imageAt;
  const i=myGarments().findIndex(x=>x.id===id);if(i>=0)myGarments()[i]=g;else myGarments().unshift(g);
  if(!await saveState())return;
  // La original se guarda solo en este móvil, para poder volver a ella; se toca solo si el guardado ha ido bien
- try{if(edited&&validImage(ph.original))await dbSet(origKey(id),ph.original);else if(ph&&!edited)await dbBatch([],[origKey(id)])}catch(err){console.warn("ORIG",err)}
+ try{if(edited&&!ph.asIs&&validImage(ph.original))await dbSet(origKey(id),ph.original);else if(ph&&(!edited||ph.asIs))await dbBatch([],[origKey(id)])}catch(err){console.warn("ORIG",err)}
  closeGarment();render();toast("Prenda guardada");
 }
 async function deleteGarment(){
@@ -1202,9 +1227,9 @@ async function startBuyCheck(file){
  if(!image)return;
  const token={};buyCheck={image,loading:true,token};render();
  let bgWhite=false;const original=image;
- let photoFx=false;
- if(appState.data.preferences.autoWhite!==false){const r=await enhancePhoto(image);if(buyCheck?.token!==token)return;if(r){image=r.image;bgWhite=r.white;photoFx=true}}
- const c={image,original,bgWhite,photoFx,token,name:"",category:"",color:"",style:"",season:"all",price:null,looks:null,analyzeFailed:false};
+ let photoFx=false,catalogPhoto=false;
+ if(appState.data.preferences.autoWhite!==false){const r=await enhancePhoto(image);if(buyCheck?.token!==token)return;if(r){image=r.image;bgWhite=r.white;photoFx=!r.asIs;catalogPhoto=!!r.asIs}}
+ const c={image,original,bgWhite,photoFx,catalogPhoto,token,name:"",category:"",color:"",style:"",season:"all",price:null,looks:null,analyzeFailed:false};
  try{const out=await api("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image})});const d=mapAnalysis(out.garment||out.result||out);Object.assign(c,d,{season:d.season||"all",notes:undefined})}
  catch(e){console.error("BUY_ANALYZE",e);c.analyzeFailed=true;if(e.message==="SESSION_EXPIRED"){buyCheck=null;return}}
  if(buyCheck?.token===token){buyCheck=c;render();$("#buyCheck")?.scrollIntoView?.({block:"start",behavior:"smooth"})}
@@ -1331,7 +1356,7 @@ function renderShopping(root){
  $("#buyAdd")?.addEventListener("click",async()=>{readBuyFields();const c=buyCheck;if(!validImage(c.image))return;
   if(!confirm("¿Añadir esta prenda a tu armario?"))return;
   const now=new Date().toISOString(),newId=uid();
-  const ok=await mutate(()=>myGarments().unshift({...cleanAnalysis(c),id:newId,name:c.name||"Prenda nueva",category:c.category,color:c.color,notes:"",season:c.season||"all",style:c.style,price:c.price,boughtAt:dayISO(),favorite:false,createdAt:now,image:c.image,bgWhite:!!c.bgWhite,...(c.photoFx?{photoFx:1}:{}),imageAt:now,updatedAt:now}),"Prenda añadida a tu armario");
+  const ok=await mutate(()=>myGarments().unshift({...cleanAnalysis(c),id:newId,name:c.name||"Prenda nueva",category:c.category,color:c.color,notes:"",season:c.season||"all",style:c.style,price:c.price,boughtAt:dayISO(),favorite:false,createdAt:now,image:c.image,bgWhite:!!c.bgWhite,...(c.photoFx||c.catalogPhoto?{photoFx:1}:{}),...(c.catalogPhoto?{catalogPhoto:1}:{}),imageAt:now,updatedAt:now}),"Prenda añadida a tu armario");
   // Igual que en la ficha: la original queda en este móvil para poder volver a ella
   if(ok&&c.photoFx&&validImage(c.original)){try{await dbSet(origKey(newId),c.original)}catch(err){console.warn("ORIG",err)}}
   if(ok){buyCheck=null;render()}});
@@ -1413,8 +1438,11 @@ async function whiteAll(btn){
   const res=await enhancePhoto(source);
   if(appState.profile?.id!==profile)return;
   if(!res)continue;
-  try{await dbSet(origKey(g.id),source)}catch(e){console.warn("ORIG",e)}
-  const now=new Date().toISOString();Object.assign(g,{image:res.image,bgWhite:res.white,photoFx:1,imageAt:now,updatedAt:now});done++;if(res.white)white++;
+  const now=new Date().toISOString();
+  if(res.asIs&&res.image===g.image)Object.assign(g,{bgWhite:true,photoFx:1,catalogPhoto:1,updatedAt:now});
+  else{try{if(!res.asIs)await dbSet(origKey(g.id),source)}catch(e){console.warn("ORIG",e)}
+   Object.assign(g,{image:res.image,bgWhite:res.white,photoFx:1,imageAt:now,updatedAt:now});if(res.asIs)g.catalogPhoto=1;else delete g.catalogPhoto}
+  done++;if(res.white)white++;
  }
  if(done)await saveState();
  render();
