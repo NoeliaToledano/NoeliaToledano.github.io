@@ -34,6 +34,9 @@ try{
  await page.locator("#addGarment").click();
  await page.locator("#garmentName").fill("Prenda auditada");
  await page.locator("#garmentCategory").selectOption("Arriba");
+ const tinyPng=Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/pVYAAAAASUVORK5CYII=","base64");
+ await page.locator("#garmentImage").setInputFiles({name:"foto.png",mimeType:"image/png",buffer:tinyPng});
+ await page.locator("#garmentPreview").waitFor({state:"visible"});
  await page.locator("#garmentForm button[type=submit]").click();
  await page.getByText("Prenda auditada").waitFor();
  await page.reload({waitUntil:"networkidle"});
@@ -46,7 +49,7 @@ try{
  await page.getByText("Look auditado").waitFor();
  await page.locator('[data-view="wardrobe"]').click();
  await page.locator("#addGarment").click();
- const tinyPng=Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/pVYAAAAASUVORK5CYII=","base64");
+
  await page.locator("#garmentImage").setInputFiles({name:"foto.png",mimeType:"image/png",buffer:tinyPng});
  await page.locator("#analyzeBtn").click();
  await page.getByText("Análisis completado").waitFor();
