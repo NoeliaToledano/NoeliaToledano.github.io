@@ -150,7 +150,8 @@ try{
  await page.getByRole("button",{name:"Irene"}).click();
  await page.locator("#password").fill("test");
  await page.locator("#loginBtn").click();
- await page.getByRole("heading",{name:"Mi armario"}).waitFor();
+ await page.getByRole("heading",{name:"Hoy",exact:true}).waitFor();
+ await page.locator('[data-view="wardrobe"]').click();
  assert.equal(await page.getByText("Prenda auditada").count(),0,"Profile isolation broken");
  assert.equal(await page.getByText("No hay prendas con estos filtros").count(),1);
  assert.deepEqual(errors,[]);
