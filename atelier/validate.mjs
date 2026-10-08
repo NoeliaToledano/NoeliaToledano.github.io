@@ -17,7 +17,7 @@ const mustJs=[
  "/api/login","/api/session","/api/analyze","/api/looks","/api/sync","/api/sync-image","indexedDB.open","state:",
  'localStorage.setItem("atelier-session"',"function saveState","function loadState","imgKey","function lookCard","function garmentCard",
  "function evaluateCandidate","function shoppingSuggestions","function looksAround","function fetchTodayTemperature",
- "AI_LIMITS","DEFAULT_TEMPERATURE=25","toLong","function promptWear","function syncNow","function mergeData","function tomb","liked:taste","function suggestPacking","function renderTrips","function whiteBackground","function outfitBoard","function garmentMask","function enhancePhoto","function retouchOnly","function isCatalogPhoto","function tasteProfile"
+ "AI_LIMITS","DEFAULT_TEMPERATURE=25","toLong","function promptWear","function syncNow","function mergeData","function tomb","liked:taste","function suggestPacking","function renderTrips","function whiteBackground","function outfitBoard","function garmentMask","function enhancePhoto","function retouchOnly","function isCatalogPhoto","function tasteProfile","function swapOptions"
 ];
 for(const x of mustJs)if(!js.includes(x))fail("atelier.js: falta "+x);
 if(js.includes("sessionStorage.setItem"))fail("La sesión debe guardarse en localStorage, no en sessionStorage");
