@@ -15,7 +15,7 @@ const DB_NAME="atelier-armario-db",DB_VERSION=2,STORE="kv";
 const IMAGE_MAX=900,IMAGE_QUALITY=.8,AI_IMAGE_MAX=512;
 const AI_LIMITS={analyze:40,looks:20},DEFAULT_TEMPERATURE=25;
 const CATEGORIES=["Arriba","Abajo","Vestidos","Capas","Zapatos","Bolsos","Accesorios","Interior","Baño"];
-const occasions={daily:"Día a día",work:"Trabajo",dinner:"Cena",event:"Evento",travel:"Viaje",sport:"Deporte"};
+const occasions={daily:"Día a día",work:"Trabajo",dinner:"Cena",event:"Evento",travel:"Viaje",sport:"Deporte",gym:"Gimnasio",running:"Running",yoga:"Yoga / pilates",tennis:"Tenis / pádel",hiking:"Senderismo",beach:"Playa",pool:"Piscina",spa:"Spa",home:"Estar en casa",sleep:"Dormir",formal:"Formal",wedding:"Boda",ceremony:"Ceremonia",party:"Fiesta",night:"Salir de noche",date:"Cita",school:"Estudios",holiday:"Vacaciones",cold:"Frío / nieve",rain:"Lluvia"};
 const seasons={all:"Todo el año",warm:"Primavera / verano",cold:"Otoño / invierno"};
 const styleNames={casual:"casual",smart:"arreglado",party:"fiesta",sport:"deporte"};
 const ANALYSIS_FIELDS={pattern:["plain","stripes","checks","floral","animal","dots","graphic","other"],fabric:["unknown","cotton","denim","linen","wool","knit","leather","satin","silk","synthetic","mixed"],length:["na","cropped","regular","midi","long"],formality:["casual","smartcasual","formal","party","sport"]};
@@ -699,9 +699,9 @@ const GARMENT_TYPES={
  Capas:["Blazer","Chaqueta","Cazadora","Abrigo","Gabardina","Chaleco","Cárdigan","Otro"],
  Zapatos:["Deportivas","Zapatos","Botas","Botines","Sandalias","Tacones","Mocasines","Bailarinas","Alpargatas","Zuecos","Zapatillas de casa","Otro"],
  Bolsos:["Bolso de mano","Bolso de hombro","Bandolera","Mochila","Bolso de fiesta","Otro"],
- Accesorios:["Cinturón","Gafas","Pañuelo","Bufanda","Gorro","Sombrero","Joyería","Reloj","Calcetines","Medias","Accesorio de pelo","Otro"],
- Interior:["Sujetador","Sujetador deportivo","Braguitas","Calzoncillos","Pijama","Camisón","Bata","Otro"],
- Baño:["Bañador","Bikini","Trikini","Pareos","Otro"]
+ Accesorios:["Cinturón","Gafas de sol","Gafas","Pañuelo","Bufanda","Guantes","Gorro","Sombrero","Collar","Pendientes","Pulsera","Anillo","Joyería","Reloj","Calcetines","Medias","Corbata","Pajarita","Diadema","Pinza de pelo","Coletero","Accesorio de pelo","Otro"],
+ Interior:["Sujetador","Sujetador deportivo","Braguitas","Tanga","Bóxer","Calzoncillos","Camiseta interior","Faja","Pijama","Camisón","Bata","Otro"],
+ Baño:["Bañador","Bikini","Top de bikini","Braguita de bikini","Trikini","Short de baño","Pareos","Salida de baño","Otro"]
 };
 function syncGarmentCategory(resetType=false){
  const value=$("#garmentCategory").value;
