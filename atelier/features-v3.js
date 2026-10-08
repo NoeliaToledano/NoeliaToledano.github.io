@@ -120,6 +120,7 @@ function renderStylist(root){
  '<div class="feature-card"><div class="section-head"><h2>¿Qué me pongo hoy?</h2><span class="muted">IA</span></div>'+
  '<div class="filter-grid"><label class="field"><span>Ocasión</span><select id="prefOccasion">'+optionList(Object.entries(occasions),p.occasion)+'</select></label>'+
  '<label class="field"><span>Temporada</span><select id="prefSeason">'+optionList(Object.entries(seasons),p.season)+'</select></label></div>'+
+ '<label class="field"><span>Temperatura exterior manual (opcional, °C)</span><input id="prefTemperature" type="number" min="-30" max="55" step="1" value="'+fx(p.temperature??"")+'"></label>'+ 
  '<div class="field"><label for="prefDiversity">Diversidad <abbr title="Cuánto priorizar prendas poco usadas para variar tus looks">ⓘ</abbr>: <strong id="diversityText">'+fx(p.diversity)+'</strong>%</label><input id="prefDiversity" type="range" min="0" max="100" step="5" value="'+fx(p.diversity)+'"></div>'+
  '<label class="switch-line"><input id="prefAvoid" type="checkbox"'+(p.avoidRepeats?' checked':'')+'> Evitar repetir combinaciones recientes</label>'+
  '<button class="primary wide" id="suggestSmart">✦ Generar looks con mi ropa</button>'+
@@ -130,6 +131,7 @@ function renderStylist(root){
  (candidates.length?'<div class="insight-list">'+candidates.map(g=>'<div class="list-line"><strong>'+fx(g.name)+'</strong><span class="muted">'+fx(wornCount(g.id)+' usos')+'</span></div>').join("")+'</div>':'<div class="empty">Añade prendas para recibir sugerencias.</div>'));
  $("#prefOccasion")?.addEventListener("change",e=>setPref("occasion",e.target.value,false));
  $("#prefSeason")?.addEventListener("change",e=>setPref("season",e.target.value,false));
+ $("#prefTemperature")?.addEventListener("change",e=>{const v=e.target.value;const n=Number(v);if(v===""||(Number.isFinite(n)&&n>=-30&&n<=55))setPref("temperature",v===""?null:n,false);else toast("Introduce entre -30 y 55 °C")});
  $("#prefDiversity")?.addEventListener("input",e=>{$("#diversityText").textContent=e.target.value;setPref("diversity",Number(e.target.value),false)});
  $("#prefAvoid")?.addEventListener("change",e=>setPref("avoidRepeats",e.target.checked,false));
  $("#suggestSmart")?.addEventListener("click",()=>suggestLooks());
