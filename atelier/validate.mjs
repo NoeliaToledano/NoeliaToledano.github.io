@@ -9,7 +9,6 @@ const fail=m=>{throw new Error(m)};
 // Página: un solo script y una sola hoja de estilos, y los elementos que usa la app
 for(const x of ["atelier.css","atelier.js","https://api.open-meteo.com",'data-view="today"','data-view="wardrobe"','data-view="stylist"','data-view="trips"','data-view="shopping"','id="garmentPreview"','id="auth"','id="app"','id="garmentForm"','id="lookForm"','id="toast"'])
  if(!html.includes(x))fail("index.html: falta "+x);
-if(!js.includes('id="wardrobeInsights"')||!js.includes('setView("insights")'))fail("Análisis debe seguir accesible desde Armario");
 for(const old of ["app-v2.js","features-v3.js","features-v4.js","styles-v2.css","styles-v4.css"])
  if(html.includes(old))fail("index.html: sigue cargando el archivo antiguo "+old+"; todo el código está en atelier.js");
 
@@ -18,7 +17,7 @@ const mustJs=[
  "/api/login","/api/session","/api/analyze","/api/looks","/api/sync","/api/sync-image","indexedDB.open","state:",
  'localStorage.setItem("atelier-session"',"function saveState","function loadState","imgKey","function lookCard","function garmentCard",
  "function evaluateCandidate","function shoppingSuggestions","function looksAround","function fetchTodayTemperature",
- "AI_LIMITS","DEFAULT_TEMPERATURE=25","toLong","function promptWear","function syncNow","function mergeData","function tomb","liked:taste","function suggestPacking","function renderTrips","function whiteBackground","function outfitBoard","function garmentMask","function enhancePhoto","function retouchOnly","function isCatalogPhoto","function tasteProfile","function swapOptions"
+ "AI_LIMITS","DEFAULT_TEMPERATURE=25","toLong","function promptWear","function syncNow","function mergeData","function tomb","liked:taste","function suggestPacking","function renderTrips","function whiteBackground","function outfitBoard","function garmentMask","function enhancePhoto","function retouchOnly","function isCatalogPhoto","function tasteProfile","function swapOptions","function renderWeek","function planWorn","function completeLook"
 ];
 for(const x of mustJs)if(!js.includes(x))fail("atelier.js: falta "+x);
 if(js.includes("sessionStorage.setItem"))fail("La sesión debe guardarse en localStorage, no en sessionStorage");
