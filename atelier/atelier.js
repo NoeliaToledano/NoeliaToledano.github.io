@@ -692,11 +692,13 @@ function readMetadata(){
 }
 const META_KEYS=new Set([...META_FIELDS.map(d=>d[0]),"occasions","confidence"]);
 function setAnalyzeStatus(t){const s=$("#autoAnalyzeStatus");if(s)s.textContent=t}
+function syncGarmentCategory(){const value=$("#garmentCategory").value;$("[data-garment-category]").forEach(btn=>{const active=btn.dataset.garmentCategory===value;btn.classList.toggle("active",active);btn.setAttribute("aria-pressed",String(active))})}
 function openGarment(id){
  const g=myGarments().find(x=>x.id===id);
  $("#garmentTitle").textContent=g?"Editar prenda":"Nueva prenda";$("#garmentId").value=g?.id||"";$("#garmentName").value=g?.name||"";$("#garmentCategory").value=g?.category||"";$("#garmentColor").value=g?.color||"";$("#garmentNotes").value=g?.notes||"";$("#garmentSeason").value=g?.season||"all";$("#garmentStyle").value=g?.style||"";$("#garmentPrice").value=g?.price??"";$("#garmentBought").value=g?.boughtAt||"";$("#garmentFavorite").checked=!!g?.favorite;$("#garmentImage").value="";$("#garmentCamera").value="";
  sheetPhoto=validImage(g?.image)?(g.bgWhite?{original:null,white:g.image,mode:"white",changed:false}:{original:g.image,white:null,mode:"original",changed:false}):null;
  if(sheetPhoto&&g.bgWhite){const ph=sheetPhoto;dbGet(origKey(g.id)).then(o=>{if(sheetPhoto===ph&&validImage(o)){ph.original=o;renderPhotoControls()}}).catch(()=>{})}
+ syncGarmentCategory();
  $("#deleteGarment").classList.toggle("hidden",!g);
  let btn=$("#garmentAround");
  if(!btn){$("#garmentForm .actions")?.insertAdjacentHTML("beforebegin",'<button type="button" id="garmentAround" class="secondary wide">✦ Ver looks con esta prenda</button>');btn=$("#garmentAround");btn?.addEventListener("click",()=>{const gid=$("#garmentId").value;if(!gid)return;ui.aroundId=gid;ui.stylistTab="around";closeGarment();setView("stylist")})}
@@ -738,7 +740,7 @@ async function analyzeGarment(){
  try{
   const out=await api("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image})});
   const d=mapAnalysis(out.garment||out.result||out);lastAnalysis=cleanAnalysis(d);
-  if(d.name)$("#garmentName").value=d.name;if(d.category)$("#garmentCategory").value=d.category;if(d.color)$("#garmentColor").value=d.color;
+  if(d.name)$("#garmentName").value=d.name;if(d.category)$("#garmentCategory").value=d.category;syncGarmentCategory();if(d.color)$("#garmentColor").value=d.color;
   if(d.style)$("#garmentStyle").value=d.style;if(d.season)$("#garmentSeason").value=d.season;if(d.notes&&!$("#garmentNotes").value.trim())$("#garmentNotes").value=d.notes;
   if(sheetPhoto===ph){
    const manual=Object.fromEntries(Object.entries(readMetadata()).filter(([k])=>META_FIELDS.find(x=>x[0]===k)?.[3]==="manual"));
@@ -1386,6 +1388,8 @@ function bind(){
  $("#togglePassword").addEventListener("click",()=>setPasswordVisible($("#password").type==="password"));
  $("#password").addEventListener("keydown",e=>{if(e.key==="Enter")login()});
  $$(".nav-btn").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.view)));
+ $("#garmentCategory").addEventListener("change",syncGarmentCategory);
+ $("[data-garment-category]").forEach(btn=>btn.addEventListener("click",()=>{$("#garmentCategory").value=btn.dataset.garmentCategory;syncGarmentCategory()}));
  $("#garmentForm").addEventListener("submit",saveGarment);$("#closeGarment").addEventListener("click",closeGarment);$("#deleteGarment").addEventListener("click",deleteGarment);$("#analyzeBtn").addEventListener("click",analyzeGarment);
  const onPhoto=async e=>{
   const f=e.target.files[0];e.target.value="";if(!f)return;
