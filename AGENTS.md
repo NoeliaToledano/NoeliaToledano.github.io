@@ -5,7 +5,7 @@ Este repositorio lo modifican varios asistentes. Antes de cambiar nada:
 1. Trae lo último de `main` y lee el historial reciente (`git log -10`). Otro asistente puede haber cambiado los mismos archivos.
 2. Edita solo lo necesario. **No reescribas archivos enteros** de Atelier: se pierden cambios que no conoces.
 3. Antes de subir, ejecuta `node atelier/validate-v2.mjs`. Si falla, has borrado algo que debe estar.
-4. Si cambias cualquier archivo de `atelier/`, sube la versión de `CACHE` en `atelier/sw.js` (por ejemplo `atelier-v2-shell-v9` → `-v10`) para que los móviles reciban la actualización.
+4. Si cambias cualquier archivo de `atelier/`, sube la versión de `CACHE` en `atelier/sw.js` (por ejemplo `atelier-v2-shell-v10` → `-v11`) para que los móviles reciban la actualización.
 
 ## Atelier (`atelier/`): app web estática (PWA) para 3 perfiles familiares
 

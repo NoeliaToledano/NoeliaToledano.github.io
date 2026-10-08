@@ -550,3 +550,22 @@ renderStylist=function(root){
  t.addEventListener("change",()=>{if(p.autoWeather){p.autoWeather=false;saveState()}});
  refreshWeatherIfNeeded();
 };
+
+/* ---------- Temperatura por defecto: 25 °C ---------- */
+// Una sola vez por perfil: sustituye temperaturas antiguas escritas a mano por 25 °C.
+const previousEnterAppTemp=enterApp;
+enterApp=async function(){
+ await previousEnterAppTemp();
+ const p=appState.data.preferences;
+ if(p.tempDefault25!==true){
+  if(!p.autoWeather)p.temperature=DEFAULT_TEMPERATURE;
+  p.tempDefault25=true;
+  if(await saveState())render();
+ }
+};
+const previousStylistTemp=renderStylist;
+renderStylist=function(root){
+ previousStylistTemp(root);
+ const t=$("#prefTemperature",root);
+ if(t&&t.value==="")t.value=String(DEFAULT_TEMPERATURE);
+};
