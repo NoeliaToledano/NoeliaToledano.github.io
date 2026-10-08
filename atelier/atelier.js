@@ -14,8 +14,8 @@ const PROFILES=[{id:"noelia",name:"Noelia"},{id:"ana-maria",name:"Ana María"},{
 const DB_NAME="atelier-armario-db",DB_VERSION=2,STORE="kv";
 const IMAGE_MAX=900,IMAGE_QUALITY=.8,AI_IMAGE_MAX=512;
 const AI_LIMITS={analyze:40,looks:20},DEFAULT_TEMPERATURE=25;
-const CATEGORIES=["Arriba","Abajo","Vestidos","Capas","Zapatos","Bolsos","Accesorios"];
-const occasions={daily:"Día a día",work:"Trabajo",dinner:"Cena",event:"Evento",travel:"Viaje",sport:"Deporte"};
+const CATEGORIES=["Arriba","Abajo","Vestidos","Capas","Zapatos","Bolsos","Accesorios","Interior","Baño"];
+const occasions={daily:"Día a día",work:"Trabajo",dinner:"Cena",event:"Evento",travel:"Viaje",sport:"Deporte",gym:"Gimnasio",running:"Running",yoga:"Yoga / pilates",tennis:"Tenis / pádel",hiking:"Senderismo",beach:"Playa",pool:"Piscina",spa:"Spa",home:"Estar en casa",sleep:"Dormir",formal:"Formal",wedding:"Boda",ceremony:"Ceremonia",party:"Fiesta",night:"Salir de noche",date:"Cita",school:"Estudios",holiday:"Vacaciones",cold:"Frío / nieve",rain:"Lluvia"};
 const seasons={all:"Todo el año",warm:"Primavera / verano",cold:"Otoño / invierno"};
 const styleNames={casual:"casual",smart:"arreglado",party:"fiesta",sport:"deporte"};
 const ANALYSIS_FIELDS={pattern:["plain","stripes","checks","floral","animal","dots","graphic","other"],fabric:["unknown","cotton","denim","linen","wool","knit","leather","satin","silk","synthetic","mixed"],length:["na","cropped","regular","midi","long"],formality:["casual","smartcasual","formal","party","sport"]};
@@ -469,9 +469,9 @@ async function api(path,options={}){
  return out;
 }
 function mapAnalysis(d){
- const map={top:"Arriba",bottom:"Abajo",dress:"Vestidos",outerwear:"Capas",shoes:"Zapatos",bag:"Bolsos",accessory:"Accesorios"};
+ const map={top:"Arriba",bottom:"Abajo",dress:"Vestidos",outerwear:"Capas",shoes:"Zapatos",bag:"Bolsos",accessory:"Accesorios",underwear:"Interior",swimwear:"Baño"};
  const cat=map[d.category]||d.category||map[d.type],st=d.style==="basic"?"casual":d.style;
- return {name:String(d.name||"").slice(0,80),category:CATEGORIES.includes(cat)?cat:"",color:d.color?(Array.isArray(d.color)?d.color.join(", "):String(d.color)).slice(0,60):"",style:STYLE_OK[st]?st:"",season:seasons[d.season]?d.season:"",notes:d.notes?String(d.notes).slice(0,500):"",...cleanAnalysis(d)};
+ return {name:String(d.name||"").slice(0,80),garmentType:typeof d.garmentType==="string"?d.garmentType:"",category:CATEGORIES.includes(cat)?cat:"",color:d.color?(Array.isArray(d.color)?d.color.join(", "):String(d.color)).slice(0,60):"",style:STYLE_OK[st]?st:"",season:seasons[d.season]?d.season:"",notes:d.notes?String(d.notes).slice(0,500):"",...cleanAnalysis(d)};
 }
 
 /* ===================== 5. Sesión y navegación ===================== */
@@ -671,15 +671,22 @@ function buildMetadataSection(){
   '<div class="field"><span class="field-title">Ocasiones</span><div class="occ-grid">'+Object.entries(occasions).map(([k,t])=>'<label class="switch-line"><input type="checkbox" name="meta-occasion" value="'+k+'"> '+fx(t)+'</label>').join("")+'</div></div>'+
   '<div class="filter-grid">'+META_FIELDS.filter(d=>d[3]==="manual").map(field).join("")+'</div></details>');
  $("#garmentImage")?.closest(".field")?.insertAdjacentHTML("beforeend",'<div id="photoControls"></div><label class="switch-line" id="autoWhiteOption"><input type="checkbox" id="autoWhite" checked> Poner fondo blanco automáticamente</label><label class="switch-line" id="autoAnalyzeOption"><input type="checkbox" id="autoAnalyze" checked> Analizar automáticamente al elegir la foto</label><p class="helper" id="autoAnalyzeStatus" role="status" aria-live="polite"></p>');
+ const occasionField=$("#metadataDetails .occ-grid")?.closest(".field"),occasionSlot=$("#occasionSlot");
+ if(occasionField&&occasionSlot){occasionSlot.append(occasionField);$$(`[name="meta-occasion"]`,occasionSlot).forEach(input=>input.addEventListener("change",updateOccasionSummary));updateOccasionSummary()}
  $("#autoAnalyze")?.addEventListener("change",e=>{if(appState.profile)setPref("autoAnalyze",e.target.checked,false)});
  $("#autoWhite")?.addEventListener("change",e=>{if(appState.profile)setPref("autoWhite",e.target.checked,false)});
  // La vista previa va justo encima de los controles de la foto
  const pv=$("#garmentPreview"),pc=$("#photoControls");if(pv&&pc)pc.before(pv);
 }
+function updateOccasionSummary(){
+ const values=$$('[name="meta-occasion"]:checked').map(x=>occasions[x.value]||x.value);
+ const el=$("#occasionSummary");if(el)el.textContent=values.length?values.slice(0,3).join(" · ")+(values.length>3?" +"+(values.length-3):""):"Sin ocasiones sugeridas · puedes elegirlas";
+}
 function populateMetadata(src){
  for(const def of META_FIELDS){const el=$("#meta-"+def[0]);if(el)el.value=metaValue(def,src?.[def[0]])}
  const occ=new Set(Array.isArray(src?.occasions)?src.occasions:[]);
  $$('[name="meta-occasion"]').forEach(x=>x.checked=occ.has(x.value));
+ updateOccasionSummary();
  metaConfidence=CONFIDENCE.includes(src?.confidence)?src.confidence:"";
  const c=$("#metaConfidence");if(c)c.textContent=metaConfidence?"Confianza de la IA en este análisis: "+metaConfidence+".":"";
 }
@@ -692,17 +699,38 @@ function readMetadata(){
 }
 const META_KEYS=new Set([...META_FIELDS.map(d=>d[0]),"occasions","confidence"]);
 function setAnalyzeStatus(t){const s=$("#autoAnalyzeStatus");if(s)s.textContent=t}
+const GARMENT_TYPES={
+ Arriba:["Camiseta","Camisa","Blusa","Top","Jersey","Sudadera","Polo","Body","Camiseta técnica","Otro"],
+ Abajo:["Vaqueros","Pantalón","Leggings","Mallas deportivas","Shorts","Falda","Pantalón deportivo","Otro"],
+ Vestidos:["Vestido corto","Vestido midi","Vestido largo","Mono corto","Mono largo","Enterizo","Peto","Otro"],
+ Capas:["Blazer","Chaqueta","Cazadora","Abrigo","Gabardina","Chaleco","Cárdigan","Otro"],
+ Zapatos:["Deportivas","Zapatos","Botas","Botines","Sandalias","Tacones","Mocasines","Bailarinas","Alpargatas","Zuecos","Zapatillas de casa","Otro"],
+ Bolsos:["Bolso de mano","Bolso de hombro","Bandolera","Mochila","Bolso de fiesta","Otro"],
+ Accesorios:["Cinturón","Gafas de sol","Gafas","Pañuelo","Bufanda","Guantes","Gorro","Sombrero","Collar","Pendientes","Pulsera","Anillo","Joyería","Reloj","Calcetines","Medias","Corbata","Pajarita","Diadema","Pinza de pelo","Coletero","Accesorio de pelo","Otro"],
+ Interior:["Sujetador","Sujetador deportivo","Braguitas","Tanga","Bóxer","Calzoncillos","Camiseta interior","Faja","Pijama","Camisón","Bata","Otro"],
+ Baño:["Bañador","Bikini","Top de bikini","Braguita de bikini","Trikini","Short de baño","Pareos","Salida de baño","Otro"]
+};
+function syncGarmentCategory(resetType=false){
+ const value=$("#garmentCategory").value;
+ $$("[data-garment-category]").forEach(btn=>{const active=btn.dataset.garmentCategory===value;btn.classList.toggle("active",active);btn.setAttribute("aria-pressed",String(active))});
+ const sel=$("#garmentType");if(!sel)return;
+ const current=resetType?"":sel.value,values=GARMENT_TYPES[value]||[];
+ sel.replaceChildren(new Option(value?"Seleccionar tipo (opcional)":"Primero elige una categoría",""),...values.map(v=>new Option(v,v)));
+ sel.value=values.includes(current)?current:"";sel.disabled=!value;
+}
 function openGarment(id){
  const g=myGarments().find(x=>x.id===id);
  $("#garmentTitle").textContent=g?"Editar prenda":"Nueva prenda";$("#garmentId").value=g?.id||"";$("#garmentName").value=g?.name||"";$("#garmentCategory").value=g?.category||"";$("#garmentColor").value=g?.color||"";$("#garmentNotes").value=g?.notes||"";$("#garmentSeason").value=g?.season||"all";$("#garmentStyle").value=g?.style||"";$("#garmentPrice").value=g?.price??"";$("#garmentBought").value=g?.boughtAt||"";$("#garmentFavorite").checked=!!g?.favorite;$("#garmentImage").value="";$("#garmentCamera").value="";
  sheetPhoto=validImage(g?.image)?(g.bgWhite?{original:null,white:g.image,mode:"white",changed:false}:{original:g.image,white:null,mode:"original",changed:false}):null;
  if(sheetPhoto&&g.bgWhite){const ph=sheetPhoto;dbGet(origKey(g.id)).then(o=>{if(sheetPhoto===ph&&validImage(o)){ph.original=o;renderPhotoControls()}}).catch(()=>{})}
+ syncGarmentCategory();$("#garmentType").value=g?.type||"";
  $("#deleteGarment").classList.toggle("hidden",!g);
  let btn=$("#garmentAround");
  if(!btn){$("#garmentForm .actions")?.insertAdjacentHTML("beforebegin",'<button type="button" id="garmentAround" class="secondary wide">✦ Ver looks con esta prenda</button>');btn=$("#garmentAround");btn?.addEventListener("click",()=>{const gid=$("#garmentId").value;if(!gid)return;ui.aroundId=gid;ui.stylistTab="around";closeGarment();setView("stylist")})}
  btn?.classList.toggle("hidden",!g);
  buildMetadataSection();renderPhotoControls();populateMetadata(g);setAnalyzeStatus("");
  const details=$("#metadataDetails");if(details)details.open=false;
+ const extra=$("#garmentExtra");if(extra)extra.open=!!g;
  const auto=$("#autoAnalyze");if(auto)auto.checked=appState.data.preferences.autoAnalyze!==false;
  const aw=$("#autoWhite");if(aw)aw.checked=appState.data.preferences.autoWhite!==false;
  lastAnalysis=null;$("#garmentSheet").classList.remove("hidden");
@@ -715,7 +743,7 @@ async function saveGarment(e){
  const image=sheetImage()||old?.image||"",changed=!!ph?.changed&&image!==old?.image,white=!!ph&&ph.mode==="white"&&!!ph.white;
  if(!validImage(image)&&!old?.hasImage)return toast("Añade una fotografía de la prenda antes de guardarla");
  const kept=Object.fromEntries(Object.entries(old||{}).filter(([k])=>!META_KEYS.has(k)));
- const g={...kept,...readMetadata(),id,name:$("#garmentName").value.trim()||"Sin nombre",category:$("#garmentCategory").value,color:$("#garmentColor").value.trim(),notes:$("#garmentNotes").value.trim(),season:$("#garmentSeason").value,style:$("#garmentStyle").value,price:$("#garmentPrice").value===""?null:Number($("#garmentPrice").value),boughtAt:$("#garmentBought").value,favorite:$("#garmentFavorite").checked,createdAt:old?.createdAt||new Date().toISOString(),image,updatedAt:new Date().toISOString()};
+ const g={...kept,...readMetadata(),id,name:$("#garmentName").value.trim()||"Sin nombre",category:$("#garmentCategory").value,type:$("#garmentType").value,color:$("#garmentColor").value.trim(),notes:$("#garmentNotes").value.trim(),season:$("#garmentSeason").value,style:$("#garmentStyle").value,price:$("#garmentPrice").value===""?null:Number($("#garmentPrice").value),boughtAt:$("#garmentBought").value,favorite:$("#garmentFavorite").checked,createdAt:old?.createdAt||new Date().toISOString(),image,updatedAt:new Date().toISOString()};
  if(!validImage(image)&&old?.hasImage)g.hasImage=true;
  if(ph)g.bgWhite=white;
  g.imageAt=changed?new Date().toISOString():old?.imageAt;if(!g.imageAt)delete g.imageAt;
@@ -733,16 +761,17 @@ async function deleteGarment(){
 }
 async function analyzeGarment(){
  const ph=sheetPhoto,image=sheetImage();if(!image)return toast("Haz o elige una foto primero");
- const btn=$("#analyzeBtn");if(btn.disabled)return;btn.disabled=true;btn.textContent="Analizando…";setAnalyzeStatus("Analizando la foto…");
+ const btn=$("#analyzeBtn");if(btn.disabled)return;btn.disabled=true;btn.textContent="Analizando…";setAnalyzeStatus("La IA está completando tu ficha…");
  try{
   const out=await api("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image})});
+  if(sheetPhoto!==ph)return; // No aplicar un análisis antiguo a una foto nueva.
   const d=mapAnalysis(out.garment||out.result||out);lastAnalysis=cleanAnalysis(d);
-  if(d.name)$("#garmentName").value=d.name;if(d.category)$("#garmentCategory").value=d.category;if(d.color)$("#garmentColor").value=d.color;
-  if(d.style)$("#garmentStyle").value=d.style;if(d.season)$("#garmentSeason").value=d.season;if(d.notes&&!$("#garmentNotes").value.trim())$("#garmentNotes").value=d.notes;
+  $("#garmentName").value=d.name||"Prenda sin identificar";$("#garmentCategory").value=d.category||"";syncGarmentCategory(true);const typeOptions=GARMENT_TYPES[d.category]||[];const detected=[d.garmentType,d.subtype].find(t=>typeof t==="string"&&typeOptions.some(o=>o.toLocaleLowerCase("es")===t.trim().toLocaleLowerCase("es")));if(detected)$("#garmentType").value=typeOptions.find(t=>t.toLocaleLowerCase("es")===detected.trim().toLocaleLowerCase("es"));$("#garmentColor").value=d.color||"";
+  $("#garmentStyle").value=d.style||"";$("#garmentSeason").value=d.season||"all";if(d.notes&&!$("#garmentNotes").value.trim())$("#garmentNotes").value=d.notes;
   if(sheetPhoto===ph){
    const manual=Object.fromEntries(Object.entries(readMetadata()).filter(([k])=>META_FIELDS.find(x=>x[0]===k)?.[3]==="manual"));
    populateMetadata({...manual,...lastAnalysis});const details=$("#metadataDetails");if(details)details.open=true;
-   setAnalyzeStatus("Datos sugeridos por la IA. Revísalos antes de guardar.");
+   setAnalyzeStatus("Ficha completada. Revisa los datos y pulsa Confirmar y guardar.");
   }
   toast("Análisis completado");
  }catch(e){console.error("ANALYZE",e);setAnalyzeStatus("No se pudo analizar. Puedes rellenar los datos a mano o reintentarlo.");if(e.message!=="AI_QUOTA")toast("No se pudo analizar la prenda")}
@@ -773,7 +802,7 @@ async function recordWear(ids,date,lookId){
 }
 function openLook(id){
  const l=myLooks().find(x=>x.id===id);
- $("#lookTitle").textContent=l?"Editar look":"Nuevo look";$("#lookId").value=l?.id||"";$("#lookName").value=l?.name||"";$("#lookOccasion").value=l?.occasion||"daily";$("#lookFavorite").checked=!!l?.favorite;
+ $("#lookTitle").textContent=l?"Editar look":"Nuevo look";$("#lookId").value=l?.id||"";$("#lookName").value=l?.name||"";$("#lookOccasion").replaceChildren(...Object.entries(occasions).map(([value,label])=>new Option(label,value)));$("#lookOccasion").value=l?.occasion||"daily";$("#lookFavorite").checked=!!l?.favorite;
  $("#lookGarments").innerHTML=myGarments().length?myGarments().map(g=>`<label class="field"><span><input type="checkbox" value="${esc(g.id)}" ${l?.garmentIds.includes(g.id)?"checked":""}> ${esc(g.name)}</span></label>`).join(""):`<p class="muted">Añade prendas antes de crear un look.</p>`;
  $("#deleteLook").classList.toggle("hidden",!l);$("#lookSheet").classList.remove("hidden");
 }
@@ -1385,6 +1414,9 @@ function bind(){
  $("#togglePassword").addEventListener("click",()=>setPasswordVisible($("#password").type==="password"));
  $("#password").addEventListener("keydown",e=>{if(e.key==="Enter")login()});
  $$(".nav-btn").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.view)));
+ $("#garmentCategory").addEventListener("change",()=>syncGarmentCategory(true));
+
+ $$("[data-garment-category]").forEach(btn=>btn.addEventListener("click",()=>{$("#garmentCategory").value=btn.dataset.garmentCategory;syncGarmentCategory(true)}));
  $("#garmentForm").addEventListener("submit",saveGarment);$("#closeGarment").addEventListener("click",closeGarment);$("#deleteGarment").addEventListener("click",deleteGarment);$("#analyzeBtn").addEventListener("click",analyzeGarment);
  const onPhoto=async e=>{
   const f=e.target.files[0];e.target.value="";if(!f)return;

@@ -32,7 +32,8 @@ try{
  const bg=await page.locator("body").evaluate(el=>getComputedStyle(el).backgroundColor);
  assert.notEqual(bg,"rgba(0, 0, 0, 0)","CSS not applied");
  await page.locator("#addGarment").click();
- await page.locator("#autoAnalyze").uncheck();
+ console.log("GARMENT_DIAGNOSTIC",{classes:await page.locator("#garmentSheet").getAttribute("class"),visible:await page.locator("#garmentName").isVisible(),errors});
+ await page.locator("#autoAnalyze").evaluate(el=>{el.checked=false;el.dispatchEvent(new Event("change",{bubbles:true}))});
  await page.locator("#garmentName").fill("Prenda auditada");
  await page.locator("#garmentCategory").selectOption("Arriba");
  const tinyPng=Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/pVYAAAAASUVORK5CYII=","base64");
@@ -58,6 +59,7 @@ try{
  assert.equal(await page.locator("#meta-fit").inputValue(),"regular");
  assert.equal(await page.locator("#meta-sleeve").inputValue(),"larga");
  assert.equal(await page.locator("#meta-subtype").inputValue(),"camisa");
+ await page.locator("#garmentExtra").evaluate(el=>el.open=true);
  await page.locator("#meta-brand").fill("Marca introducida a mano");
  assert.equal(await page.locator("#garmentName").inputValue(),"Camisa reconocida por IA");
  assert.equal(await page.locator("#garmentCategory").inputValue(),"Arriba");
