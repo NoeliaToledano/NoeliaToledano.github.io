@@ -143,6 +143,90 @@ function readImage(file){
   r.readAsDataURL(file);
  });
 }
+/* Fondo blanco, en el móvil y sin IA: separa la prenda del fondo por color y la coloca centrada sobre blanco,
+   como en una tienda online. Hace crecer la zona de fondo desde los bordes de la foto mientras el color cambie
+   poco entre píxeles vecinos y se parezca al del borde. Funciona bien con fotos sobre una superficie lisa
+   (cama, suelo, pared); con fondos estampados o del mismo color que la prenda devuelve null y se deja la original. */
+const WHITE_W=800,WHITE_H=1000,MASK_MAX=480;
+const SRGB_LIN=Float32Array.from({length:256},(_,i)=>{const c=i/255;return c<=.04045?c/12.92:Math.pow((c+.055)/1.055,2.4)});
+const origKey=id=>"orig:"+appState.profile.id+":"+id;  // foto original, solo en este dispositivo
+function loadImg(src){return new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error("INVALID_IMAGE"));i.src=src})}
+function labArrays(d,n){
+ const L=new Float32Array(n),A=new Float32Array(n),B=new Float32Array(n),f=t=>t>.008856?Math.cbrt(t):7.787*t+.137931;
+ for(let i=0,j=0;i<n;i++,j+=4){
+  const r=SRGB_LIN[d[j]],g=SRGB_LIN[d[j+1]],b=SRGB_LIN[d[j+2]];
+  const x=f((r*.4124+g*.3576+b*.1805)/.95047),y=f(r*.2126+g*.7152+b*.0722),z=f((r*.0193+g*.1192+b*.9505)/1.08883);
+  L[i]=116*y-16;A[i]=500*(x-y);B[i]=200*(y-z);
+ }
+ return [L,A,B];
+}
+const quantile=(a,q)=>{const s=Float32Array.from(a).sort();return s.length?s[Math.min(s.length-1,Math.floor(q*s.length))]:0};
+/* Máscara de la prenda frente al fondo, a resolución reducida; null si no se puede separar con fiabilidad */
+function garmentMask(d,w,h){
+ const n=w*h,[L,A,B]=labArrays(d,n),band=Math.max(2,Math.round(Math.min(w,h)*.03)),border=[];
+ for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(x<band||y<band||x>=w-band||y>=h-band)border.push(y*w+x);
+ const bl=quantile(border.map(i=>L[i]),.5),ba=quantile(border.map(i=>A[i]),.5),bb=quantile(border.map(i=>B[i]),.5);
+ const dBg=i=>Math.hypot(L[i]-bl,A[i]-ba,B[i]-bb),dN=(i,j)=>Math.hypot(L[i]-L[j],A[i]-A[j],B[i]-B[j]);
+ // Umbrales según lo uniforme que sea el fondo y el ruido de la foto
+ const spread=quantile(border.map(dBg),.75),noise=quantile(border.filter(i=>i%w<w-1).map(i=>dN(i,i+1)),.5);
+ const tGlobal=Math.min(40,Math.max(14,spread*1.8+10)),tLocal=Math.min(12,Math.max(4,noise*3+3));
+ const bg=new Uint8Array(n),queue=new Int32Array(n);let qh=0,qt=0;
+ for(const i of border)if(!bg[i]&&dBg(i)<tGlobal){bg[i]=1;queue[qt++]=i}
+ const grow=(p,q)=>{if(!bg[q]&&dN(p,q)<tLocal&&dBg(q)<tGlobal){bg[q]=1;queue[qt++]=q}};
+ while(qh<qt){const p=queue[qh++],x=p%w;if(x>0)grow(p,p-1);if(x<w-1)grow(p,p+1);if(p>=w)grow(p,p-w);if(p<n-w)grow(p,p+w)}
+ // Se quedan las zonas de prenda grandes (fuera manchas sueltas)
+ const comp=new Int32Array(n).fill(-1),sizes=[];
+ for(let s=0;s<n;s++){
+  if(bg[s]||comp[s]>=0)continue;
+  const id=sizes.length;let size=0;qh=qt=0;queue[qt++]=s;comp[s]=id;
+  const add=q=>{if(!bg[q]&&comp[q]<0){comp[q]=id;queue[qt++]=q}};
+  while(qh<qt){const p=queue[qh++],x=p%w;size++;if(x>0)add(p-1);if(x<w-1)add(p+1);if(p>=w)add(p-w);if(p<n-w)add(p+w)}
+  sizes.push(size);
+ }
+ const biggest=sizes.reduce((m,v)=>v>m?v:m,0),minSize=Math.max(biggest*.02,n*.002),mask=new Uint8Array(n);
+ let fg=0,x0=w,y0=h,x1=-1,y1=-1;
+ for(let i=0;i<n;i++)if(!bg[i]&&sizes[comp[i]]>=minSize){mask[i]=1;fg++;const x=i%w,y=(i-x)/w;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}
+ const frac=fg/n,edge=border.filter(i=>mask[i]).length/border.length;
+ // Casi nada, casi todo, o «prenda» pegada a gran parte del borde (la prenda llena la foto y se ha tomado por fondo)
+ if(frac<.04||frac>.9||edge>.3)return null;
+ // Borde suave: se encoge un poco (quita el halo del fondo) y se difumina
+ const alpha=new Float32Array(n);
+ for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x;if(!mask[i])continue;let sum=0,cnt=0;
+  for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const xx=x+dx,yy=y+dy;if(xx<0||yy<0||xx>=w||yy>=h)continue;cnt++;sum+=mask[yy*w+xx]}
+  alpha[i]=sum===cnt?1:Math.max(0,(sum-3)/(cnt-3))}
+ // Color del fondo (para corregir el tono de la luz si el fondo es neutro)
+ const rgb=[0,1,2].map(c=>quantile(border.filter(i=>bg[i]).map(i=>d[i*4+c]),.5));
+ return {alpha,w,h,x0,y0,x1,y1,neutral:Math.hypot(ba,bb)<14&&bl>40,light:bl>72,rgb};
+}
+async function whiteBackground(src){
+ try{
+  const img=await loadImg(src),W=img.naturalWidth||img.width,H=img.naturalHeight||img.height;
+  const k=Math.min(1,MASK_MAX/Math.max(W,H)),w=Math.max(1,Math.round(W*k)),h=Math.max(1,Math.round(H*k));
+  const c=document.createElement("canvas");c.width=w;c.height=h;const cx=c.getContext("2d",{willReadFrequently:true});cx.drawImage(img,0,0,w,h);
+  const m=garmentMask(cx.getImageData(0,0,w,h).data,w,h);if(!m)return null;
+  // Recorte de la prenda con margen, a la resolución completa de la foto
+  const s=W/w,pad=.04*Math.max(m.x1-m.x0,m.y1-m.y0);
+  const fx0=Math.max(0,Math.floor((m.x0-pad)*s)),fy0=Math.max(0,Math.floor((m.y0-pad)*s)),fx1=Math.min(W,Math.ceil((m.x1+1+pad)*s)),fy1=Math.min(H,Math.ceil((m.y1+1+pad)*s));
+  const cw=fx1-fx0,ch=fy1-fy0,fc=document.createElement("canvas");fc.width=cw;fc.height=ch;
+  const fcx=fc.getContext("2d",{willReadFrequently:true});fcx.drawImage(img,-fx0,-fy0);
+  const id=fcx.getImageData(0,0,cw,ch),p=id.data;
+  // Corrección suave de la luz: quita el tono de color de la luz (±8 %) y solo aclara si el fondo ya es claro
+  const mean=(m.rgb[0]+m.rgb[1]+m.rgb[2])/3,bright=m.light?Math.min(1.12,Math.max(1,236/Math.max(1,mean))):1;
+  const gain=m.neutral?m.rgb.map(v=>Math.min(1.08,Math.max(.92,mean/Math.max(1,v)))*bright):[1,1,1];
+  const a=(x,y)=>{x=Math.min(m.w-1,Math.max(0,x));y=Math.min(m.h-1,Math.max(0,y));return m.alpha[y*m.w+x]};
+  for(let y=0;y<ch;y++){const my=(fy0+y+.5)/s-.5,yb=Math.floor(my),ty=my-yb;
+   for(let x=0;x<cw;x++){const mx=(fx0+x+.5)/s-.5,xb=Math.floor(mx),tx=mx-xb,j=(y*cw+x)*4;
+    const al=(a(xb,yb)*(1-tx)+a(xb+1,yb)*tx)*(1-ty)+(a(xb,yb+1)*(1-tx)+a(xb+1,yb+1)*tx)*ty;
+    p[j]=Math.min(255,p[j]*gain[0]);p[j+1]=Math.min(255,p[j+1]*gain[1]);p[j+2]=Math.min(255,p[j+2]*gain[2]);p[j+3]=Math.round(al*255)}}
+  fcx.putImageData(id,0,0);
+  // Centrada sobre un lienzo blanco de proporción fija (4:5), como una ficha de producto
+  const out=document.createElement("canvas");out.width=WHITE_W;out.height=WHITE_H;const o=out.getContext("2d");
+  o.fillStyle="#fff";o.fillRect(0,0,WHITE_W,WHITE_H);o.imageSmoothingQuality="high";
+  const sc=Math.min(WHITE_W*.86/cw,WHITE_H*.86/ch,2.2),dw=cw*sc,dh=ch*sc;
+  o.drawImage(fc,(WHITE_W-dw)/2,(WHITE_H-dh)/2,dw,dh);
+  return out.toDataURL("image/jpeg",.86);
+ }catch(e){console.warn("WHITE_BG",e);return null}
+}
 async function loadState(){
  appState.data=emptyData();storedImages=new Map();let migrate=false;
  try{
@@ -466,6 +550,22 @@ function collage(images,extra=0){
  if(!images.length)return "";
  return '<div class="look-collage n'+Math.min(images.length,4)+'">'+images.slice(0,4).map((src,i)=>'<div class="look-thumb" style="background-image:url('+src+')">'+(i===3&&extra>0?'<span>+'+extra+'</span>':'')+'</div>').join("")+'</div>';
 }
+/* Look como composición sobre blanco (estilo «flat lay»): cada prenda en su sitio según su categoría.
+   Las fotos con fondo blanco se funden con «multiply»; si alguna aún tiene fondo, se usa un mosaico. */
+const BOARD_SLOTS={Capas:{x:0,y:3,w:50,h:60,z:1},Arriba:{x:24,y:1,w:52,h:46,z:3},Vestidos:{x:20,y:1,w:60,h:76,z:3},Abajo:{x:27,y:36,w:46,h:58,z:2},Zapatos:{x:1,y:70,w:38,h:28,z:5},Bolsos:{x:64,y:50,w:35,h:34,z:4},Accesorios:{x:68,y:3,w:31,h:26,z:4}};
+function outfitBoard(pieces){
+ const items=pieces.filter(g=>validImage(g.image)).slice(0,7);
+ if(!items.length)return "";
+ if(!items.every(g=>g.bgWhite))return collage(items.map(g=>g.image),items.length-4);
+ if(items.length===1)return '<div class="board"><img src="'+items[0].image+'" alt="'+fx(items[0].name)+'" loading="lazy" style="left:8%;top:5%;width:84%;height:90%"></div>';
+ const layer=items.some(g=>g.category==="Capas"),count={};
+ return '<div class="board">'+items.map(g=>{
+  const s={...(BOARD_SLOTS[g.category]||{x:66,y:74,w:30,h:23,z:4})},k=count[g.category]=(count[g.category]||0)+1;
+  if(layer&&["Arriba","Abajo","Vestidos"].includes(g.category))s.x+=12;
+  if(k>1){s.x=Math.min(100-s.w,s.x+12*(k-1));s.y=Math.min(100-s.h,s.y+5*(k-1));s.z+=k}
+  return '<img src="'+g.image+'" alt="'+fx(g.name)+'" loading="lazy" style="left:'+s.x+'%;top:'+s.y+'%;width:'+s.w+'%;height:'+s.h+'%;z-index:'+s.z+'">';
+ }).join("")+'</div>';
+}
 function thumbs(list,max=12){
  if(!list.length)return "";
  return '<div class="thumb-row">'+list.slice(0,max).map(g=>'<button class="thumb" data-thumb="'+fx(g.id)+'" title="'+fx(g.name)+'"'+(validImage(g.image)?' style="background-image:url('+g.image+')"':'')+'><span>'+fx(g.name)+'</span></button>').join("")+(list.length>max?'<span class="muted thumb-more">+'+(list.length-max)+'</span>':'')+'</div>';
@@ -473,7 +573,7 @@ function thumbs(list,max=12){
 function garmentCard(g){const image=validImage(g.image)?g.image:"";return `<article class="card" data-garment="${esc(g.id)}"><div class="card-img"${image?` style="background-image:url(${image})"`:""}></div><div class="card-body"><div class="card-title">${esc(g.name||"Sin nombre")}</div><div class="card-meta">${esc([g.category,g.color].filter(Boolean).join(" · "))}</div></div></article>`}
 function lookCard(l){
  const gs=(l.garmentIds||[]).map(id=>myGarments().find(g=>g.id===id)).filter(Boolean),imgs=gs.map(g=>g.image).filter(validImage);
- return '<article class="card" data-look="'+esc(l.id)+'">'+collage(imgs,imgs.length-4)+'<div class="card-body"><div class="card-title">'+esc(l.name)+'</div><div class="look-items">'+gs.map(g=>'<span class="look-chip">'+esc(g.name)+'</span>').join("")+'</div></div></article>';
+ return '<article class="card" data-look="'+esc(l.id)+'">'+outfitBoard(gs)+'<div class="card-body"><div class="card-title">'+esc(l.name)+'</div><div class="look-items">'+gs.map(g=>'<span class="look-chip">'+esc(g.name)+'</span>').join("")+'</div></div></article>';
 }
 function safetyBanner(){
  const p=appState.data.preferences,msgs=[];
@@ -516,9 +616,32 @@ function renderWardrobe(root){
  $$("[data-fav]",root).forEach(b=>b.addEventListener("click",async()=>{const g=myGarments().find(x=>x.id===b.dataset.fav);if(g)await mutate(()=>{g.favorite=!g.favorite;g.updatedAt=new Date().toISOString()},"Favoritos actualizados")}));
  $$("[data-wear]",root).forEach(b=>b.addEventListener("click",()=>promptWear([b.dataset.wear],null)));
 }
-let lastAnalysis=null,metaConfidence="",pendingPhoto=null;
-/* La foto puede venir de la cámara o de la galería: se usa la última elegida */
-const currentPhoto=()=>pendingPhoto||$("#garmentImage").files[0]||null;
+let lastAnalysis=null,metaConfidence="";
+/* Foto de la ficha abierta: la original y, si se ha podido, la versión con fondo blanco.
+   mode decide cuál se guarda; changed indica que la foto es nueva o ha cambiado. */
+let sheetPhoto=null;
+const sheetImage=()=>sheetPhoto?(sheetPhoto.mode==="white"&&sheetPhoto.white?sheetPhoto.white:sheetPhoto.original):null;
+function renderPhotoControls(){
+ const box=$("#photoControls");if(!box)return;
+ const ph=sheetPhoto,preview=$("#garmentPreview"),img=sheetImage();
+ preview.src=img||"";preview.classList.toggle("hidden",!img);preview.classList.toggle("on-white",!!img&&ph?.mode==="white");
+ if(!ph||!img){box.innerHTML="";return}
+ if(ph.busy){box.innerHTML='<p class="helper" role="status">Poniendo fondo blanco…</p>';return}
+ box.innerHTML=ph.white&&ph.original
+  ?'<div class="seg-tabs photo-mode" role="group" aria-label="Foto que se guarda"><button type="button" class="seg-tab'+(ph.mode==="white"?' active':'')+'" data-photo-mode="white" aria-pressed="'+(ph.mode==="white")+'">Fondo blanco</button><button type="button" class="seg-tab'+(ph.mode==="original"?' active':'')+'" data-photo-mode="original" aria-pressed="'+(ph.mode==="original")+'">Original</button></div>'
+  :ph.white?'<p class="helper">Foto con fondo blanco.</p>'
+  :'<button type="button" class="secondary wide" id="makeWhite">✨ Poner fondo blanco</button>'+(ph.failed?'<p class="helper">No he podido separar la prenda del fondo. Funciona mejor con la prenda extendida sobre una superficie lisa de otro color.</p>':'');
+ $$("[data-photo-mode]",box).forEach(b=>b.addEventListener("click",()=>{ph.mode=b.dataset.photoMode;ph.changed=true;renderPhotoControls()}));
+ $("#makeWhite",box)?.addEventListener("click",()=>makeSheetWhite());
+}
+async function makeSheetWhite(){
+ const ph=sheetPhoto;if(!ph?.original||ph.busy)return;
+ ph.busy=true;ph.failed=false;renderPhotoControls();
+ const white=await whiteBackground(ph.original);
+ if(sheetPhoto!==ph)return;
+ ph.busy=false;if(white){ph.white=white;ph.mode="white";ph.changed=true}else ph.failed=true;
+ renderPhotoControls();
+}
 /* Ficha de características dentro de la hoja de la prenda (se crea una vez) */
 function buildMetadataSection(){
  if($("#metadataDetails"))return;
@@ -530,8 +653,11 @@ function buildMetadataSection(){
   '<div class="filter-grid">'+META_FIELDS.filter(d=>d[3]==="ia").map(field).join("")+'</div>'+
   '<div class="field"><span class="field-title">Ocasiones</span><div class="occ-grid">'+Object.entries(occasions).map(([k,t])=>'<label class="switch-line"><input type="checkbox" name="meta-occasion" value="'+k+'"> '+fx(t)+'</label>').join("")+'</div></div>'+
   '<div class="filter-grid">'+META_FIELDS.filter(d=>d[3]==="manual").map(field).join("")+'</div></details>');
- $("#garmentImage")?.closest(".field")?.insertAdjacentHTML("beforeend",'<label class="switch-line" id="autoAnalyzeOption"><input type="checkbox" id="autoAnalyze" checked> Analizar automáticamente al elegir la foto</label><p class="helper" id="autoAnalyzeStatus" role="status" aria-live="polite"></p>');
+ $("#garmentImage")?.closest(".field")?.insertAdjacentHTML("beforeend",'<div id="photoControls"></div><label class="switch-line" id="autoWhiteOption"><input type="checkbox" id="autoWhite" checked> Poner fondo blanco automáticamente</label><label class="switch-line" id="autoAnalyzeOption"><input type="checkbox" id="autoAnalyze" checked> Analizar automáticamente al elegir la foto</label><p class="helper" id="autoAnalyzeStatus" role="status" aria-live="polite"></p>');
  $("#autoAnalyze")?.addEventListener("change",e=>{if(appState.profile)setPref("autoAnalyze",e.target.checked,false)});
+ $("#autoWhite")?.addEventListener("change",e=>{if(appState.profile)setPref("autoWhite",e.target.checked,false)});
+ // La vista previa va justo encima de los controles de la foto
+ const pv=$("#garmentPreview"),pc=$("#photoControls");if(pv&&pc)pc.before(pv);
 }
 function populateMetadata(src){
  for(const def of META_FIELDS){const el=$("#meta-"+def[0]);if(el)el.value=metaValue(def,src?.[def[0]])}
@@ -551,46 +677,51 @@ const META_KEYS=new Set([...META_FIELDS.map(d=>d[0]),"occasions","confidence"]);
 function setAnalyzeStatus(t){const s=$("#autoAnalyzeStatus");if(s)s.textContent=t}
 function openGarment(id){
  const g=myGarments().find(x=>x.id===id);
- $("#garmentTitle").textContent=g?"Editar prenda":"Nueva prenda";$("#garmentId").value=g?.id||"";$("#garmentName").value=g?.name||"";$("#garmentCategory").value=g?.category||"";$("#garmentColor").value=g?.color||"";$("#garmentNotes").value=g?.notes||"";$("#garmentSeason").value=g?.season||"all";$("#garmentStyle").value=g?.style||"";$("#garmentPrice").value=g?.price??"";$("#garmentBought").value=g?.boughtAt||"";$("#garmentFavorite").checked=!!g?.favorite;$("#garmentImage").value="";$("#garmentCamera").value="";pendingPhoto=null;
- const preview=$("#garmentPreview"),valid=validImage(g?.image);preview.src=valid?g.image:"";preview.classList.toggle("hidden",!valid);
+ $("#garmentTitle").textContent=g?"Editar prenda":"Nueva prenda";$("#garmentId").value=g?.id||"";$("#garmentName").value=g?.name||"";$("#garmentCategory").value=g?.category||"";$("#garmentColor").value=g?.color||"";$("#garmentNotes").value=g?.notes||"";$("#garmentSeason").value=g?.season||"all";$("#garmentStyle").value=g?.style||"";$("#garmentPrice").value=g?.price??"";$("#garmentBought").value=g?.boughtAt||"";$("#garmentFavorite").checked=!!g?.favorite;$("#garmentImage").value="";$("#garmentCamera").value="";
+ sheetPhoto=validImage(g?.image)?(g.bgWhite?{original:null,white:g.image,mode:"white",changed:false}:{original:g.image,white:null,mode:"original",changed:false}):null;
+ if(sheetPhoto&&g.bgWhite){const ph=sheetPhoto;dbGet(origKey(g.id)).then(o=>{if(sheetPhoto===ph&&validImage(o)){ph.original=o;renderPhotoControls()}}).catch(()=>{})}
  $("#deleteGarment").classList.toggle("hidden",!g);
  let btn=$("#garmentAround");
  if(!btn){$("#garmentForm .actions")?.insertAdjacentHTML("beforebegin",'<button type="button" id="garmentAround" class="secondary wide">✦ Ver looks con esta prenda</button>');btn=$("#garmentAround");btn?.addEventListener("click",()=>{const gid=$("#garmentId").value;if(!gid)return;ui.aroundId=gid;ui.stylistTab="around";closeGarment();setView("stylist")})}
  btn?.classList.toggle("hidden",!g);
- buildMetadataSection();populateMetadata(g);setAnalyzeStatus("");
+ buildMetadataSection();renderPhotoControls();populateMetadata(g);setAnalyzeStatus("");
  const details=$("#metadataDetails");if(details)details.open=false;
  const auto=$("#autoAnalyze");if(auto)auto.checked=appState.data.preferences.autoAnalyze!==false;
+ const aw=$("#autoWhite");if(aw)aw.checked=appState.data.preferences.autoWhite!==false;
  lastAnalysis=null;$("#garmentSheet").classList.remove("hidden");
 }
 function closeGarment(){$("#garmentSheet").classList.add("hidden")}
 async function saveGarment(e){
  e.preventDefault();
- const id=$("#garmentId").value||uid(),old=myGarments().find(x=>x.id===id),file=currentPhoto();let image=old?.image||"";
- try{if(file)image=await readImage(file)}catch(err){return toast(err.message==="IMAGE_TOO_LARGE"?"La imagen es demasiado grande":"No se pudo leer la imagen")}
+ const id=$("#garmentId").value||uid(),old=myGarments().find(x=>x.id===id),ph=sheetPhoto;
+ if(ph?.busy)return toast("Espera a que termine el fondo blanco");
+ const image=sheetImage()||old?.image||"",changed=!!ph?.changed&&image!==old?.image,white=!!ph&&ph.mode==="white"&&!!ph.white;
  if(!validImage(image)&&!old?.hasImage)return toast("Añade una fotografía de la prenda antes de guardarla");
  const kept=Object.fromEntries(Object.entries(old||{}).filter(([k])=>!META_KEYS.has(k)));
  const g={...kept,...readMetadata(),id,name:$("#garmentName").value.trim()||"Sin nombre",category:$("#garmentCategory").value,color:$("#garmentColor").value.trim(),notes:$("#garmentNotes").value.trim(),season:$("#garmentSeason").value,style:$("#garmentStyle").value,price:$("#garmentPrice").value===""?null:Number($("#garmentPrice").value),boughtAt:$("#garmentBought").value,favorite:$("#garmentFavorite").checked,createdAt:old?.createdAt||new Date().toISOString(),image,updatedAt:new Date().toISOString()};
  if(!validImage(image)&&old?.hasImage)g.hasImage=true;
- g.imageAt=file?new Date().toISOString():old?.imageAt;if(!g.imageAt)delete g.imageAt;
+ if(ph)g.bgWhite=white;
+ g.imageAt=changed?new Date().toISOString():old?.imageAt;if(!g.imageAt)delete g.imageAt;
+ // La original se guarda solo en este móvil, para poder volver a ella
+ try{if(white&&validImage(ph.original))await dbSet(origKey(id),ph.original);else if(ph&&!white)await dbBatch([],[origKey(id)])}catch(err){console.warn("ORIG",err)}
  const i=myGarments().findIndex(x=>x.id===id);if(i>=0)myGarments()[i]=g;else myGarments().unshift(g);
  if(!await saveState())return;closeGarment();render();toast("Prenda guardada");
 }
 async function deleteGarment(){
  const id=$("#garmentId").value;if(!id||!confirm("¿Eliminar esta prenda?"))return;
- appState.data.garments=myGarments().filter(x=>x.id!==id);tomb(id);
+ appState.data.garments=myGarments().filter(x=>x.id!==id);tomb(id);dbBatch([],[origKey(id)]).catch(()=>{});
  appState.data.looks=myLooks().map(l=>l.garmentIds.includes(id)?{...l,garmentIds:l.garmentIds.filter(x=>x!==id),updatedAt:new Date().toISOString()}:l);
  if(!await saveState())return;closeGarment();render();toast("Prenda eliminada");
 }
 async function analyzeGarment(){
- const file=currentPhoto();if(!file)return toast("Haz o elige una foto primero");
+ const ph=sheetPhoto,image=sheetImage();if(!image)return toast("Haz o elige una foto primero");
  const btn=$("#analyzeBtn");if(btn.disabled)return;btn.disabled=true;btn.textContent="Analizando…";setAnalyzeStatus("Analizando la foto…");
  try{
-  const image=await readImage(file);
   const out=await api("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image})});
   const d=mapAnalysis(out.garment||out.result||out);lastAnalysis=cleanAnalysis(d);
   if(d.name)$("#garmentName").value=d.name;if(d.category)$("#garmentCategory").value=d.category;if(d.color)$("#garmentColor").value=d.color;
   if(d.style)$("#garmentStyle").value=d.style;if(d.season)$("#garmentSeason").value=d.season;if(d.notes&&!$("#garmentNotes").value.trim())$("#garmentNotes").value=d.notes;
-  if(currentPhoto()===file){
+  if(sheetPhoto===ph){
    const manual=Object.fromEntries(Object.entries(readMetadata()).filter(([k])=>META_FIELDS.find(x=>x[0]===k)?.[3]==="manual"));
    populateMetadata({...manual,...lastAnalysis});const details=$("#metadataDetails");if(details)details.open=true;
    setAnalyzeStatus("Datos sugeridos por la IA. Revísalos antes de guardar.");
@@ -804,7 +935,7 @@ function renderAround(root){
  const gs=myGarments().slice().sort((a,b)=>String(a.name).localeCompare(String(b.name),"es")),sel=gs.find(g=>g.id===ui.aroundId),looks=sel?looksAround(sel):[];
  let body='<div class="feature-card" id="aroundCard"><div class="section-head"><h2>Combina una prenda</h2><span class="muted">Sin IA</span></div>'+
   '<label class="field"><span>¿Qué prenda quieres ponerte?</span><select id="aroundSelect">'+optionList([["","Elige una prenda"],...gs.map(g=>[g.id,g.name+(g.category?" · "+g.category:"")])],ui.aroundId)+'</select></label>';
- if(sel)body+=looks.length?'<p class="muted">'+plural(looks.length,"combinación","combinaciones")+' con «'+fx(sel.name)+'», empezando por las prendas que menos usas.</p><div class="grid">'+looks.map((l,i)=>{const imgs=l.map(x=>x.image).filter(validImage);return '<div class="look-tile"><article class="card">'+collage(imgs,imgs.length-4)+'<div class="card-body"><div class="look-items">'+l.map(x=>'<span class="look-chip'+(x.id===sel.id?' new':'')+'">'+fx(x.name)+'</span>').join("")+'</div></div></article><div class="tile-tools"><button class="chip-button" data-around-save="'+i+'">Guardar look</button><button class="chip-button" data-around-wear="'+i+'">✓ Llevado</button></div></div>'}).join("")+'</div>'
+ if(sel)body+=looks.length?'<p class="muted">'+plural(looks.length,"combinación","combinaciones")+' con «'+fx(sel.name)+'», empezando por las prendas que menos usas.</p><div class="grid">'+looks.map((l,i)=>'<div class="look-tile"><article class="card">'+outfitBoard(l)+'<div class="card-body"><div class="look-items">'+l.map(x=>'<span class="look-chip'+(x.id===sel.id?' new':'')+'">'+fx(x.name)+'</span>').join("")+'</div></div></article><div class="tile-tools"><button class="chip-button" data-around-save="'+i+'">Guardar look</button><button class="chip-button" data-around-wear="'+i+'">✓ Llevado</button></div></div>').join("")+'</div>'
   :'<p class="muted">No encuentro combinaciones para esta prenda con tu armario actual. Mira «Recomendaciones» en Compras para ver qué le falta.</p>';
  stylistShell(root,"Tu estilista","Elige una prenda y te digo con qué ponértela.",body+'</div>');
  $("#aroundSelect")?.addEventListener("change",e=>{ui.aroundId=e.target.value;render()});
@@ -912,7 +1043,7 @@ function renderTrip(root,t){
   (others.length?'<div class="pack-add"><select id="tripAddSelect" aria-label="Prenda para añadir">'+optionList([["","Añadir otra prenda…"],...others.map(g=>[g.id,g.name+(g.category?" · "+g.category:"")])],"")+'</select><button class="secondary" id="tripAdd">Añadir</button></div>':'')+
   '<h3 class="mini-title">Además</h3><div class="pack-list">'+extras.map(x=>'<div class="pack-row extra"><input type="checkbox" data-extra="'+fx(x.id)+'" aria-label="Preparado: '+fx(x.text)+'"'+(x.done?' checked':'')+'><span class="pack-name">'+fx(x.text)+'</span><button class="chip-button" data-extra-remove="'+fx(x.id)+'" aria-label="Quitar '+fx(x.text)+'">✕</button></div>').join("")+'</div>'+
   '<form id="extraForm" class="pack-add"><input id="extraText" maxlength="60" placeholder="Añadir algo (gafas de sol, bañador…)" aria-label="Otra cosa para la maleta"><button class="secondary" type="submit">Añadir</button></form></div>'+
-  (examples.length?'<div class="section-head"><h2>Looks con tu maleta</h2></div><div class="grid">'+examples.map((l,i)=>{const imgs=l.map(x=>x.image).filter(validImage);return '<div class="look-tile"><article class="card">'+collage(imgs,imgs.length-4)+'<div class="card-body"><div class="look-items">'+l.map(x=>'<span class="look-chip">'+fx(x.name)+'</span>').join("")+'</div></div></article><div class="tile-tools"><button class="chip-button" data-trip-look="'+i+'">Guardar look</button></div></div>'}).join("")+'</div>':'')+
+  (examples.length?'<div class="section-head"><h2>Looks con tu maleta</h2></div><div class="grid">'+examples.map((l,i)=>{return '<div class="look-tile"><article class="card">'+outfitBoard(l)+'<div class="card-body"><div class="look-items">'+l.map(x=>'<span class="look-chip">'+fx(x.name)+'</span>').join("")+'</div></div></article><div class="tile-tools"><button class="chip-button" data-trip-look="'+i+'">Guardar look</button></div></div>'}).join("")+'</div>':'')+
   '<button class="danger wide" id="tripDelete">Eliminar maleta</button>');
  const touch=fn=>mutate(()=>{fn();t.updatedAt=new Date().toISOString()});
  $("#tripBack")?.addEventListener("click",()=>{ui.tripId="";render()});
@@ -965,7 +1096,7 @@ function buyCheckHtml(){
   '<h3 class="mini-title">Combina con ('+r.compatible.length+')</h3>'+(r.compatible.length?thumbs(r.compatible):'<p class="muted">Ninguna prenda de tu armario.</p>')+
   (r.duplicates.length?'<h3 class="mini-title">Se parece a ('+r.duplicates.length+')</h3>'+thumbs(r.duplicates):'')+
   '<button class="secondary wide" id="buyLooks"'+(r.compatible.length?'':' disabled')+'>✦ Ver looks con la IA</button>'+
-  (c.looks?c.looks.length?'<div class="grid buy-looks">'+c.looks.map(l=>{const gs=l.ids.map(id=>id==="__nueva__"?{name:c.name||"Prenda nueva",image:c.image}:myGarments().find(g=>g.id===id)).filter(Boolean),imgs=gs.map(g=>g.image).filter(validImage);return '<article class="card">'+collage(imgs,imgs.length-4)+'<div class="card-body"><div class="card-title">'+fx(l.why)+'</div><div class="look-items">'+gs.map(g=>'<span class="look-chip">'+fx(g.name)+'</span>').join("")+'</div></div></article>'}).join("")+'</div>':'<p class="muted">La IA no ha propuesto looks con esta prenda. Prueba a cambiar la ocasión en Estilista.</p>':'')+
+  (c.looks?c.looks.length?'<div class="grid buy-looks">'+c.looks.map(l=>{const gs=l.ids.map(id=>id==="__nueva__"?{name:c.name||"Prenda nueva",image:c.image,category:c.category,bgWhite:!!c.bgWhite}:myGarments().find(g=>g.id===id)).filter(Boolean);return '<article class="card">'+outfitBoard(gs)+'<div class="card-body"><div class="card-title">'+fx(l.why)+'</div><div class="look-items">'+gs.map(g=>'<span class="look-chip">'+fx(g.name)+'</span>').join("")+'</div></div></article>'}).join("")+'</div>':'<p class="muted">La IA no ha propuesto looks con esta prenda. Prueba a cambiar la ocasión en Estilista.</p>':'')+
   '<p class="helper">El veredicto se calcula en tu móvil con reglas de color, categoría, estilo y temporada; es orientativo y no gasta tokens.</p>'+
   '<div class="actions"><button class="secondary" id="buyWish">♡ A la wishlist</button><button class="primary" id="buyAdd">Lo he comprado</button></div>'+
   '<button class="secondary small wide" id="buyReset">Valorar otra prenda</button></div>';
@@ -981,11 +1112,13 @@ async function startBuyCheck(file){
  let image;
  try{image=await readImage(file)}catch(e){return toast(e.message==="IMAGE_TOO_LARGE"?"La imagen es demasiado grande":"No se pudo leer la imagen")}
  if(!image)return;
- buyCheck={image,loading:true};render();
- const c={image,name:"",category:"",color:"",style:"",season:"all",price:null,looks:null,analyzeFailed:false};
+ const token={};buyCheck={image,loading:true,token};render();
+ let bgWhite=false;
+ if(appState.data.preferences.autoWhite!==false){const w=await whiteBackground(image);if(buyCheck?.token!==token)return;if(w){image=w;bgWhite=true}}
+ const c={image,bgWhite,token,name:"",category:"",color:"",style:"",season:"all",price:null,looks:null,analyzeFailed:false};
  try{const out=await api("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image})});const d=mapAnalysis(out.garment||out.result||out);Object.assign(c,d,{season:d.season||"all",notes:undefined})}
  catch(e){console.error("BUY_ANALYZE",e);c.analyzeFailed=true;if(e.message==="SESSION_EXPIRED"){buyCheck=null;return}}
- if(buyCheck?.image===image){buyCheck=c;render();$("#buyCheck")?.scrollIntoView?.({block:"start",behavior:"smooth"})}
+ if(buyCheck?.token===token){buyCheck=c;render();$("#buyCheck")?.scrollIntoView?.({block:"start",behavior:"smooth"})}
 }
 async function buyLooks(){
  readBuyFields();const c=buyCheck;if(!c)return;
@@ -1109,7 +1242,7 @@ function renderShopping(root){
  $("#buyAdd")?.addEventListener("click",async()=>{readBuyFields();const c=buyCheck;if(!validImage(c.image))return;
   if(!confirm("¿Añadir esta prenda a tu armario?"))return;
   const now=new Date().toISOString();
-  const ok=await mutate(()=>myGarments().unshift({...cleanAnalysis(c),id:uid(),name:c.name||"Prenda nueva",category:c.category,color:c.color,notes:"",season:c.season||"all",style:c.style,price:c.price,boughtAt:dayISO(),favorite:false,createdAt:now,image:c.image,imageAt:now,updatedAt:now}),"Prenda añadida a tu armario");
+  const ok=await mutate(()=>myGarments().unshift({...cleanAnalysis(c),id:uid(),name:c.name||"Prenda nueva",category:c.category,color:c.color,notes:"",season:c.season||"all",style:c.style,price:c.price,boughtAt:dayISO(),favorite:false,createdAt:now,image:c.image,bgWhite:!!c.bgWhite,imageAt:now,updatedAt:now}),"Prenda añadida a tu armario");
   if(ok){buyCheck=null;render()}});
  // Recomendaciones
  $$("[data-suggest-wish]",root).forEach(b=>b.addEventListener("click",async()=>{const s=suggestionCache.list[Number(b.dataset.suggestWish)];if(!s)return;
@@ -1179,6 +1312,22 @@ async function importBackup(file){
   await mutate(()=>{appState.data=data;for(const id of current)if(!kept.has(id))tomb(id)},"Copia restaurada");
  }catch(e){console.error("BACKUP",e);toast("No se pudo importar la copia")}
 }
+/* Fondo blanco para todas las prendas que aún no lo tienen; la original queda en este dispositivo */
+async function whiteAll(btn){
+ const todo=myGarments().filter(g=>validImage(g.image)&&!g.bgWhite),profile=appState.profile?.id;let done=0,failed=0;
+ btn.disabled=true;
+ for(const [i,g] of todo.entries()){
+  btn.textContent="Procesando "+(i+1)+" de "+todo.length+"…";
+  const white=await whiteBackground(g.image);
+  if(appState.profile?.id!==profile)return;
+  if(!white){failed++;continue}
+  try{await dbSet(origKey(g.id),g.image)}catch(e){console.warn("ORIG",e)}
+  const now=new Date().toISOString();Object.assign(g,{image:white,bgWhite:true,imageAt:now,updatedAt:now});done++;
+ }
+ if(done)await saveState();
+ render();
+ toast(done?plural(done,"foto","fotos")+" con fondo blanco"+(failed?". "+failed+" no se han podido separar del fondo":""):"No he podido separar ninguna prenda del fondo");
+}
 function renderSettings(root){
  const p=appState.data.preferences,u=aiUsage(),since=daysSince(p.lastBackupAt);
  const storage=storageInfo.persisted===true?"Almacenamiento protegido: el navegador no borrará estos datos automáticamente.":storageInfo.persisted===false?"El navegador no ha confirmado la protección del almacenamiento.":"";
@@ -1190,6 +1339,8 @@ function renderSettings(root){
   '<label class="field"><span>Prenda olvidada tras (días)</span><input id="settingsForget" type="number" min="30" max="365" value="'+fx(p.forgottenDays)+'"></label>'+
   '<label class="field"><span>Diversidad de combinaciones: <strong id="settingsDiversityText">'+fx(p.diversity)+'</strong>%</span><input id="settingsDiversity" type="range" min="0" max="100" step="5" value="'+fx(p.diversity)+'"></label></div>'+
   '<div class="feature-card"><h2>Uso de la IA hoy</h2><p class="muted">Análisis de fotos: '+u.analyze+' de '+AI_LIMITS.analyze+'. Sugerencias de looks: '+u.looks+' de '+AI_LIMITS.looks+'.</p><p class="helper">Los límites diarios mantienen bajo el coste de la API. «¿Lo compro?», las recomendaciones y «Combinar prenda» no usan la IA.</p></div>'+
+  '<div class="feature-card"><h2>Fotos</h2><p class="muted">'+fx(plural(myGarments().filter(g=>g.bgWhite).length,"prenda","prendas")+" con fondo blanco de "+myGarments().filter(g=>validImage(g.image)).length+" con foto.")+'</p>'+
+  (myGarments().some(g=>validImage(g.image)&&!g.bgWhite)?'<button class="secondary wide" id="whiteAll">✨ Poner fondo blanco a todas</button><p class="helper">Se hace en tu móvil, sin gastar tokens. Las originales se guardan en este dispositivo y puedes volver a ellas desde cada prenda.</p>':'')+'</div>'+
   '<div class="feature-card"><h2>Copias de seguridad</h2>'+(storage?'<p class="muted">'+fx(storage)+'</p>':'')+
   '<p class="muted">'+fx(isStandalone()?"Estás usando Atelier como app instalada.":"Estás usando Atelier desde el navegador, sin instalar.")+' '+fx(since===null?"Sin copias exportadas todavía.":"Última copia exportada hace "+plural(since,"día","días")+".")+'</p>'+
   '<button id="exportBackup" class="secondary wide">↓ Exportar copia JSON</button>'+
@@ -1202,6 +1353,7 @@ function renderSettings(root){
  $("#settingsDiversity")?.addEventListener("input",e=>{$("#settingsDiversityText").textContent=e.target.value;setPref("diversity",Number(e.target.value),false)});
  $("#exportBackup")?.addEventListener("click",downloadBackup);
  $("#importBackup")?.addEventListener("change",e=>importBackup(e.target.files[0]));
+ $("#whiteAll")?.addEventListener("click",e=>whiteAll(e.target));
  $("#logout")?.addEventListener("click",showAuth);
 }
 
@@ -1213,8 +1365,12 @@ function bind(){
  $("#password").addEventListener("keydown",e=>{if(e.key==="Enter")login()});
  $$(".nav-btn").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.view)));
  $("#garmentForm").addEventListener("submit",saveGarment);$("#closeGarment").addEventListener("click",closeGarment);$("#deleteGarment").addEventListener("click",deleteGarment);$("#analyzeBtn").addEventListener("click",analyzeGarment);
- const onPhoto=async e=>{const f=e.target.files[0],p=$("#garmentPreview");if(!f)return;pendingPhoto=f;try{p.src=await readImage(f);p.classList.remove("hidden")}catch{pendingPhoto=null;p.src="";p.classList.add("hidden");return toast("No se pudo leer la foto")}
-  if($("#autoAnalyze")?.checked)analyzeGarment()};
+ const onPhoto=async e=>{
+  const f=e.target.files[0];e.target.value="";if(!f)return;
+  let original;try{original=await readImage(f)}catch(err){return toast(err.message==="IMAGE_TOO_LARGE"?"La imagen es demasiado grande":"No se pudo leer la foto")}
+  const ph=sheetPhoto={original,white:null,mode:"original",changed:true};renderPhotoControls();
+  if($("#autoWhite")?.checked)await makeSheetWhite();
+  if(sheetPhoto===ph&&$("#autoAnalyze")?.checked)analyzeGarment()};
  $("#garmentImage").addEventListener("change",onPhoto);$("#garmentCamera").addEventListener("change",onPhoto);
  // Botones «Hacer foto» y «Galería»: abren el selector correspondiente (en la ficha y en «¿Lo compro?»)
  document.addEventListener("click",e=>{const b=e.target.closest?.("[data-photo-pick]");if(b)$("#"+b.dataset.photoPick)?.click()});
