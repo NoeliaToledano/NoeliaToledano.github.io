@@ -29,3 +29,15 @@
 button:disabled{opacity:.5;cursor:default}
 @media(min-width:560px){.buy-head{grid-template-columns:160px minmax(0,1fr);gap:16px}.buy-img{width:100%}}
 .wear-quick{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 4px}
+.suggestion{border-top:1px solid var(--line);padding:16px 0 14px}
+.suggestion:first-of-type{border-top:0}
+.suggestion-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.suggestion-head strong{font-size:16px}.suggestion-head p{margin:3px 0 0;font-size:12px}
+.looks-badge{flex:none;background:#eaf2e6;border:1px solid #b8d0b2;color:#2f5a35;border-radius:999px;padding:5px 10px;font-size:12px;font-weight:700}
+.suggestion-why{font-size:14px;margin:10px 0}
+.suggestion-examples{display:grid;gap:6px;margin:8px 0}
+.example-line{display:flex;flex-wrap:wrap;gap:5px;align-items:center;font-size:12px}
+.example-line .muted{margin-right:2px}
+.look-chip.new{background:var(--ink);color:#fff}
+.suggestion-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.suggestion-actions a{text-decoration:none}

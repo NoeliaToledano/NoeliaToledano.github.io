@@ -303,3 +303,108 @@ promptWear=function(ids,lookId){
  $$("[data-wear-day]").forEach(b=>b.addEventListener("click",()=>save(b.dataset.wearDay)));
  $("#wearOther").addEventListener("click",()=>save($("#wearDate").value));
 };
+
+/* ---------- Prendas recomendadas para comprar ---------- */
+const CATALOG=[
+ ["Camiseta blanca básica","Arriba","Blanco","casual","all"],["Camiseta negra básica","Arriba","Negro","casual","all"],
+ ["Camisa blanca","Arriba","Blanco","smart","all"],["Camisa vaquera","Arriba","Vaquero","casual","all"],
+ ["Blusa beige fluida","Arriba","Beige","smart","all"],["Camiseta de rayas marineras","Arriba","Blanco y marino","casual","all","stripes"],
+ ["Jersey de punto gris","Arriba","Gris","casual","cold"],["Jersey camel","Arriba","Camel","smart","cold"],
+ ["Jersey azul marino","Arriba","Azul marino","casual","cold"],["Top negro de tirantes","Arriba","Negro","party","warm"],
+ ["Vaquero recto azul","Abajo","Vaquero","casual","all"],["Vaquero negro","Abajo","Negro","casual","all"],
+ ["Pantalón negro de vestir","Abajo","Negro","smart","all"],["Pantalón beige ancho","Abajo","Beige","smart","all"],
+ ["Falda midi negra","Abajo","Negro","smart","all"],["Pantalón blanco","Abajo","Blanco","casual","warm"],
+ ["Falda vaquera","Abajo","Vaquero","casual","warm"],
+ ["Vestido negro sencillo","Vestidos","Negro","party","all"],["Vestido camisero beige","Vestidos","Beige","smart","warm"],
+ ["Blazer negro","Capas","Negro","smart","all"],["Blazer camel","Capas","Camel","smart","all"],
+ ["Gabardina beige","Capas","Beige","smart","all"],["Chaqueta vaquera","Capas","Vaquero","casual","all"],
+ ["Cárdigan crudo","Capas","Crudo","casual","all"],["Abrigo camel","Capas","Camel","smart","cold"],
+ ["Cazadora de piel negra","Capas","Negro","casual","all"],
+ ["Zapatillas blancas","Zapatos","Blanco","casual","all"],["Botines negros","Zapatos","Negro","casual","cold"],
+ ["Mocasines negros","Zapatos","Negro","smart","all"],["Sandalias planas camel","Zapatos","Camel","casual","warm"],
+ ["Salones nude","Zapatos","Nude","party","all"],
+ ["Bolso negro de hombro","Bolsos","Negro","smart","all"],["Bolso camel","Bolsos","Camel","casual","all"],
+ ["Cinturón negro de piel","Accesorios","Negro","smart","all"]
+].map(([name,category,color,style,season,pattern])=>({name,category,color,style,season,pattern:pattern||"plain"}));
+
+const TOPS=["Arriba"],BOTTOMS=["Abajo"],FEET=["Zapatos"];
+function outfitBases(gs){
+ const tops=gs.filter(g=>g.category==="Arriba"),bottoms=gs.filter(g=>g.category==="Abajo"),bases=[];
+ for(const t of tops)for(const b of bottoms)if(pairs(t,b))bases.push([t,b]);
+ for(const d of gs.filter(g=>g.category==="Vestidos"))bases.push([d]);
+ return bases.slice(0,400);
+}
+function lookFits(c,pieces){return pieces.every(p=>pairs(c,p))}
+function pickShoe(c,pieces,gs){return gs.find(g=>g.category==="Zapatos"&&pairs(g,c)&&pieces.every(p=>pairs(g,p)))}
+function simulate(c,gs,bases){
+ let looks=[];
+ if(c.category==="Arriba")looks=gs.filter(g=>g.category==="Abajo"&&pairs(c,g)).map(b=>[c,b]);
+ else if(c.category==="Abajo")looks=gs.filter(g=>g.category==="Arriba"&&pairs(c,g)).map(t=>[t,c]);
+ else if(c.category==="Vestidos"){const extras=gs.filter(g=>["Zapatos","Capas"].includes(g.category)&&pairs(c,g));looks=extras.length?extras.map(e=>[c,e]):[]}
+ else looks=bases.filter(p=>lookFits(c,p)).map(p=>[...p,c]);
+ let complete=0;
+ if(c.category==="Zapatos")complete=looks.filter(l=>!gs.some(g=>g.category==="Zapatos"&&l.slice(0,-1).every(p=>pairs(g,p)))).length;
+ const examples=looks.slice(0,40).map(l=>{if(["Arriba","Abajo"].includes(c.category)){const s=pickShoe(c,l.filter(x=>x!==c),gs);return s?[...l,s]:l}return l});
+ examples.sort((a,b)=>b.length-a.length);
+ return {count:looks.length,complete,examples:examples.slice(0,2)};
+}
+function shoppingSuggestions(){
+ const gs=myGarments(),bases=outfitBases(gs),season=thisSeason();
+ const wished=new Set(appState.data.wishlist.map(w=>norm(w.name)));
+ const lonely=new Set(gs.filter(g=>gs.filter(o=>pairs(g,o)).length<2).map(g=>g.id));
+ const partner={Arriba:["Abajo"],Abajo:["Arriba"]};
+ const out=[];
+ for(const c of CATALOG){
+  if(wished.has(norm(c.name)))continue;
+  if(gs.some(g=>isDuplicate(c,g)))continue;
+  const compatible=gs.filter(g=>pairs(c,g));
+  if(!compatible.length)continue;
+  const sim=simulate(c,gs,bases),rescued=compatible.filter(g=>lonely.has(g.id)&&(partner[c.category]||[]).includes(g.category));
+  if(sim.count<2&&!rescued.length)continue;
+  const seasonBoost=c.season==="all"?1:c.season===season?1.2:.5;
+  const value=["Arriba","Abajo","Vestidos"].includes(c.category)?sim.count*2:c.category==="Zapatos"?sim.complete*2+sim.count*.3:c.category==="Capas"?sim.count*.6:sim.count*.25;
+  out.push({c,compatible,rescued,looks:sim.count,complete:sim.complete,examples:sim.examples,score:(value+rescued.length*3+compatible.length*.3)*seasonBoost});
+ }
+ out.sort((a,b)=>b.score-a.score);
+ const perCat={},picked=[];
+ for(const s of out){if((perCat[s.c.category]||0)>=2)continue;perCat[s.c.category]=(perCat[s.c.category]||0)+1;picked.push(s);if(picked.length>=6)break}
+ return picked;
+}
+const piece=g=>g.id?'<span class="look-chip">'+fx(g.name)+'</span>':'<span class="look-chip new">'+fx(g.name)+'</span>';
+function suggestionCard(s,i){
+ const c=s.c,why=[];
+ why.push("Combina con "+s.compatible.length+" prenda"+(s.compatible.length>1?"s":"")+" de tu armario.");
+ const pl=n=>n>1?"s":"",core=["Arriba","Abajo","Vestidos"].includes(c.category);
+ if(core&&s.looks)why.push("Te da "+s.looks+" look"+pl(s.looks)+" nuevo"+pl(s.looks)+".");
+ else if(c.category==="Zapatos"&&s.complete)why.push("Completa "+s.complete+" look"+pl(s.complete)+" que ahora no tienen calzado a juego.");
+ else if(c.category==="Capas"&&s.looks)why.push("Puedes llevarla encima de "+s.looks+" de tus looks.");
+ else if(s.looks)why.push("Encaja con "+s.looks+" de tus looks.");
+ if(s.rescued.length)why.push("Le da salida a "+s.rescued.slice(0,2).map(g=>"«"+g.name+"»").join(" y ")+(s.rescued.length>2?" y "+(s.rescued.length-2)+" más":"")+", que ahora casi no combinas.");
+ const q=encodeURIComponent(c.name+" mujer");
+ return '<div class="suggestion"><div class="suggestion-head"><div><strong>'+fx(c.name)+'</strong><p class="muted">'+fx(c.category+" · "+c.color+" · "+(styleNames[c.style]||"")+(c.season!=="all"?" · "+seasons[c.season]:""))+'</p></div>'+
+  (core&&s.looks?'<span class="looks-badge">+'+s.looks+' looks</span>':c.category==="Zapatos"&&s.complete?'<span class="looks-badge">completa '+s.complete+'</span>':'')+'</div>'+
+  '<p class="suggestion-why">'+fx(why.join(" "))+'</p>'+thumbs(s.compatible,8)+
+  (s.examples.length?'<div class="suggestion-examples">'+s.examples.map(l=>'<div class="example-line"><span class="muted">Por ejemplo:</span>'+l.map(piece).join("")+'</div>').join("")+'</div>':'')+
+  '<div class="suggestion-actions"><button class="chip-button" data-suggest-wish="'+i+'">♡ A la wishlist</button>'+
+  '<a class="chip-button" href="https://www.google.com/search?tbm=shop&q='+q+'" target="_blank" rel="noopener noreferrer">Buscar en tiendas ↗</a></div></div>';
+}
+let suggestionCache={key:"",list:[]};
+const previousShoppingV5=renderShopping;
+renderShopping=function(root){
+ previousShoppingV5(root);
+ const gs=myGarments();
+ let html='<div class="feature-card" id="suggestions"><h2>Te recomiendo comprar</h2>';
+ if(gs.length<5){html+='<p class="muted">Añade al menos 5 prendas a tu armario y te diré qué piezas te darían más looks nuevos.</p></div>'}
+ else{
+  const key=JSON.stringify([gs.map(g=>[g.id,g.category,g.color,g.style,g.season,g.pattern]),appState.data.wishlist.map(w=>w.name)]);
+  if(suggestionCache.key!==key)suggestionCache={key,list:shoppingSuggestions()};
+  const list=suggestionCache.list;
+  html+='<p class="muted">Prendas básicas que más partido sacarían a lo que ya tienes. Descarto las que se parecen a algo de tu armario.</p>'+
+   (list.length?list.map(suggestionCard).join(""):'<p>Tu armario ya está muy completo: ninguna prenda básica te daría looks nuevos. Prioriza combinar lo que tienes.</p>')+
+   '<p class="helper">Calculado en tu móvil con reglas de color, categoría, estilo y temporada; es orientativo. Cuando la veas en tienda, hazle una foto en «¿Lo compro?» para comprobar esa prenda concreta.</p></div>';
+ }
+ const anchor=$("#buyCheck",root)||$(".hero",root);anchor?.insertAdjacentHTML("afterend",html);
+ $$("#suggestions [data-thumb]",root).forEach(b=>b.addEventListener("click",()=>openGarment(b.dataset.thumb)));
+ $$("[data-suggest-wish]",root).forEach(b=>b.addEventListener("click",async()=>{const s=suggestionCache.list[Number(b.dataset.suggestWish)];if(!s)return;
+  await mutate(()=>appState.data.wishlist.unshift({id:uid(),name:s.c.name,price:0,category:s.c.category,url:"",bought:false,addedAt:dayISO(),verdict:"Recomendada"}),"Añadida a la wishlist")}));
+};
