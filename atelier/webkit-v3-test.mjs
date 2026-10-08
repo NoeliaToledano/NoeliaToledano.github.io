@@ -21,6 +21,7 @@ await page.addInitScript(()=>{
    const data=JSON.parse(localStorage.getItem("atelier-session")||"{}");
    return respond({authenticated:true,profileId:data.profile});
   }
+  if(path.endsWith("/api/render-garment"))return respond({error:"Unavailable"},503);
   if(path.endsWith("/api/analyze"))return respond({garment:{name:"Foto analizada",type:"top",color:"Azul"}});
   if(path.endsWith("/api/looks")){
    if(window.__atelierAudit.badAuth)return respond({error:"Sesión caducada"},401);
