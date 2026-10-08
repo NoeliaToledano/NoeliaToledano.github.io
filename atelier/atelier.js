@@ -794,7 +794,7 @@ async function recordWear(ids,date,lookId){
 }
 function openLook(id){
  const l=myLooks().find(x=>x.id===id);
- $("#lookTitle").textContent=l?"Editar look":"Nuevo look";$("#lookId").value=l?.id||"";$("#lookName").value=l?.name||"";$("#lookOccasion").value=l?.occasion||"daily";$("#lookFavorite").checked=!!l?.favorite;
+ $("#lookTitle").textContent=l?"Editar look":"Nuevo look";$("#lookId").value=l?.id||"";$("#lookName").value=l?.name||"";$("#lookOccasion").replaceChildren(...Object.entries(occasions).map(([value,label])=>new Option(label,value)));$("#lookOccasion").value=l?.occasion||"daily";$("#lookFavorite").checked=!!l?.favorite;
  $("#lookGarments").innerHTML=myGarments().length?myGarments().map(g=>`<label class="field"><span><input type="checkbox" value="${esc(g.id)}" ${l?.garmentIds.includes(g.id)?"checked":""}> ${esc(g.name)}</span></label>`).join(""):`<p class="muted">Añade prendas antes de crear un look.</p>`;
  $("#deleteLook").classList.toggle("hidden",!l);$("#lookSheet").classList.remove("hidden");
 }
