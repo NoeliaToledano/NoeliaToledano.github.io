@@ -241,3 +241,5 @@ p.notice-card{display:block}
 #occasionSlot .occ-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
 #occasionSlot .switch-line{font-size:12px;min-width:0;padding:8px}
 @media(max-width:360px){#occasionSlot .occ-grid{grid-template-columns:1fr}}
+
+.taste-card summary{cursor:pointer}.taste-card p{margin:10px 0 4px}.taste-list{margin:0 0 6px;padding-left:20px}.taste-list li{margin:3px 0}
