@@ -27,6 +27,8 @@
       <button type="button" class="profile-option" data-profile="virginia" aria-pressed="false"><span class="profile-avatar" aria-hidden="true">V</span><span class="profile-label">Virginia</span><span class="profile-check" aria-hidden="true">✓</span></button>
     </div>
     <div id="passwordStep" class="hidden" aria-label="Acceso al perfil">
+      <button type="button" id="backToProfiles" class="auth-back">← Volver a perfiles</button>
+      <div class="auth-selected-profile"><span id="selectedProfileAvatar" class="profile-avatar" aria-hidden="true"></span><div><span class="auth-selected-caption">ENTRAR COMO</span><strong id="selectedProfileName"></strong></div></div>
       <div class="field auth-password-field"><label for="password">Tu contraseña</label><div class="password-wrap"><input id="password" type="password" autocomplete="current-password" placeholder="Introduce tu contraseña"><button type="button" id="togglePassword" class="password-toggle" aria-label="Mostrar contraseña" aria-pressed="false">Mostrar</button></div></div>
       <button id="loginBtn" class="primary auth-submit">Entrar a mi armario <span aria-hidden="true">→</span></button>
       <div id="authError" class="error" role="alert" aria-live="polite"></div>
