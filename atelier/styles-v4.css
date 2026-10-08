@@ -41,3 +41,4 @@ button:disabled{opacity:.5;cursor:default}
 .look-chip.new{background:var(--ink);color:#fff}
 .suggestion-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .suggestion-actions a{text-decoration:none}
+.weather-line{display:flex;flex-wrap:wrap;gap:6px;margin:-6px 0 6px}

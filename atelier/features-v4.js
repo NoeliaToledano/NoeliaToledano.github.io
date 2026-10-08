@@ -467,3 +467,86 @@ renderAdvancedSettings=function(root){
  const html='<div class="feature-card"><h2>Uso de la IA hoy</h2><p class="muted">Análisis de fotos: '+u.analyze+' de '+AI_LIMITS.analyze+'. Sugerencias de looks: '+u.looks+' de '+AI_LIMITS.looks+'.</p><p class="helper">Los límites diarios mantienen bajo el coste de la API. El veredicto de «¿Lo compro?» y las recomendaciones de compra no usan la IA.</p></div>';
  const cards=$$(".feature-card",root);(cards.at(-1)||$(".hero",root))?.insertAdjacentHTML("afterend",html);
 };
+
+/* ---------- Looks alrededor de una prenda (sin IA, sin tokens) ---------- */
+function looksAround(g,max=8){
+ const gs=myGarments().filter(x=>x.id!==g.id&&!notInSeason(x));
+ const score=x=>(x.favorite?1.5:0)+2/(1+wornCount(x.id))+(forgottenStatus(x).forgotten?1:0);
+ const best=(cat,pieces)=>gs.filter(x=>x.category===cat&&pieces.every(p=>pairs(x,p))).sort((a,b)=>score(b)-score(a))[0];
+ let bases=[];
+ if(g.category==="Arriba")bases=gs.filter(x=>x.category==="Abajo"&&pairs(g,x)).map(b=>[g,b]);
+ else if(g.category==="Abajo")bases=gs.filter(x=>x.category==="Arriba"&&pairs(g,x)).map(t=>[t,g]);
+ else if(g.category==="Vestidos")bases=[[g]];
+ else if(g.category)bases=outfitBases(gs).filter(p=>p.every(x=>pairs(g,x))).map(p=>[...p,g]);
+ const cold=thisSeason()==="cold"||(appState.data.preferences.temperature!=null&&appState.data.preferences.temperature!==""&&Number(appState.data.preferences.temperature)<17);
+ const looks=bases.map(base=>{const l=[...base];for(const cat of ["Zapatos",cold?"Capas":null,"Bolsos"]){if(!cat||l.some(x=>x.category===cat))continue;const s=best(cat,l);if(s)l.push(s)}return l}).filter(l=>l.length>=2);
+ const seen=new Set();
+ return looks.map(l=>({l,s:l.reduce((t,x)=>t+(x.id===g.id?0:score(x)),0)})).sort((a,b)=>b.s-a.s).map(x=>x.l)
+  .filter(l=>{const k=l.map(x=>x.id).sort().join("|");if(seen.has(k))return false;seen.add(k);return true}).slice(0,max);
+}
+function aroundCard(){
+ const gs=myGarments().slice().sort((a,b)=>String(a.name).localeCompare(String(b.name),"es"));
+ const sel=gs.find(g=>g.id===featureState.aroundId);
+ let html='<div class="feature-card" id="aroundCard"><div class="section-head"><h2>Combina una prenda</h2><span class="muted">Sin IA</span></div>'+
+  '<label class="field"><span>¿Qué prenda quieres ponerte?</span><select id="aroundSelect">'+optionList([["","Elige una prenda"],...gs.map(g=>[g.id,g.name+(g.category?" · "+g.category:"")])],featureState.aroundId||"")+'</select></label>';
+ if(sel){
+  const looks=looksAround(sel);
+  html+=looks.length?'<p class="muted">'+looks.length+' combinacion'+(looks.length>1?'es':'')+' con «'+fx(sel.name)+'», empezando por las prendas que menos usas.</p><div class="grid">'+looks.map((l,i)=>{const imgs=l.map(x=>x.image).filter(validImage);return '<div class="look-tile"><article class="card">'+collage(imgs,imgs.length-4)+'<div class="card-body"><div class="look-items">'+l.map(x=>'<span class="look-chip'+(x.id===sel.id?' new':'')+'">'+fx(x.name)+'</span>').join("")+'</div></div></article><div class="tile-tools"><button class="chip-button" data-around-save="'+i+'">Guardar look</button><button class="chip-button" data-around-wear="'+i+'">✓ Llevado</button></div></div>'}).join("")+'</div>'
+   :'<p class="muted">No encuentro combinaciones para esta prenda con tu armario actual. Mira «Te recomiendo comprar» en Compras para ver qué le falta.</p>';
+ }
+ return html+'</div>';
+}
+const previousStylistAround=renderStylist;
+renderStylist=function(root){
+ previousStylistAround(root);
+ $(".hero",root)?.insertAdjacentHTML("afterend",aroundCard());
+ $("#aroundSelect")?.addEventListener("change",e=>{featureState.aroundId=e.target.value;render()});
+ const sel=myGarments().find(g=>g.id===featureState.aroundId),looks=sel?looksAround(sel):[];
+ $$("[data-around-save]",root).forEach(b=>b.addEventListener("click",async()=>{const l=looks[Number(b.dataset.aroundSave)];if(!l)return;
+  const sig=l.map(x=>x.id).sort().join("|");if(myLooks().some(x=>(x.garmentIds||[]).slice().sort().join("|")===sig))return toast("Ese look ya está guardado");
+  await mutate(()=>myLooks().unshift({id:uid(),name:"Con "+sel.name,garmentIds:l.map(x=>x.id),occasion:appState.data.preferences.occasion||"daily",ai:false,updatedAt:new Date().toISOString()}),"Look guardado")}));
+ $$("[data-around-wear]",root).forEach(b=>b.addEventListener("click",()=>{const l=looks[Number(b.dataset.aroundWear)];if(l)promptWear(l.map(x=>x.id),null)}));
+};
+const previousOpenGarment=openGarment;
+openGarment=function(id){
+ previousOpenGarment(id);
+ let btn=$("#garmentAround");
+ if(!btn){$("#garmentForm .actions")?.insertAdjacentHTML("beforebegin",'<button type="button" id="garmentAround" class="secondary wide">✦ Ver looks con esta prenda</button>');btn=$("#garmentAround");btn?.addEventListener("click",()=>{const gid=$("#garmentId").value;if(!gid)return;featureState.aroundId=gid;closeGarment();setView("stylist")})}
+ btn?.classList.toggle("hidden",!myGarments().some(g=>g.id===id));
+};
+
+/* ---------- Tiempo de hoy con Open-Meteo (gratis, sin tokens) ---------- */
+async function fetchTodayTemperature(ask){
+ const p=appState.data.preferences;
+ let pos=p.weatherPlace;
+ if(!pos||ask){
+  pos=await new Promise((res,rej)=>{if(!navigator.geolocation)return rej(new Error("NO_GEO"));navigator.geolocation.getCurrentPosition(x=>res({lat:Math.round(x.coords.latitude*100)/100,lon:Math.round(x.coords.longitude*100)/100}),e=>rej(e),{timeout:10000,maximumAge:3600000})});
+ }
+ const url="https://api.open-meteo.com/v1/forecast?latitude="+pos.lat+"&longitude="+pos.lon+"&daily=temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1";
+ const r=await fetch(url);if(!r.ok)throw new Error("WEATHER_"+r.status);
+ const d=await r.json(),max=d?.daily?.temperature_2m_max?.[0],min=d?.daily?.temperature_2m_min?.[0];
+ if(typeof max!=="number"||typeof min!=="number")throw new Error("WEATHER_DATA");
+ p.weatherPlace=pos;p.temperature=Math.round((max+min)/2);p.weatherDay=dayISO();p.autoWeather=true;
+ await saveState();return {mean:p.temperature,max:Math.round(max),min:Math.round(min)};
+}
+let weatherInFlight=false;
+async function refreshWeatherIfNeeded(){
+ const p=appState.data.preferences;
+ if(weatherInFlight||!p.autoWeather||!p.weatherPlace||p.weatherDay===dayISO())return;
+ weatherInFlight=true;
+ try{await fetchTodayTemperature(false);if(appState.view==="stylist")render()}catch(e){console.warn("WEATHER",e)}finally{weatherInFlight=false}
+}
+const previousStylistWeather=renderStylist;
+renderStylist=function(root){
+ previousStylistWeather(root);
+ const t=$("#prefTemperature",root),p=appState.data.preferences;if(!t)return;
+ const info=p.autoWeather&&p.weatherDay===dayISO()?"Tiempo de hoy en tu zona: media de "+p.temperature+" °C.":p.autoWeather?"Actualizando el tiempo de hoy…":"";
+ t.closest("label")?.insertAdjacentHTML("afterend",'<div class="weather-line"><button type="button" class="chip-button" id="useWeather">📍 Usar el tiempo de hoy</button>'+(p.autoWeather?'<button type="button" class="chip-button" id="stopWeather">Volver a 25 °C</button>':'')+'</div>'+(info?'<p class="helper">'+fx(info)+'</p>':''));
+ $("#useWeather")?.addEventListener("click",async e=>{e.target.disabled=true;e.target.textContent="Consultando…";
+  try{const w=await fetchTodayTemperature(true);toast("Hoy: entre "+w.min+" y "+w.max+" °C (media "+w.mean+" °C)");render()}
+  catch(err){console.warn("WEATHER",err);toast(err?.code===1?"Sin permiso de ubicación: sigo usando 25 °C":"No se pudo consultar el tiempo");e.target.disabled=false;e.target.textContent="📍 Usar el tiempo de hoy"}});
+ $("#stopWeather")?.addEventListener("click",async()=>{Object.assign(p,{autoWeather:false,temperature:null,weatherDay:null,weatherPlace:null});await saveState();render()});
+ // Cambiar la temperatura a mano desactiva el modo automático.
+ t.addEventListener("change",()=>{if(p.autoWeather){p.autoWeather=false;saveState()}});
+ refreshWeatherIfNeeded();
+};
