@@ -699,6 +699,30 @@ function updateOccasionSummary(){
  const values=$$('[name="meta-occasion"]:checked').map(x=>occasions[x.value]||x.value);
  const el=$("#occasionSummary");if(el)el.textContent=values.length?values.slice(0,3).join(" · ")+(values.length>3?" +"+(values.length-3):""):"Sin ocasiones sugeridas · puedes elegirlas";
 }
+/* Reglas estables de uso: complementan a la IA, sin impedir cambios manuales. */
+const OCCASION_BY_TYPE={
+ "Pijama":["home","sleep","travel"],"Camisón":["home","sleep","travel"],"Bata":["home","sleep","travel"],
+ "Zapatillas de casa":["home","travel"],"Sujetador deportivo":["sport","gym","yoga"],
+ "Mallas deportivas":["sport","gym","yoga"],"Pantalón deportivo":["sport","gym"],
+ "Camiseta técnica":["sport","gym","running","hiking"],
+ "Bañador":["beach","pool","spa","holiday"],"Bikini":["beach","pool","holiday"],
+ "Top de bikini":["beach","pool","holiday"],"Braguita de bikini":["beach","pool","holiday"],
+ "Trikini":["beach","pool","holiday"],"Short de baño":["beach","pool","holiday"],
+ "Pareos":["beach","pool","holiday"],"Salida de baño":["beach","pool","spa","holiday"]
+};
+const OCCASION_BY_CATEGORY={Baño:["beach","pool"],Interior:["home"]};
+function suggestedOccasions(category,type,ai=[]){
+ const base=OCCASION_BY_TYPE[type]||OCCASION_BY_CATEGORY[category]||[];
+ return [...new Set([...base,...(Array.isArray(ai)?ai:[])].filter(k=>occasions[k]))];
+}
+function suggestOccasionsForSelection(){
+ const cat=$("#garmentCategory").value,type=$("#garmentType").value;
+ const current=$('[name="meta-occasion"]:checked').map(x=>x.value);
+ // Solo sugerir lo que falte; el usuario puede desmarcarlo después.
+ const picked=new Set(suggestedOccasions(cat,type,current));
+ $('[name="meta-occasion"]').forEach(x=>{x.checked=picked.has(x.value)});
+ updateOccasionSummary();
+}
 function populateMetadata(src){
  for(const def of META_FIELDS){const el=$("#meta-"+def[0]);if(el)el.value=metaValue(def,src?.[def[0]])}
  const occ=new Set(Array.isArray(src?.occasions)?src.occasions:[]);
@@ -785,7 +809,7 @@ async function analyzeGarment(){
   $("#garmentStyle").value=d.style||"";$("#garmentSeason").value=d.season||"all";if(d.notes&&!$("#garmentNotes").value.trim())$("#garmentNotes").value=d.notes;
   if(sheetPhoto===ph){
    const manual=Object.fromEntries(Object.entries(readMetadata()).filter(([k])=>META_FIELDS.find(x=>x[0]===k)?.[3]==="manual"));
-   populateMetadata({...manual,...lastAnalysis});const details=$("#metadataDetails");if(details)details.open=true;
+   populateMetadata({...manual,...lastAnalysis,occasions:suggestedOccasions(d.category,$("#garmentType").value,lastAnalysis?.occasions)});const details=$("#metadataDetails");if(details)details.open=true;
    setAnalyzeStatus("Ficha completada. Revisa los datos y pulsa Confirmar y guardar.");
   }
   toast("Análisis completado");
@@ -1429,9 +1453,10 @@ function bind(){
  $("#togglePassword").addEventListener("click",()=>setPasswordVisible($("#password").type==="password"));
  $("#password").addEventListener("keydown",e=>{if(e.key==="Enter")login()});
  $$(".nav-btn").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.view)));
- $("#garmentCategory").addEventListener("change",()=>syncGarmentCategory(true));
+ $("#garmentCategory").addEventListener("change",()=>{syncGarmentCategory(true);suggestOccasionsForSelection()});
+ $("#garmentType").addEventListener("change",suggestOccasionsForSelection);
 
- $$("[data-garment-category]").forEach(btn=>btn.addEventListener("click",()=>{$("#garmentCategory").value=btn.dataset.garmentCategory;syncGarmentCategory(true)}));
+ $$("[data-garment-category]").forEach(btn=>btn.addEventListener("click",()=>{$("#garmentCategory").value=btn.dataset.garmentCategory;syncGarmentCategory(true);suggestOccasionsForSelection()}));
  $("#garmentForm").addEventListener("submit",saveGarment);$("#closeGarment").addEventListener("click",closeGarment);$("#deleteGarment").addEventListener("click",deleteGarment);
  const onPhoto=async e=>{
   const f=e.target.files[0];e.target.value="";if(!f)return;
