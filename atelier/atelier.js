@@ -194,18 +194,26 @@ async function ensurePersistence(){
      de cada prenda/look; lo borrado en cualquiera de los dos queda borrado).
    - Las fotos se suben y descargan una a una por /api/sync-image.
    - Si el servidor no tiene la base de datos configurada, la app sigue funcionando solo en local. */
-const syncKey=()=>"sync:"+appState.profile.id;
-let sync={rev:0,dirty:false,ever:false,lastAt:null,status:"idle",error:""},syncTimer=null,syncRunning=false,syncAgain=false;
-async function loadSyncMeta(){try{const m=await dbGet(syncKey());sync={...{rev:0,dirty:false,ever:false,lastAt:null},...(m||{}),status:"idle",error:""}}catch{sync={rev:0,dirty:false,ever:false,lastAt:null,status:"idle",error:""}}}
-async function saveSyncMeta(){try{await dbSet(syncKey(),{rev:sync.rev,dirty:sync.dirty,ever:sync.ever,lastAt:sync.lastAt})}catch(e){console.warn("SYNC_META",e)}}
-function markDirty(){if(!appState.profile)return;sync.dirty=true;saveSyncMeta();scheduleSync(2500)}
+const freshSync=()=>({rev:0,dirty:false,ever:false,lastAt:null,imgs:{},status:"idle",error:""});
+/* sync: estado del perfil activo. syncGen cambia en cada inicio/cierre de sesión: una sincronización
+   que empezó con otra sesión se cancela sola. editSeq cuenta los cambios locales para no perder
+   ninguno que ocurra mientras una subida está en curso. */
+let sync=freshSync(),syncTimer=null,syncRunning=false,syncAgain=false,syncGen=0,editSeq=0;
+async function loadSyncMeta(){
+ let m=null;try{m=await dbGet("sync:"+appState.profile.id)}catch{}
+ sync={...freshSync(),...(m||{}),status:"idle",error:""};
+ if(!sync.imgs||typeof sync.imgs!=="object")sync.imgs={};
+}
+async function saveSyncMeta(profile=appState.profile?.id,s=sync){if(!profile)return;try{await dbSet("sync:"+profile,{rev:s.rev,dirty:s.dirty,ever:s.ever,lastAt:s.lastAt,imgs:s.imgs})}catch(e){console.warn("SYNC_META",e)}}
+function markDirty(){if(!appState.profile)return;editSeq++;sync.dirty=true;saveSyncMeta();scheduleSync(2500)}
+function resetSyncSession(){syncGen++;clearTimeout(syncTimer);syncAgain=false}
 function scheduleSync(ms){clearTimeout(syncTimer);if(sync.status==="off")return;syncTimer=setTimeout(()=>syncNow(),ms)}
-async function syncFetch(path,options={}){
- const headers={...(options.headers||{})};if(appState.token)headers.Authorization="Bearer "+appState.token;
+async function syncFetch(path,options={},token=appState.token){
+ const headers={...(options.headers||{})};if(token)headers.Authorization="Bearer "+token;
  const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),25000);
  try{
   const r=await fetch(API_BASE+path,{...options,headers,signal:ctrl.signal});let body={};try{body=await r.json()}catch{}
-  if(r.status===401){showAuth();throw new Error("SESSION_EXPIRED")}
+  if(r.status===401){if(token===appState.token)showAuth();throw new Error("SESSION_EXPIRED")}
   return {status:r.status,body};
  }finally{clearTimeout(timer)}
 }
@@ -225,21 +233,30 @@ function mergeData(local,remote){
  m.preferences={...(remote.preferences||{}),...(local.preferences||{})};
  return m;
 }
-async function downloadMissingImages(data,serverImages){
+/* Cada foto lleva una versión (imageAt): cambia al sustituir la foto, así se sube y descarga de nuevo. */
+const imgVer=g=>String(g.imageAt||"0");
+function reuseLocalImages(data,local){
+ const byId=new Map(local.garments.map(g=>[g.id,g]));
+ for(const g of data.garments){if(validImage(g.image))continue;const l=byId.get(g.id);if(l&&validImage(l.image)&&imgVer(l)===imgVer(g))g.image=l.image}
+}
+async function downloadImages(data,serverImages,call,s){
  const missing=data.garments.filter(g=>!validImage(g.image)&&serverImages.has(g.id));
- if(!missing.length)return;
  if(missing.length>3)toast("Descargando "+missing.length+" fotos de tu armario…");
  for(const g of missing){
-  try{const r=await syncFetch("/api/sync-image?id="+encodeURIComponent(g.id));if(r.status===200&&validImage(r.body.image))g.image=r.body.image}catch(e){if(e.message==="SESSION_EXPIRED")throw e;console.warn("SYNC_IMG_GET",e)}
+  const r=await call("/api/sync-image?id="+encodeURIComponent(g.id));
+  if(r.status===200&&validImage(r.body.image)){g.image=r.body.image;s.imgs[g.id]=imgVer(g)}
  }
 }
-async function uploadMissingImages(serverImages){
+async function uploadImages(serverImages,call,s){
  for(const g of myGarments()){
-  if(!validImage(g.image)||serverImages.has(g.id))continue;
-  const r=await syncFetch("/api/sync-image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:g.id,image:g.image})});
+  if(!validImage(g.image))continue;
+  const v=imgVer(g),image=g.image,id=g.id;
+  if(serverImages.has(id)&&s.imgs[id]===v)continue;
+  const r=await call("/api/sync-image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id,image})});
   if(r.status!==200)throw new Error(r.body.error||"SYNC_IMG_"+r.status);
-  serverImages.add(g.id);
+  serverImages.add(id);s.imgs[id]=v;
  }
+ const ids=new Set(myGarments().map(g=>g.id));for(const id of Object.keys(s.imgs))if(!ids.has(id))delete s.imgs[id];
 }
 let syncChangedView=false;
 async function applyFromServer(data){
@@ -249,48 +266,60 @@ async function applyFromServer(data){
  appState.data=data;syncChangedView=true;
  return saveState({fromSync:true});
 }
+const SYNC_STALE="SYNC_STALE";
 async function syncNow(){
  if(!appState.profile||!appState.token)return;
  if(syncRunning){syncAgain=true;return}
- syncRunning=true;sync.status="syncing";const profile=appState.profile.id;
+ syncRunning=true;
+ // Todo lo de esta sincronización usa la sesión con la que empezó; si cambia, se cancela.
+ const gen=syncGen,profile=appState.profile.id,token=appState.token,s=sync;
+ const alive=()=>gen===syncGen&&appState.profile?.id===profile&&appState.token===token;
+ const call=async(path,options)=>{if(!alive())throw new Error(SYNC_STALE);const r=await syncFetch(path,options,token);if(!alive())throw new Error(SYNC_STALE);return r};
+ s.status="syncing";
  try{
   for(let attempt=0;attempt<3;attempt++){
-   const g=await syncFetch("/api/sync");
-   if(appState.profile?.id!==profile)return;
-   syncChangedView=false;
-   if(g.status===503){sync.status="off";sync.error=g.body.error||"";return}
+   const seqStart=editSeq;syncChangedView=false;
+   const g=await call("/api/sync");
+   if(g.status===503){s.status="off";s.error=g.body.error||"";return}
    if(g.status!==200)throw new Error(g.body.error||"SYNC_"+g.status);
    const serverRev=Number(g.body.rev)||0,serverData=g.body.data?normalizeData(g.body.data):null,serverImages=new Set(Array.isArray(g.body.images)?g.body.images:[]);
    const local=appState.data,localHasData=local.garments.length||local.looks.length||local.wishlist.length||local.wearLog.length;
-   let needPush=false;
-   if(!serverData){needPush=!!localHasData||sync.dirty}
-   else if(!sync.ever){
-    // Primera sincronización de este dispositivo: se fusiona lo que haya en ambos lados.
-    if(localHasData){const m=mergeData(local,serverData);await downloadMissingImages(m,serverImages);await applyFromServer(m);needPush=true}
-    else{await downloadMissingImages(serverData,serverImages);await applyFromServer(serverData)}
+   let incoming=null,needPush=false;
+   if(!serverData)needPush=!!localHasData||s.dirty;
+   else if(!s.ever){incoming=localHasData?mergeData(local,serverData):serverData;needPush=!!localHasData}  // primera vez en este dispositivo
+   else if(serverRev!==s.rev){incoming=s.dirty?mergeData(local,serverData):serverData;needPush=s.dirty}
+   else needPush=s.dirty;
+   if(incoming){
+    reuseLocalImages(incoming,local);
+    await downloadImages(incoming,serverImages,call,s);
+    if(editSeq!==seqStart)continue;  // hubo cambios mientras se descargaba: se vuelve a fusionar con ellos
+    if(!alive())throw new Error(SYNC_STALE);
+    await applyFromServer(incoming);
    }
-   else if(serverRev!==sync.rev&&sync.dirty){const m=mergeData(local,serverData);await downloadMissingImages(m,serverImages);await applyFromServer(m);needPush=true}
-   else if(serverRev!==sync.rev){await downloadMissingImages(serverData,serverImages);await applyFromServer(serverData)}
-   else needPush=sync.dirty;
-   sync.ever=true;sync.rev=serverRev;
+   s.ever=true;s.rev=serverRev;
+   const pushSeq=editSeq;
+   await uploadImages(serverImages,call,s);
    if(needPush){
-    await uploadMissingImages(serverImages);
-    const p=await syncFetch("/api/sync",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({baseRev:serverRev,data:slimData(appState.data)})});
+    const p=await call("/api/sync",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({baseRev:serverRev,data:slimData(appState.data)})});
     if(p.status===409)continue;
     if(p.status!==200)throw new Error(p.body.error||"SYNC_PUT_"+p.status);
-    sync.rev=Number(p.body.rev)||serverRev+1;
-   }else await uploadMissingImages(serverImages);
-   sync.dirty=false;sync.lastAt=new Date().toISOString();sync.status="ok";sync.error="";
-   await saveSyncMeta();
+    s.rev=Number(p.body.rev)||serverRev+1;
+   }
+   // Solo queda al día si nadie editó durante la subida; si no, se repite enseguida.
+   if(editSeq===pushSeq)s.dirty=false;else syncAgain=true;
+   s.lastAt=new Date().toISOString();s.status="ok";s.error="";
+   await saveSyncMeta(profile,s);
+   if(!alive())return;
    // Solo se redibuja si llegaron cambios de otro dispositivo (así no se pierde lo que estés escribiendo).
    if(syncChangedView){syncChangedView=false;render()}else{const st=$("#syncStatus");if(st)st.textContent=syncStatusText()}
    return;
   }
   throw new Error("SYNC_CONFLICT");
  }catch(e){
+  if(e.message===SYNC_STALE){s.status="idle";return}
   if(e.message==="SESSION_EXPIRED")return;
-  console.warn("SYNC",e);sync.status="error";sync.error=e.name==="AbortError"||e instanceof TypeError?"Sin conexión":String(e.message||e);
-  await saveSyncMeta();scheduleSync(60000);
+  console.warn("SYNC",e);s.status="error";s.error=e.name==="AbortError"||e instanceof TypeError?"Sin conexión":String(e.message||e);
+  await saveSyncMeta(profile,s);if(alive())scheduleSync(60000);
  }finally{
   syncRunning=false;
   if(syncAgain&&appState.profile){syncAgain=false;scheduleSync(500)}
@@ -363,7 +392,7 @@ function mapAnalysis(d){
 
 /* ===================== 5. Sesión y navegación ===================== */
 function showAuth(){
- clearTimeout(syncTimer);syncAgain=false;
+ resetSyncSession();
  appState.profile=null;appState.token=null;appState.data=emptyData();lastSavedData=emptyData();appState.view="wardrobe";
  buyCheck=null;storedImages=new Map();ui.aroundId="";
  $("#content").replaceChildren();$("#profileName").textContent="";$("#garmentForm").reset();$("#lookForm").reset();$("#lookGarments").replaceChildren();
@@ -386,7 +415,7 @@ async function login(){
  finally{btn.disabled=false;$$(".profile-option").forEach(b=>b.disabled=false);btn.textContent="Entrar"}
 }
 async function enterApp(){
- appState.authExpired=false;
+ appState.authExpired=false;resetSyncSession();
  await loadState();await loadSyncMeta();
  const p=appState.data.preferences;
  // Una vez por perfil: las temperaturas antiguas escritas a mano pasan a 25 °C.
@@ -536,6 +565,7 @@ async function saveGarment(e){
  const kept=Object.fromEntries(Object.entries(old||{}).filter(([k])=>!META_KEYS.has(k)));
  const g={...kept,...readMetadata(),id,name:$("#garmentName").value.trim()||"Sin nombre",category:$("#garmentCategory").value,color:$("#garmentColor").value.trim(),notes:$("#garmentNotes").value.trim(),season:$("#garmentSeason").value,style:$("#garmentStyle").value,price:$("#garmentPrice").value===""?null:Number($("#garmentPrice").value),boughtAt:$("#garmentBought").value,favorite:$("#garmentFavorite").checked,createdAt:old?.createdAt||new Date().toISOString(),image,updatedAt:new Date().toISOString()};
  if(!validImage(image)&&old?.hasImage)g.hasImage=true;
+ g.imageAt=file?new Date().toISOString():old?.imageAt;if(!g.imageAt)delete g.imageAt;
  const i=myGarments().findIndex(x=>x.id===id);if(i>=0)myGarments()[i]=g;else myGarments().unshift(g);
  if(!await saveState())return;closeGarment();render();toast("Prenda guardada");
 }
@@ -975,7 +1005,7 @@ function renderShopping(root){
  $("#buyAdd")?.addEventListener("click",async()=>{readBuyFields();const c=buyCheck;if(!validImage(c.image))return;
   if(!confirm("¿Añadir esta prenda a tu armario?"))return;
   const now=new Date().toISOString();
-  const ok=await mutate(()=>myGarments().unshift({...cleanAnalysis(c),id:uid(),name:c.name||"Prenda nueva",category:c.category,color:c.color,notes:"",season:c.season||"all",style:c.style,price:c.price,boughtAt:dayISO(),favorite:false,createdAt:now,image:c.image,updatedAt:now}),"Prenda añadida a tu armario");
+  const ok=await mutate(()=>myGarments().unshift({...cleanAnalysis(c),id:uid(),name:c.name||"Prenda nueva",category:c.category,color:c.color,notes:"",season:c.season||"all",style:c.style,price:c.price,boughtAt:dayISO(),favorite:false,createdAt:now,image:c.image,imageAt:now,updatedAt:now}),"Prenda añadida a tu armario");
   if(ok){buyCheck=null;render()}});
  // Recomendaciones
  $$("[data-suggest-wish]",root).forEach(b=>b.addEventListener("click",async()=>{const s=suggestionCache.list[Number(b.dataset.suggestWish)];if(!s)return;
