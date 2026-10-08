@@ -4,6 +4,7 @@ const browser=await chromium.launch({headless:true,channel:"chrome"});
 const context=await browser.newContext({...devices["iPhone 13"],browserName:undefined});
 const page=await context.newPage();
 const errors=[];
+let forceUnauthorized=false,forceServerError=false;
 page.on("pageerror",e=>errors.push(e.message));
 page.on("console",m=>{if(m.type()==="error")console.log("BROWSER_CONSOLE",m.text())});
 page.on("requestfailed",r=>console.log("FAILED_REQUEST",r.url(),r.failure()?.errorText));
@@ -14,6 +15,8 @@ await page.route("https://atelier-ai-backend-pi.vercel.app/**",async route=>{
  if(url.endsWith("/api/login")){const body=JSON.parse(req.postData()||"{}");return route.fulfill({status:200,headers,body:JSON.stringify({profileId:body.profileId,token:"test-token"})})}
  if(url.endsWith("/api/session"))return route.fulfill({status:200,headers,body:JSON.stringify({authenticated:true,profileId:currentProfile})});
  if(url.endsWith("/api/analyze"))return route.fulfill({status:200,headers,body:JSON.stringify({garment:{name:"Camisa reconocida por IA",type:"top",color:"Azul"}})});
+ if(url.endsWith("/api/looks")&&forceUnauthorized){forceUnauthorized=false;return route.fulfill({status:401,headers,body:JSON.stringify({error:"Sesión caducada"})})}
+ if(url.endsWith("/api/looks")&&forceServerError){forceServerError=false;return route.fulfill({status:503,headers,body:JSON.stringify({error:"Servicio no disponible"})})}
  if(url.endsWith("/api/looks")){const items=JSON.parse(req.postData()||"{}").items||[];return route.fulfill({status:200,headers,body:JSON.stringify({looks:[{ids:items.slice(0,2).map(x=>x.i),why:"Look de prueba IA"}]})})}
  return route.fulfill({status:500,headers,body:JSON.stringify({error:"Mock AI unavailable"})});
 });
@@ -54,8 +57,17 @@ try{
  await page.locator('[data-view="looks"]').click();
  await page.locator("#aiLooks").click();
  await page.getByText("Look de prueba IA").waitFor();
- await page.locator('[data-view="settings"]').click();
- await page.locator("#logout").click();
+ const existingLooks=await page.locator("[data-look]").count();
+ forceServerError=true;
+ await page.locator("#aiLooks").click();
+ await page.getByText("No se pudieron generar looks").waitFor();
+ assert.equal(await page.locator("[data-look]").count(),existingLooks,"Server failures must not create looks");
+ forceUnauthorized=true;
+ await page.locator("#aiLooks").click();
+ await page.locator("#auth").waitFor({state:"visible"});
+ assert.equal(await page.locator("#app").isVisible(),false);
+ assert.equal(await page.getByText("Prenda auditada").count(),0,"Logout must purge private DOM");
+ assert.equal(await page.locator("#lookGarments").textContent(),"","Private look picker must be cleared");
  currentProfile="irene";
  await page.getByRole("button",{name:"Irene"}).click();
  await page.locator("#password").fill("test");
@@ -65,5 +77,5 @@ try{
  assert.equal(await page.getByText("Tu armario está vacío").count(),1);
  assert.deepEqual(errors,[]);
  await page.screenshot({path:"atelier-smoke.png",fullPage:true});
- console.log("PASS: iPhone viewport, styles, login, wardrobe CRUD, IndexedDB persistence, manual looks, AI garment recognition, AI looks, profile isolation");
+ console.log("PASS: iPhone viewport, styles, login, wardrobe CRUD, IndexedDB persistence, manual looks, AI garment recognition, AI looks, AI outages, expired sessions, profile isolation");
 }finally{await browser.close()}
