@@ -712,9 +712,9 @@ const normalizeOccasions=xs=>[...new Set((Array.isArray(xs)?xs:[]).map(x=>Object
 const occasionDefaults=(category,type,ai)=>[...new Set([...(OCCASION_BY_TYPE[type]||({"Casa":["home"],"Baño":["beach"]}[category]||[])),...normalizeOccasions(ai)])];
 function suggestOccasionsForSelection(){
  const category=$("#garmentCategory").value,type=$("#garmentType").value;
- const current=$('[name="meta-occasion"]:checked').map(x=>x.value);
+ const current=Array.from(document.querySelectorAll('[name="meta-occasion"]:checked'),x=>x.value);
  const selected=new Set(occasionDefaults(category,type,current));
- $('[name="meta-occasion"]').forEach(x=>{x.checked=selected.has(x.value)});
+ document.querySelectorAll('[name="meta-occasion"]').forEach(x=>{x.checked=selected.has(x.value)});
  updateOccasionSummary();
 }
 function populateMetadata(src){
