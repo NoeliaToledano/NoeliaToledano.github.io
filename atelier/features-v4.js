@@ -257,7 +257,7 @@ async function buyLooks(){
  const items=[{i:"__nueva__",n:c.name||"Prenda nueva",c:c.category,color:c.color,style:c.style,pattern:c.pattern||"",formality:c.formality||"",used:0,forgotten:false},
   ...r.compatible.slice(0,20).map(g=>({i:g.id,n:g.name,c:g.category||"",color:g.color||"",style:g.style||"",pattern:g.pattern||"",formality:g.formality||"",used:wornCount(g.id),forgotten:false}))];
  try{
-  const out=await api("/api/looks",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({items,need:3,occasion:p.occasion||"daily",season:c.season||"all",weather:p.temperature==null||p.temperature===""?"sin dato":String(p.temperature)+" °C",diversity:p.diversity??65,avoid:[]})});
+  const out=await api("/api/looks",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({items,need:3,occasion:p.occasion||"daily",season:c.season||"all",weather:p.temperature==null||p.temperature===""?DEFAULT_TEMPERATURE+" °C":String(p.temperature)+" °C",diversity:p.diversity??65,avoid:[]})});
   const allowed=new Set(items.map(x=>x.i));
   c.looks=(Array.isArray(out.looks)?out.looks:[]).map(l=>({why:String(l.why||"Look sugerido").slice(0,80),ids:[...new Set(Array.isArray(l.ids)?l.ids:[])].filter(id=>allowed.has(id)).slice(0,6)})).filter(l=>l.ids.includes("__nueva__")&&l.ids.length>=2);
  }catch(e){console.error("BUY_LOOKS",e);toast(e.message==="SESSION_EXPIRED"?"La sesión ha caducado":"No se pudieron generar looks");return}
@@ -407,4 +407,63 @@ renderShopping=function(root){
  $$("#suggestions [data-thumb]",root).forEach(b=>b.addEventListener("click",()=>openGarment(b.dataset.thumb)));
  $$("[data-suggest-wish]",root).forEach(b=>b.addEventListener("click",async()=>{const s=suggestionCache.list[Number(b.dataset.suggestWish)];if(!s)return;
   await mutate(()=>appState.data.wishlist.unshift({id:uid(),name:s.c.name,price:0,category:s.c.category,url:"",bought:false,addedAt:dayISO(),verdict:"Recomendada"}),"Añadida a la wishlist")}));
+};
+
+/* ---------- Ahorro de tokens en las llamadas a ChatGPT ---------- */
+const AI_LIMITS={analyze:40,looks:20},DEFAULT_TEMPERATURE=25;
+function aiUsage(){const p=appState.data.preferences,today=dayISO();if(!p.aiUsage||p.aiUsage.day!==today)p.aiUsage={day:today,analyze:0,looks:0};return p.aiUsage}
+async function sha(text){try{const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(text));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}catch{return text.length+":"+text.slice(-64)}}
+const analyzeCache=new Map();
+const rawApi=api;
+api=async function(path,options={}){
+ const kind=path==="/api/analyze"?"analyze":path==="/api/looks"?"looks":null;
+ if(!kind||!appState.profile)return rawApi(path,options);
+ let body;try{body=JSON.parse(options.body||"{}")}catch{return rawApi(path,options)}
+ let cacheKey=null,toLong=null;
+ if(kind==="analyze"){
+  // La IA analiza en baja resolución (512 px): enviar más no mejora el resultado.
+  if(typeof body.image==="string")body.image=await shrinkDataUrl(body.image,512);
+  cacheKey=await sha(body.image||"");
+  if(analyzeCache.has(cacheKey))return structuredClone(analyzeCache.get(cacheKey));
+ }else{
+  // IDs cortos (1, 2, 3…) en lugar de identificadores largos, sin campos vacíos y máximo 24 prendas.
+  const toShort=new Map();toLong=new Map();
+  body.items=(Array.isArray(body.items)?body.items:[]).slice(0,24).map((it,k)=>{
+   const s=String(k+1);toShort.set(String(it.i),s);toLong.set(s,String(it.i));
+   const o={i:s,n:String(it.n||"").slice(0,40)};
+   for(const f of ["c","color","style","pattern","formality"])if(it[f]&&it[f]!=="plain")o[f]=it[f];
+   if(it.forgotten)o.forgotten=1;return o;
+  });
+  const short=a=>(Array.isArray(a)?a:[]).map(String).filter(x=>toShort.has(x)).map(x=>toShort.get(x));
+  body.avoid=short(body.avoid);
+  body.liked=(Array.isArray(body.liked)?body.liked:[]).map(short).filter(l=>l.length>=2).slice(0,4);
+  body.disliked=(Array.isArray(body.disliked)?body.disliked:[]).map(short).filter(l=>l.length>=2).slice(0,4);
+  if(!body.weather||body.weather==="sin dato")body.weather=DEFAULT_TEMPERATURE+" °C";
+  delete body.diversity;
+ }
+ const usage=aiUsage();
+ if(usage[kind]>=AI_LIMITS[kind]){
+  setTimeout(()=>toast(kind==="analyze"?"Has llegado al límite de "+AI_LIMITS.analyze+" análisis de hoy. Mañana podrás seguir.":"Has llegado al límite de "+AI_LIMITS.looks+" sugerencias de hoy. Mañana podrás seguir."),80);
+  throw new Error("AI_QUOTA");
+ }
+ const out=await rawApi(path,{...options,body:JSON.stringify(body)});
+ usage[kind]++;saveState();
+ if(kind==="analyze"){analyzeCache.set(cacheKey,structuredClone(out));if(analyzeCache.size>30)analyzeCache.delete(analyzeCache.keys().next().value);return out}
+ if(Array.isArray(out?.looks))out.looks=out.looks.map(l=>({...l,ids:(Array.isArray(l.ids)?l.ids:[]).map(String).filter(id=>toLong.has(id)).map(id=>toLong.get(id))}));
+ return out;
+};
+const previousStylist=renderStylist;
+renderStylist=function(root){
+ previousStylist(root);
+ const t=$("#prefTemperature",root);
+ if(t){t.placeholder="Si lo dejas vacío, uso "+DEFAULT_TEMPERATURE+" °C";const label=t.closest("label")?.querySelector("span");if(label)label.textContent="Temperatura exterior (opcional, °C; por defecto "+DEFAULT_TEMPERATURE+")"}
+ const u=aiUsage(),help=$(".helper",root);
+ help?.insertAdjacentHTML("afterend",'<p class="helper">Sugerencias con IA hoy: '+u.looks+' de '+AI_LIMITS.looks+'.</p>');
+};
+const previousSettingsV6=renderAdvancedSettings;
+renderAdvancedSettings=function(root){
+ previousSettingsV6(root);
+ const u=aiUsage();
+ const html='<div class="feature-card"><h2>Uso de la IA hoy</h2><p class="muted">Análisis de fotos: '+u.analyze+' de '+AI_LIMITS.analyze+'. Sugerencias de looks: '+u.looks+' de '+AI_LIMITS.looks+'.</p><p class="helper">Los límites diarios mantienen bajo el coste de la API. El veredicto de «¿Lo compro?» y las recomendaciones de compra no usan la IA.</p></div>';
+ const cards=$$(".feature-card",root);(cards.at(-1)||$(".hero",root))?.insertAdjacentHTML("afterend",html);
 };

@@ -44,7 +44,7 @@ async function suggestLooks(){
   const recent=(appState.data.wearLog||[]).slice(0,8).flatMap(l=>l.garmentIds||[]);
   const avoid=p.avoidRepeats?[...new Set(recent)].slice(0,12):[];
   const fb=appState.data.feedback||{},taste=v=>appState.data.looks.filter(l=>fb[l.id]===v&&Array.isArray(l.garmentIds)&&l.garmentIds.length>1).slice(0,6).map(l=>l.garmentIds.slice(0,6));
-  const body={items,need:3,liked:taste("up"),disliked:taste("down"),occasion:p.occasion||"daily",season:p.season||"all",weather:p.temperature==null||p.temperature===""?"sin dato":String(p.temperature)+" °C",diversity:p.diversity??65,avoid};
+  const body={items,need:3,liked:taste("up"),disliked:taste("down"),occasion:p.occasion||"daily",season:p.season||"all",weather:p.temperature==null||p.temperature===""?"25 °C":String(p.temperature)+" °C",diversity:p.diversity??65,avoid};
   const key=appState.profile.id+":"+JSON.stringify(body);const cached=aiLookCache.get(key);
   const out=cached&&Date.now()-cached.at<300000?cached.value:await api("/api/looks",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
   if(!cached||Date.now()-cached.at>=300000)aiLookCache.set(key,{at:Date.now(),value:out});

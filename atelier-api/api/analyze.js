@@ -33,26 +33,9 @@ export default async function handler(req, res) {
     }
 
     const prompt = [
-      "Analiza la prenda de la imagen como un catalogador experto de moda.",
-      "No inventes marca, material ni detalles que no puedan inferirse visualmente.",
-      "Devuelve SOLO JSON válido, sin markdown ni texto adicional.",
-      "Los valores deben estar en español.",
-      "Usa null cuando no puedas determinar un valor con confianza.",
-      "Formato exacto:",
-      JSON.stringify({
-        name: "nombre corto y útil de la prenda",
-        type: "top|bottom|dress|outerwear|shoes|bag|accessory",
-        color: "Negro|Blanco|Gris|Beige|Marrón|Azul|Vaquero|Verde|Rojo|Rosa|Morado|Amarillo|Plateado|Dorado|Multicolor",
-        style: "basic|casual|smart|party|sport",
-        season: "all|warm|cold",
-        fabric: "unknown|cotton|denim|linen|wool|knit|leather|satin|silk|synthetic|mixed",
-        pattern: "plain|stripes|checks|floral|animal|dots|graphic|other",
-        length: "na|cropped|regular|midi|long",
-        formality: "casual|smartcasual|formal|party|sport",
-        occasions: ["daily","work","dinner","event","travel"],
-        notes: "una frase breve con detalles visibles útiles o cadena vacía",
-        confidence: 0.0
-      })
+      "Cataloga la prenda de la foto. No inventes marca ni detalles no visibles; usa null si dudas.",
+      "Responde SOLO JSON en español con estas claves y valores:",
+      'name: nombre corto; type: top|bottom|dress|outerwear|shoes|bag|accessory; color: Negro|Blanco|Gris|Beige|Marrón|Azul|Vaquero|Verde|Rojo|Rosa|Morado|Amarillo|Plateado|Dorado|Multicolor; style: casual|smart|party|sport; season: all|warm|cold; fabric: unknown|cotton|denim|linen|wool|knit|leather|satin|silk|synthetic|mixed; pattern: plain|stripes|checks|floral|animal|dots|graphic|other; length: na|cropped|regular|midi|long; formality: casual|smartcasual|formal|party|sport; occasions: lista de daily|work|dinner|event|travel; notes: máx 10 palabras o ""'
     ].join("\n");
 
     const response = await fetch("https://api.openai.com/v1/responses", {
@@ -70,7 +53,7 @@ export default async function handler(req, res) {
             { type: "input_image", image_url: image, detail: "low" }
           ]
         }],
-        max_output_tokens: 300
+        max_output_tokens: 220
       })
     });
 

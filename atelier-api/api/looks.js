@@ -14,27 +14,24 @@ export default async function handler(req,res){
   if(!verifySession(req)) return res.status(401).json({error:"Sesión no válida o caducada."});
   if(!process.env.OPENAI_API_KEY) return res.status(503).json({error:"Atelier AI aún no está configurado."});
 
-  const body=req.body||{}, items=Array.isArray(body.items)?body.items.slice(0,36):[];
+  const body=req.body||{}, items=Array.isArray(body.items)?body.items.slice(0,24):[];
   if(items.length<2) return res.status(400).json({error:"No hay suficientes prendas candidatas."});
   const ids=new Set(items.map(x=>String(x.i)));
   const need=Math.max(1,Math.min(5,Number(body.need)||3));
   const taste=v=>(Array.isArray(v)?v:[]).slice(0,6).map(l=>(Array.isArray(l)?l:[]).map(String).filter(id=>ids.has(id)).slice(0,6)).filter(l=>l.length>=2);
   const liked=taste(body.liked), disliked=taste(body.disliked);
   const prompt=[
-    "Eres el estilista de Atelier. Crea combinaciones SOLO con los IDs recibidos.",
-    "Prioriza coherencia, variedad entre looks y evita IDs de avoid cuando haya alternativas.",
-    "No describas prendas ni inventes IDs. No añadas texto explicativo.",
-    "Contexto: ocasión="+(body.occasion||"libre")+", temporada="+(body.season||"cualquiera")+", tiempo="+(body.weather||"sin dato")+".",
-    "Devuelve SOLO JSON compacto: {\"looks\":[{\"ids\":[\"id1\",\"id2\"],\"why\":\"máx 8 palabras\"}]}",
-    "Necesito "+need+" looks.",
+    "Eres estilista. Crea "+need+" looks usando SOLO los ids de items (campos: n=nombre, c=categoría). No inventes ids.",
+    "Contexto: ocasión="+(body.occasion||"libre")+"; temporada="+(body.season||"cualquiera")+"; tiempo="+(body.weather||"25 °C")+".",
+    "Reglas: looks variados y coherentes; no mezcles dos estampados ni formalidades muy distintas; evita avoid si hay alternativas.",
+    liked.length?"Le gustaron (inspírate, no repitas): "+JSON.stringify(liked):"",
+    disliked.length?"No le gustaron (evita parecidos): "+JSON.stringify(disliked):"",
     "avoid="+JSON.stringify((body.avoid||[]).slice(0,12)),
-    liked.length?"A la usuaria le GUSTARON estas combinaciones (grupos de IDs); usa ese estilo como referencia sin repetirlas: "+JSON.stringify(liked):"",
-    disliked.length?"NO le gustaron estas combinaciones; evita mezclas parecidas: "+JSON.stringify(disliked):"",
-    "Los items pueden incluir pattern (estampado) y formality (formalidad): no mezcles dos estampados ni formalidades muy distintas.",
-    "items="+JSON.stringify(items)
+    "items="+JSON.stringify(items),
+    'Responde SOLO JSON: {"looks":[{"ids":["1","2"],"why":"máx 6 palabras"}]}'
   ].filter(Boolean).join("\n");
   try{
-    const r=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{"Authorization":`Bearer ${process.env.OPENAI_API_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({model:process.env.OPENAI_LOOK_MODEL||"gpt-4o-mini",input:prompt,max_output_tokens:260})});
+    const r=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{"Authorization":`Bearer ${process.env.OPENAI_API_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({model:process.env.OPENAI_LOOK_MODEL||"gpt-4o-mini",input:prompt,max_output_tokens:40+need*45})});
     const data=await r.json();
     if(!r.ok) return res.status(502).json({error:"La IA no ha podido crear los looks.",detail:data?.error?.message||null});
     const text=data.output_text||(data.output||[]).flatMap(x=>x.content||[]).filter(x=>x.type==="output_text").map(x=>x.text).join("");
