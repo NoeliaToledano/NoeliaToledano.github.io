@@ -35,7 +35,7 @@ function renderLooks(root){const looks=appState.data.looks;root.innerHTML=`<sect
 const aiLookCache=new Map();
 async function suggestLooks(){
  if(appState.data.garments.length<2)return toast("Añade al menos dos prendas");
- const btn=$("#aiLooks");if(!btn||btn.disabled)return;btn.disabled=true;btn.textContent="Pensando…";
+ const btn=$("#aiLooks")||$("#suggestSmart");if(!btn||btn.disabled)return;btn.disabled=true;btn.textContent="Pensando…";
  try{
   const p=appState.data.preferences||{},sorted=typeof recommendGarments==="function"?recommendGarments():appState.data.garments;
   const items=sorted.slice(0,36).map(g=>({i:g.id,n:g.name,c:g.category||"",color:g.color||"",style:g.style||"",used:typeof wornCount==="function"?wornCount(g.id):0,forgotten:typeof forgottenStatus==="function"?forgottenStatus(g).forgotten:false}));
