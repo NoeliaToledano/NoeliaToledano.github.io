@@ -28,3 +28,4 @@
 .buy-looks{margin:12px 0}
 button:disabled{opacity:.5;cursor:default}
 @media(min-width:560px){.buy-head{grid-template-columns:160px minmax(0,1fr);gap:16px}.buy-img{width:100%}}
+.wear-quick{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 4px}

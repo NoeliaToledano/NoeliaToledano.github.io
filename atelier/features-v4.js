@@ -134,7 +134,7 @@ lookCard=function(l){
 const norm=s=>String(s||"").toLocaleLowerCase("es").normalize("NFD").replace(/[̀-ͯ]/g,"");
 const COLOR_WORDS=[
  ["neutro",["negro","negra","blanco","blanca","gris","beige","crudo","cruda","camel","marron","chocolate","marino","navy","denim","vaquero","vaquera","nude","arena","topo","crema","hueso","piedra","tostado","caqui","khaki","plata","plateado","plateada","dorado","dorada","oro"]],
- ["estampado",["estampado","estampada","rayas","cuadros","flores","floral","print","leopardo","animal","lunares"]],
+ ["estampado",["estampado","estampada","multicolor","rayas","cuadros","flores","floral","print","leopardo","animal","lunares"]],
  ["rojo",["rojo","roja","granate","burdeos","vino","coral","teja"]],
  ["rosa",["rosa","fucsia","magenta","malva","salmon"]],
  ["naranja",["naranja","mostaza","calabaza","ocre"]],
@@ -143,7 +143,8 @@ const COLOR_WORDS=[
  ["azul",["azul","celeste","turquesa","cobalto","anil","indigo"]],
  ["morado",["morado","morada","lila","violeta","berenjena","lavanda"]]
 ];
-function colorInfo(text){
+function colorInfo(text,pattern){
+ if(pattern&&pattern!=="plain")return {fam:"estampado",word:"estampado-"+pattern};
  const words=norm(text).split(/[^a-z]+/).filter(Boolean);
  for(const w of words)for(const [fam,list] of COLOR_WORDS)if(list.includes(w))return {fam,word:w};
  return {fam:"",word:""};
@@ -167,13 +168,13 @@ function pairs(a,b){
  if(!a.category&&!b.category)return false;
  if(a.style&&b.style&&!(STYLE_OK[a.style]||[]).includes(b.style))return false;
  if(a.season&&b.season&&a.season!=="all"&&b.season!=="all"&&a.season!==b.season)return false;
- return colorsMatch(colorInfo(a.color),colorInfo(b.color));
+ return colorsMatch(colorInfo(a.color,a.pattern),colorInfo(b.color,b.pattern));
 }
 function isDuplicate(a,b){
  if(!a.category||a.category!==b.category)return false;
- const ca=colorInfo(a.color),cb=colorInfo(b.color);
+ const ca=colorInfo(a.color,a.pattern),cb=colorInfo(b.color,b.pattern);
  if(!ca.fam||!cb.fam)return false;
- const sameColor=ca.fam==="neutro"||ca.fam==="estampado"?ca.word===cb.word:ca.fam===cb.fam;
+ const base=w=>w.replace(/a$/,"o"),sameColor=ca.fam==="neutro"?base(ca.word)===base(cb.word):ca.fam==="estampado"?ca.word===cb.word&&norm(a.color)===norm(b.color):ca.fam===cb.fam;
  return sameColor&&(!a.style||!b.style||a.style===b.style);
 }
 function evaluateCandidate(c){
@@ -245,6 +246,7 @@ async function startBuyCheck(file){
   if(d.color)c.color=(Array.isArray(d.color)?d.color.join(", "):String(d.color)).slice(0,60);
   const st=d.style==="basic"?"casual":d.style;if(STYLE_OK[st])c.style=st;
   if(seasons[d.season])c.season=d.season;
+  Object.assign(c,cleanAnalysis(d));
  }catch(e){console.error("BUY_ANALYZE",e);c.analyzeFailed=true;if(e.message==="SESSION_EXPIRED"){buyCheck=null;return}}
  if(buyCheck?.image===image){buyCheck=c;render();$("#buyCheck")?.scrollIntoView({block:"start",behavior:"smooth"})}
 }
@@ -252,8 +254,8 @@ async function buyLooks(){
  readBuyFields();const c=buyCheck;if(!c)return;
  const btn=$("#buyLooks");if(btn){btn.disabled=true;btn.textContent="Pensando…"}
  const r=evaluateCandidate(c),p=appState.data.preferences;
- const items=[{i:"__nueva__",n:c.name||"Prenda nueva",c:c.category,color:c.color,style:c.style,used:0,forgotten:false},
-  ...r.compatible.slice(0,20).map(g=>({i:g.id,n:g.name,c:g.category||"",color:g.color||"",style:g.style||"",used:wornCount(g.id),forgotten:false}))];
+ const items=[{i:"__nueva__",n:c.name||"Prenda nueva",c:c.category,color:c.color,style:c.style,pattern:c.pattern||"",formality:c.formality||"",used:0,forgotten:false},
+  ...r.compatible.slice(0,20).map(g=>({i:g.id,n:g.name,c:g.category||"",color:g.color||"",style:g.style||"",pattern:g.pattern||"",formality:g.formality||"",used:wornCount(g.id),forgotten:false}))];
  try{
   const out=await api("/api/looks",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({items,need:3,occasion:p.occasion||"daily",season:c.season||"all",weather:p.temperature==null||p.temperature===""?"sin dato":String(p.temperature)+" °C",diversity:p.diversity??65,avoid:[]})});
   const allowed=new Set(items.map(x=>x.i));
@@ -276,6 +278,28 @@ renderShopping=function(root){
  $("#buyAdd")?.addEventListener("click",async()=>{readBuyFields();const c=buyCheck;if(!validImage(c.image))return;
   if(!confirm("¿Añadir esta prenda a tu armario?"))return;
   const now=new Date().toISOString(),id=uid();
-  const ok=await mutate(()=>appState.data.garments.unshift({id,name:c.name||"Prenda nueva",category:c.category,color:c.color,notes:"",season:c.season||"all",style:c.style,price:c.price,boughtAt:dayISO(),favorite:false,createdAt:now,image:c.image,updatedAt:now}),"Prenda añadida a tu armario");
+  const ok=await mutate(()=>appState.data.garments.unshift({...cleanAnalysis(c),id,name:c.name||"Prenda nueva",category:c.category,color:c.color,notes:"",season:c.season||"all",style:c.style,price:c.price,boughtAt:dayISO(),favorite:false,createdAt:now,image:c.image,updatedAt:now}),"Prenda añadida a tu armario");
   if(ok){buyCheck=null;render()}});
+};
+
+/* ---------- Registrar un uso con un toque ---------- */
+function shiftDay(n){const d=new Date();d.setDate(d.getDate()+n);return dayISO(d)}
+promptWear=function(ids,lookId){
+ const valid=[...new Set(ids||[])].filter(id=>myGarments().some(g=>g.id===id));
+ if(!valid.length)return toast("No hay prendas para registrar");
+ $("#wearSheet")?.remove();
+ const names=valid.map(id=>myGarments().find(g=>g.id===id)?.name).filter(Boolean);
+ const today=dayISO();
+ document.body.insertAdjacentHTML("beforeend",'<div id="wearSheet" class="overlay"><section class="sheet" role="dialog" aria-modal="true" aria-labelledby="wearTitle">'+
+  '<div class="section-head"><h2 id="wearTitle">¿Cuándo lo llevaste?</h2><button type="button" class="secondary" id="wearClose">Cerrar</button></div>'+
+  '<p class="muted">'+fx(names.join(" · "))+'</p>'+
+  '<div class="wear-quick"><button class="primary" data-wear-day="'+today+'">Hoy</button><button class="secondary" data-wear-day="'+shiftDay(-1)+'">Ayer</button></div>'+
+  '<label class="field"><span>Otro día</span><input id="wearDate" type="date" max="'+today+'" value="'+today+'"></label>'+
+  '<button class="secondary wide" id="wearOther">Guardar en esa fecha</button></section></div>');
+ const close=()=>$("#wearSheet")?.remove();
+ $("#wearClose").addEventListener("click",close);
+ $("#wearSheet").addEventListener("click",e=>{if(e.target.id==="wearSheet")close()});
+ const save=date=>{if(!validDay(date)||date>dayISO())return toast("Elige una fecha válida, no futura");close();recordWear(valid,date,lookId)};
+ $$("[data-wear-day]").forEach(b=>b.addEventListener("click",()=>save(b.dataset.wearDay)));
+ $("#wearOther").addEventListener("click",()=>save($("#wearDate").value));
 };

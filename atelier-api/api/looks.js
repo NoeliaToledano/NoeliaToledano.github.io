@@ -18,6 +18,8 @@ export default async function handler(req,res){
   if(items.length<2) return res.status(400).json({error:"No hay suficientes prendas candidatas."});
   const ids=new Set(items.map(x=>String(x.i)));
   const need=Math.max(1,Math.min(5,Number(body.need)||3));
+  const taste=v=>(Array.isArray(v)?v:[]).slice(0,6).map(l=>(Array.isArray(l)?l:[]).map(String).filter(id=>ids.has(id)).slice(0,6)).filter(l=>l.length>=2);
+  const liked=taste(body.liked), disliked=taste(body.disliked);
   const prompt=[
     "Eres el estilista de Atelier. Crea combinaciones SOLO con los IDs recibidos.",
     "Prioriza coherencia, variedad entre looks y evita IDs de avoid cuando haya alternativas.",
@@ -26,8 +28,11 @@ export default async function handler(req,res){
     "Devuelve SOLO JSON compacto: {\"looks\":[{\"ids\":[\"id1\",\"id2\"],\"why\":\"máx 8 palabras\"}]}",
     "Necesito "+need+" looks.",
     "avoid="+JSON.stringify((body.avoid||[]).slice(0,12)),
+    liked.length?"A la usuaria le GUSTARON estas combinaciones (grupos de IDs); usa ese estilo como referencia sin repetirlas: "+JSON.stringify(liked):"",
+    disliked.length?"NO le gustaron estas combinaciones; evita mezclas parecidas: "+JSON.stringify(disliked):"",
+    "Los items pueden incluir pattern (estampado) y formality (formalidad): no mezcles dos estampados ni formalidades muy distintas.",
     "items="+JSON.stringify(items)
-  ].join("\n");
+  ].filter(Boolean).join("\n");
   try{
     const r=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{"Authorization":`Bearer ${process.env.OPENAI_API_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({model:process.env.OPENAI_LOOK_MODEL||"gpt-4o-mini",input:prompt,max_output_tokens:260})});
     const data=await r.json();

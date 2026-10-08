@@ -33,11 +33,13 @@ export function getProfilePasswordHash(profileId) {
   return envName ? process.env[envName] : null;
 }
 
+export const SESSION_SECONDS = 60 * 60 * 24 * 30;
+
 export function issueSession(profileId) {
   const secret = process.env.ATELIER_SESSION_SECRET;
   if (!secret) throw new Error("ATELIER_SESSION_SECRET is not configured");
   const now = Math.floor(Date.now() / 1000);
-  const payload = { sub: profileId, iat: now, exp: now + 60 * 60 * 12 };
+  const payload = { sub: profileId, iat: now, exp: now + SESSION_SECONDS };
   const encoded = b64url(JSON.stringify(payload));
   const sig = crypto.createHmac("sha256", secret).update(encoded).digest("base64url");
   return encoded + "." + sig;

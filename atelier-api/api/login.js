@@ -1,4 +1,4 @@
-import { getProfilePasswordHash, issueSession, verifyPasswordRecord } from "../_lib/auth.js";
+import { getProfilePasswordHash, issueSession, verifyPasswordRecord, SESSION_SECONDS } from "../_lib/auth.js";
 
 const attempts = new Map();
 const MAX_ATTEMPTS = 5;
@@ -61,5 +61,5 @@ export default async function handler(req, res) {
 
   clearFailures(key);
   const token = issueSession(profileId);
-  return res.status(200).json({ token, profileId, expiresIn: 43200 });
+  return res.status(200).json({ token, profileId, expiresIn: SESSION_SECONDS });
 }
