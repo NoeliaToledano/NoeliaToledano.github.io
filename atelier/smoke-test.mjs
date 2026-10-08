@@ -49,7 +49,7 @@ try{
  await page.getByText("Prenda auditada").waitFor();
  await page.reload({waitUntil:"networkidle"});
  await page.getByText("Prenda auditada").waitFor();
- await page.locator('[data-view="stylist"]').click(); await page.locator('#openLooks').click();
+ await page.locator('[data-view="stylist"]').click(); console.log("NAV_DIAGNOSTIC",await page.locator("#content").innerText(),await page.locator(".seg-tabs").count()); await page.locator('#openLooks').click();
  await page.locator("#newLook").click();
  await page.locator("#lookName").fill("Look auditado");
  await page.locator('#lookGarments input[type="checkbox"]').first().check();
