@@ -4,7 +4,7 @@ const browser=await chromium.launch({headless:true,channel:"chrome"});
 const context=await browser.newContext({...devices["iPhone 13"],browserName:undefined});
 const page=await context.newPage();
 const errors=[];
-let forceUnauthorized=false,forceServerError=false;
+let forceUnauthorized=false,forceServerError=false,skipAnalyze=true;
 page.on("pageerror",e=>errors.push(e.message));
 page.on("console",m=>{if(m.type()==="error")console.log("BROWSER_CONSOLE",m.text())});
 page.on("requestfailed",r=>console.log("FAILED_REQUEST",r.url(),r.failure()?.errorText));
@@ -14,6 +14,7 @@ await page.route("https://atelier-ai-backend-pi.vercel.app/**",async route=>{
  console.log("MOCK",req.method(),url);if(req.method()==="OPTIONS")return route.fulfill({status:204,headers,body:""});
  if(url.endsWith("/api/login")){const body=JSON.parse(req.postData()||"{}");return route.fulfill({status:200,headers,body:JSON.stringify({profileId:body.profileId,token:"test-token"})})}
  if(url.endsWith("/api/session"))return route.fulfill({status:200,headers,body:JSON.stringify({authenticated:true,profileId:currentProfile})});
+ if(url.endsWith("/api/analyze")&&skipAnalyze)return route.fulfill({status:503,headers,body:JSON.stringify({error:"Mock temporarily unavailable"})});
  if(url.endsWith("/api/analyze"))return route.fulfill({status:200,headers,body:JSON.stringify({garment:{name:"Camisa reconocida por IA",type:"top",color:"Azul",fabric:"cotton",pattern:"stripes",fit:"regular",sleeve:"larga",subtype:"camisa",confidence:"media",details:"botones frontales",occasions:["daily","work"]}})});
  if(url.endsWith("/api/looks")&&forceUnauthorized){forceUnauthorized=false;return route.fulfill({status:401,headers,body:JSON.stringify({error:"Sesión caducada"})})}
  if(url.endsWith("/api/looks")&&forceServerError){forceServerError=false;return route.fulfill({status:503,headers,body:JSON.stringify({error:"Servicio no disponible"})})}
@@ -33,7 +34,8 @@ try{
  assert.notEqual(bg,"rgba(0, 0, 0, 0)","CSS not applied");
  await page.locator("#addGarment").click();
  console.log("GARMENT_DIAGNOSTIC",{classes:await page.locator("#garmentSheet").getAttribute("class"),visible:await page.locator("#garmentName").isVisible(),errors});
- await page.locator("#autoAnalyze").evaluate(el=>{el.checked=false;el.dispatchEvent(new Event("change",{bubbles:true}))});
+ assert.equal(await page.locator("#autoAnalyze").count(),0);
+ assert.equal(await page.locator("#analyzeBtn").count(),0);
  await page.locator("#garmentName").fill("Prenda auditada");
  await page.locator("#garmentCategory").selectOption("Arriba");
  const tinyPng=Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/pVYAAAAASUVORK5CYII=","base64");
@@ -51,7 +53,7 @@ try{
  await page.getByText("Look auditado").waitFor();
  await page.locator('[data-view="wardrobe"]').click();
  await page.locator("#addGarment").click();
- await page.locator("#autoAnalyze").check();
+ skipAnalyze=false;
 
  await page.locator("#garmentImage").setInputFiles({name:"foto.png",mimeType:"image/png",buffer:tinyPng});
  await page.getByText("Análisis completado").waitFor();
