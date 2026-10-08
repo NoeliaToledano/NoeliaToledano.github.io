@@ -642,7 +642,7 @@ async function restoreSession(){
 const NAV_PARENT={looks:"stylist",calendar:"wardrobe",insights:"wardrobe"};
 function setView(v){
  appState.view=v;
- $(".nav-btn").forEach(b=>{const active=b.dataset.view===v||b.dataset.view===NAV_PARENT[v];b.classList.toggle("active",active);if(active)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
+ $$(".nav-btn").forEach(b=>{const active=b.dataset.view===v||b.dataset.view===NAV_PARENT[v];b.classList.toggle("active",active);if(active)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
  render();window.scrollTo?.(0,0);
 }
 function render(){
