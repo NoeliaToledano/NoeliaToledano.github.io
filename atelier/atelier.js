@@ -702,10 +702,11 @@ async function saveGarment(e){
  if(!validImage(image)&&old?.hasImage)g.hasImage=true;
  if(ph)g.bgWhite=white;
  g.imageAt=changed?new Date().toISOString():old?.imageAt;if(!g.imageAt)delete g.imageAt;
- // La original se guarda solo en este móvil, para poder volver a ella
- try{if(white&&validImage(ph.original))await dbSet(origKey(id),ph.original);else if(ph&&!white)await dbBatch([],[origKey(id)])}catch(err){console.warn("ORIG",err)}
  const i=myGarments().findIndex(x=>x.id===id);if(i>=0)myGarments()[i]=g;else myGarments().unshift(g);
- if(!await saveState())return;closeGarment();render();toast("Prenda guardada");
+ if(!await saveState())return;
+ // La original se guarda solo en este móvil, para poder volver a ella; se toca solo si el guardado ha ido bien
+ try{if(white&&validImage(ph.original))await dbSet(origKey(id),ph.original);else if(ph&&!white)await dbBatch([],[origKey(id)])}catch(err){console.warn("ORIG",err)}
+ closeGarment();render();toast("Prenda guardada");
 }
 async function deleteGarment(){
  const id=$("#garmentId").value;if(!id||!confirm("¿Eliminar esta prenda?"))return;
@@ -1113,9 +1114,9 @@ async function startBuyCheck(file){
  try{image=await readImage(file)}catch(e){return toast(e.message==="IMAGE_TOO_LARGE"?"La imagen es demasiado grande":"No se pudo leer la imagen")}
  if(!image)return;
  const token={};buyCheck={image,loading:true,token};render();
- let bgWhite=false;
+ let bgWhite=false;const original=image;
  if(appState.data.preferences.autoWhite!==false){const w=await whiteBackground(image);if(buyCheck?.token!==token)return;if(w){image=w;bgWhite=true}}
- const c={image,bgWhite,token,name:"",category:"",color:"",style:"",season:"all",price:null,looks:null,analyzeFailed:false};
+ const c={image,original,bgWhite,token,name:"",category:"",color:"",style:"",season:"all",price:null,looks:null,analyzeFailed:false};
  try{const out=await api("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image})});const d=mapAnalysis(out.garment||out.result||out);Object.assign(c,d,{season:d.season||"all",notes:undefined})}
  catch(e){console.error("BUY_ANALYZE",e);c.analyzeFailed=true;if(e.message==="SESSION_EXPIRED"){buyCheck=null;return}}
  if(buyCheck?.token===token){buyCheck=c;render();$("#buyCheck")?.scrollIntoView?.({block:"start",behavior:"smooth"})}
@@ -1241,8 +1242,10 @@ function renderShopping(root){
   await mutate(()=>appState.data.wishlist.unshift({id:uid(),name:c.name||"Prenda sin nombre",price:Number(c.price)||0,category:c.category,url:"",bought:false,addedAt:dayISO(),verdict:r.verdict,updatedAt:new Date().toISOString()}),"Añadida a la wishlist")});
  $("#buyAdd")?.addEventListener("click",async()=>{readBuyFields();const c=buyCheck;if(!validImage(c.image))return;
   if(!confirm("¿Añadir esta prenda a tu armario?"))return;
-  const now=new Date().toISOString();
-  const ok=await mutate(()=>myGarments().unshift({...cleanAnalysis(c),id:uid(),name:c.name||"Prenda nueva",category:c.category,color:c.color,notes:"",season:c.season||"all",style:c.style,price:c.price,boughtAt:dayISO(),favorite:false,createdAt:now,image:c.image,bgWhite:!!c.bgWhite,imageAt:now,updatedAt:now}),"Prenda añadida a tu armario");
+  const now=new Date().toISOString(),newId=uid();
+  const ok=await mutate(()=>myGarments().unshift({...cleanAnalysis(c),id:newId,name:c.name||"Prenda nueva",category:c.category,color:c.color,notes:"",season:c.season||"all",style:c.style,price:c.price,boughtAt:dayISO(),favorite:false,createdAt:now,image:c.image,bgWhite:!!c.bgWhite,imageAt:now,updatedAt:now}),"Prenda añadida a tu armario");
+  // Igual que en la ficha: la original queda en este móvil para poder volver a ella
+  if(ok&&c.bgWhite&&validImage(c.original)){try{await dbSet(origKey(newId),c.original)}catch(err){console.warn("ORIG",err)}}
   if(ok){buyCheck=null;render()}});
  // Recomendaciones
  $$("[data-suggest-wish]",root).forEach(b=>b.addEventListener("click",async()=>{const s=suggestionCache.list[Number(b.dataset.suggestWish)];if(!s)return;
