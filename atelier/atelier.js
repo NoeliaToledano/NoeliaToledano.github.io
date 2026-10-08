@@ -188,7 +188,7 @@ function garmentMask(d,w,h){
  for(let i=0;i<n;i++)if(!bg[i]&&sizes[comp[i]]>=minSize){mask[i]=1;fg++;const x=i%w,y=(i-x)/w;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}
  const frac=fg/n,edge=border.filter(i=>mask[i]).length/border.length;
  // Casi nada, casi todo, o «prenda» pegada a gran parte del borde (la prenda llena la foto y se ha tomado por fondo)
- if(frac<.04||frac>.9||edge>.3)return null;
+ if(frac<.10||frac>.68||edge>.08||spread>9)return null;
  // Borde suave: se encoge un poco (quita el halo del fondo) y se difumina
  const alpha=new Float32Array(n);
  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x;if(!mask[i])continue;let sum=0,cnt=0;
@@ -212,7 +212,7 @@ async function whiteBackground(src){
   const id=fcx.getImageData(0,0,cw,ch),p=id.data;
   // Corrección suave de la luz: quita el tono de color de la luz (±8 %) y solo aclara si el fondo ya es claro
   const mean=(m.rgb[0]+m.rgb[1]+m.rgb[2])/3,bright=m.light?Math.min(1.12,Math.max(1,236/Math.max(1,mean))):1;
-  const gain=m.neutral?m.rgb.map(v=>Math.min(1.08,Math.max(.92,mean/Math.max(1,v)))*bright):[1,1,1];
+  const gain=[1,1,1]; // Evitar cambiar el color real de la prenda.
   const a=(x,y)=>{x=Math.min(m.w-1,Math.max(0,x));y=Math.min(m.h-1,Math.max(0,y));return m.alpha[y*m.w+x]};
   for(let y=0;y<ch;y++){const my=(fy0+y+.5)/s-.5,yb=Math.floor(my),ty=my-yb;
    for(let x=0;x<cw;x++){const mx=(fx0+x+.5)/s-.5,xb=Math.floor(mx),tx=mx-xb,j=(y*cw+x)*4;
@@ -642,10 +642,10 @@ function renderPhotoControls(){
  const ph=sheetPhoto,preview=$("#garmentPreview"),img=sheetImage();
  preview.src=img||"";preview.classList.toggle("hidden",!img);preview.classList.toggle("on-white",!!img&&ph?.mode==="white");
  if(!ph||!img){box.innerHTML="";return}
- if(ph.busy){box.innerHTML='<p class="helper" role="status">Probando recorte de fondo…</p>';return}
+ if(ph.busy){box.innerHTML='<p class="helper" role="status">Preparando una versión con fondo blanco…</p>';return}
  const modes=[...(ph.white?[["white","Fondo blanco"]]:[]),...(ph.enhanced?[["enhanced","Mejorada"]]:[]),["original","Original"]];
  box.innerHTML=(modes.length>1?'<div class="seg-tabs photo-mode" role="group" aria-label="Foto que se guarda">'+modes.map(([mode,label])=>'<button type="button" class="seg-tab'+(ph.mode===mode?' active':'')+'" data-photo-mode="'+mode+'" aria-pressed="'+(ph.mode===mode)+'">'+label+'</button>').join("")+'</div>':'')+
- (!ph.white?'<button type="button" class="secondary wide" id="makeWhite">Probar fondo blanco (experimental)</button>':'')+
+ (!ph.white?'<button type="button" class="secondary wide" id="makeWhite">Volver a probar fondo blanco</button>':'')+
  (ph.enhanced?'<p class="helper">La foto era oscura: hemos ajustado suavemente la luz. Puedes conservar la original.</p>':'')+
  (ph.failed?'<p class="helper">No se pudo separar bien el fondo; se conserva la foto sin modificar.</p>':'');
  $$("[data-photo-mode]",box).forEach(b=>b.addEventListener("click",()=>{ph.mode=b.dataset.photoMode;ph.changed=true;renderPhotoControls()}));
@@ -656,7 +656,7 @@ async function makeSheetWhite(){
  ph.busy=true;ph.failed=false;renderPhotoControls();
  const white=await whiteBackground(ph.enhanced||ph.original);
  if(sheetPhoto!==ph)return;
- ph.busy=false;if(white){ph.white=white;ph.changed=true}else ph.failed=true;
+ ph.busy=false;if(white){ph.white=white;ph.mode="white";ph.changed=true}else ph.failed=true;
  renderPhotoControls();
 }
 /* Ficha de características dentro de la hoja de la prenda (se crea una vez) */
@@ -1419,7 +1419,7 @@ function bind(){
   let original;try{original=await readImage(f)}catch(err){return toast(err.message==="IMAGE_TOO_LARGE"?"La imagen es demasiado grande":"No se pudo leer la foto")}
   const ph=sheetPhoto={original,enhanced:null,white:null,mode:"original",changed:true};renderPhotoControls();
   try{ph.enhanced=await enhanceGarmentPhoto(original);if(sheetPhoto!==ph)return;if(ph.enhanced)ph.mode="enhanced";renderPhotoControls()}catch(err){console.warn("PHOTO_ENHANCE",err)}
-  if(sheetPhoto===ph)analyzeGarment()};
+  if(sheetPhoto===ph){analyzeGarment();makeSheetWhite()} };
  $("#garmentImage").addEventListener("change",onPhoto);$("#garmentCamera").addEventListener("change",onPhoto);
  // Botones «Hacer foto» y «Galería»: abren el selector correspondiente (en la ficha y en «¿Lo compro?»)
  document.addEventListener("click",e=>{const b=e.target.closest?.("[data-photo-pick]");if(b)$("#"+b.dataset.photoPick)?.click()});
