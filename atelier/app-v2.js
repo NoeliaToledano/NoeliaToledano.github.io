@@ -6,7 +6,7 @@ const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelecto
 function uid(){return crypto.randomUUID?.()||Date.now().toString(36)+Math.random().toString(36).slice(2)}
 function esc(v=""){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function toast(msg){const n=$("#toast");n.textContent=msg;n.classList.remove("hidden");clearTimeout(toast.t);toast.t=setTimeout(()=>n.classList.add("hidden"),2400)}
-function openDB(){return new Promise((res,rej)=>{const q=indexedDB.open(DB_NAME,DB_VERSION);q.onupgradeneeded=()=>{const d=q.result;if(!d.objectStoreNames.contains(STORE))d.createObjectStore(STORE)};q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})}
+let dbPromise=null;function openDB(){if(dbPromise)return dbPromise;dbPromise=new Promise((res,rej)=>{const q=indexedDB.open(DB_NAME,DB_VERSION);q.onupgradeneeded=()=>{const d=q.result;if(!d.objectStoreNames.contains(STORE))d.createObjectStore(STORE)};q.onsuccess=()=>{const db=q.result;db.onversionchange=()=>{db.close();dbPromise=null};res(db)};q.onerror=()=>rej(q.error);q.onblocked=()=>rej(new Error("DB_BLOCKED"))}).catch(e=>{dbPromise=null;throw e});return dbPromise}
 async function dbGet(key){const d=await openDB();return new Promise((res,rej)=>{const q=d.transaction(STORE).objectStore(STORE).get(key);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})}
 async function dbSet(key,val){const d=await openDB();return new Promise((res,rej)=>{const tx=d.transaction(STORE,"readwrite");tx.objectStore(STORE).put(val,key);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error)})}
 const stateKey=()=>`state:${appState.profile.id}`;
