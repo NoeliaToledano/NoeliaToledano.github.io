@@ -38,13 +38,13 @@
 </section>
 
 <div id="app" class="hidden">
-<header class="topbar"><div class="brand">Atelier</div><button id="profileName" class="profile-pill"></button></header>
+<header class="topbar"><div class="brand">Atelier</div><button id="profileName" class="profile-pill" type="button" aria-label="Abrir perfil y ajustes"></button></header>
 <main id="content" class="content"></main>
 <nav class="bottom-nav" aria-label="Navegación principal">
 <button class="nav-btn" data-view="today"><span aria-hidden="true">⌂</span>Hoy</button>
 <button class="nav-btn active" data-view="wardrobe"><span aria-hidden="true">◇</span>Armario</button>
 <button class="nav-btn" data-view="stylist"><span aria-hidden="true">✦</span>Estilista</button>
-<button class="nav-btn" data-view="trips"><span aria-hidden="true">▣</span>Maletas</button>
+<button class="nav-btn" data-view="trips"><span aria-hidden="true">🧳</span>Maletas</button>
 <button class="nav-btn" data-view="shopping"><span aria-hidden="true">♡</span>Compras</button>
 </nav>
 </div>
@@ -75,7 +75,7 @@
 <div id="lookSheet" class="overlay hidden">
 <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="lookTitle">
 <form id="lookForm">
-<div class="section-head"><h2 id="lookTitle">Nuevo look</h2><button type="button" id="closeLook" class="secondary">Cerrar</button></div>
+<div class="section-head"><h2 id="lookTitle">Nuevo look</h2><button type="button" id="closeLook" class="secondary" aria-label="Cerrar ficha de look">Cerrar</button></div>
 <input type="hidden" id="lookId">
 <div class="field"><label for="lookName">Nombre</label><input id="lookName" maxlength="80" required></div>
 <div class="field"><label>Prendas</label><div id="lookGarments"></div></div>
