@@ -59,6 +59,7 @@ try{
  assert.equal(await page.locator("#meta-fit").inputValue(),"regular");
  assert.equal(await page.locator("#meta-sleeve").inputValue(),"larga");
  assert.equal(await page.locator("#meta-subtype").inputValue(),"camisa");
+ await page.locator("#garmentExtra").evaluate(el=>el.open=true);
  await page.locator("#meta-brand").fill("Marca introducida a mano");
  assert.equal(await page.locator("#garmentName").inputValue(),"Camisa reconocida por IA");
  assert.equal(await page.locator("#garmentCategory").inputValue(),"Arriba");
