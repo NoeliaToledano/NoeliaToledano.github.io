@@ -7,8 +7,9 @@ const html=read("index.html"),js=read("atelier.js"),css=read("atelier.css"),sw=r
 const fail=m=>{throw new Error(m)};
 
 // Página: un solo script y una sola hoja de estilos, y los elementos que usa la app
-for(const x of ["atelier.css","atelier.js","https://api.open-meteo.com",'data-view="wardrobe"','data-view="stylist"','data-view="shopping"','data-view="insights"','data-view="settings"','id="garmentPreview"','id="auth"','id="app"','id="garmentForm"','id="lookForm"','id="toast"'])
+for(const x of ["atelier.css","atelier.js","https://api.open-meteo.com",'data-view="today"','data-view="wardrobe"','data-view="stylist"','data-view="trips"','data-view="shopping"','id="garmentPreview"','id="auth"','id="app"','id="garmentForm"','id="lookForm"','id="toast"'])
  if(!html.includes(x))fail("index.html: falta "+x);
+if(!js.includes('id="wardrobeInsights"')||!js.includes('setView("insights")'))fail("Análisis debe seguir accesible desde Armario");
 for(const old of ["app-v2.js","features-v3.js","features-v4.js","styles-v2.css","styles-v4.css"])
  if(html.includes(old))fail("index.html: sigue cargando el archivo antiguo "+old+"; todo el código está en atelier.js");
 
