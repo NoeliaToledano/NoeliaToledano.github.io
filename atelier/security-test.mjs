@@ -20,3 +20,22 @@ assert.ok(r.badLook.includes('data-look="&quot; onclick=&quot;alert(1)"'));
 assert.equal(r.escaped,"&lt;script&gt;alert(1)&lt;/script&gt;");
 r.logout();
 console.log("PASS: XSS escaping, photo URL validation, and logout state reset");
+
+const rollbackProbe=new Function("document","sessionStorage","crypto",src+`
+return (async()=>{
+  appState.profile={id:"noelia"};
+  lastSavedData={garments:[{id:"persisted"}],looks:[]};
+  appState.data={garments:[{id:"unsaved"}],looks:[]};
+  dbSet=async()=>{throw new Error("QuotaExceededError")};
+  render=()=>{};
+  const ok=await saveState();
+  return {ok,ids:appState.data.garments.map(x=>x.id)};
+})();
+`);
+const oldError=console.error;
+console.error=()=>{};
+let rollback;
+try{rollback=await rollbackProbe(document,sessionStorage,{randomUUID:()=>"test"})}finally{console.error=oldError}
+assert.equal(rollback.ok,false);
+assert.deepEqual(rollback.ids,["persisted"]);
+console.log("PASS: Failed IndexedDB writes restore last persisted state");
