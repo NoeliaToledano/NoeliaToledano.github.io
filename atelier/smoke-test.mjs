@@ -13,6 +13,8 @@ await page.route("https://atelier-ai-backend-pi.vercel.app/**",async route=>{
  console.log("MOCK",req.method(),url);if(req.method()==="OPTIONS")return route.fulfill({status:204,headers,body:""});
  if(url.endsWith("/api/login")){const body=JSON.parse(req.postData()||"{}");return route.fulfill({status:200,headers,body:JSON.stringify({profileId:body.profileId,token:"test-token"})})}
  if(url.endsWith("/api/session"))return route.fulfill({status:200,headers,body:JSON.stringify({authenticated:true,profileId:currentProfile})});
+ if(url.endsWith("/api/analyze"))return route.fulfill({status:200,headers,body:JSON.stringify({garment:{name:"Camisa reconocida por IA",type:"top",color:"Azul"}})});
+ if(url.endsWith("/api/looks")){const items=JSON.parse(req.postData()||"{}").items||[];return route.fulfill({status:200,headers,body:JSON.stringify({looks:[{ids:items.slice(0,2).map(x=>x.i),why:"Look de prueba IA"}]})})}
  return route.fulfill({status:500,headers,body:JSON.stringify({error:"Mock AI unavailable"})});
 });
 let currentProfile="noelia";
@@ -39,6 +41,19 @@ try{
  await page.locator('#lookGarments input[type="checkbox"]').first().check();
  await page.locator("#lookForm button[type=submit]").click();
  await page.getByText("Look auditado").waitFor();
+ await page.locator('[data-view="wardrobe"]').click();
+ await page.locator("#addGarment").click();
+ const tinyPng=Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/pVYAAAAASUVORK5CYII=","base64");
+ await page.locator("#garmentImage").setInputFiles({name:"foto.png",mimeType:"image/png",buffer:tinyPng});
+ await page.locator("#analyzeBtn").click();
+ await page.getByText("Análisis completado").waitFor();
+ assert.equal(await page.locator("#garmentName").inputValue(),"Camisa reconocida por IA");
+ assert.equal(await page.locator("#garmentCategory").inputValue(),"Arriba");
+ await page.locator("#garmentForm button[type=submit]").click();
+ await page.getByText("Camisa reconocida por IA").first().waitFor();
+ await page.locator('[data-view="looks"]').click();
+ await page.locator("#aiLooks").click();
+ await page.getByText("Look de prueba IA").waitFor();
  await page.locator('[data-view="settings"]').click();
  await page.locator("#logout").click();
  currentProfile="irene";
@@ -50,5 +65,5 @@ try{
  assert.equal(await page.getByText("Tu armario está vacío").count(),1);
  assert.deepEqual(errors,[]);
  await page.screenshot({path:"atelier-smoke.png",fullPage:true});
- console.log("PASS: iPhone viewport, styles, login, wardrobe CRUD, IndexedDB persistence, looks and profile isolation");
+ console.log("PASS: iPhone viewport, styles, login, wardrobe CRUD, IndexedDB persistence, manual looks, AI garment recognition, AI looks, profile isolation");
 }finally{await browser.close()}
