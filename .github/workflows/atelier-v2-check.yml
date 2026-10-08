@@ -5,7 +5,7 @@ on:
       - "atelier/**"
       - ".github/workflows/atelier-v2-check.yml"
   push:
-    branches: [main]
+    branches: [main, atelier-webkit-audit]
     paths:
       - "atelier/**"
 jobs:
