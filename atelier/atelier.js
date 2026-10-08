@@ -708,6 +708,7 @@ function renderWardrobe(root){
  const cards=gs.map(g=>{const f=forgottenStatus(g),n=wornCount(g.id);return '<div class="garment-tile">'+garmentCard(g)+'<div class="tile-tools"><button class="chip-button" data-fav="'+fx(g.id)+'" aria-label="Favorito">'+(g.favorite?'♥':'♡')+'</button><button class="chip-button" data-wear="'+fx(g.id)+'" aria-label="Registrar uso">✓ Usada</button></div><div class="tile-hints">'+fx(plural(n,"uso registrado","usos registrados"))+(f.forgotten?' · ✦ Olvidada':'')+'</div></div>'}).join("");
  root.innerHTML=heroHtml("Mi armario","Toda tu ropa, aprovechada al máximo.")+safetyBanner()+
   '<div class="stats">'+miniStat("prendas",myGarments().length)+miniStat("favoritas",myGarments().filter(g=>g.favorite).length)+miniStat("olvidadas",myGarments().filter(g=>forgottenStatus(g).forgotten).length)+miniStat("looks",myLooks().length)+'</div>'+
+  '<div class="actions"><button type="button" class="secondary wide" id="wardrobeInsights">Mi armario en cifras · Estadísticas e historial</button></div>'+
   '<div class="section-head"><h2>Prendas <span class="muted">('+gs.length+')</span></h2><button id="addGarment" class="primary">+ Añadir</button></div>'+filters+
   (gs.length?'<div class="grid">'+cards+'</div>':'<div class="empty"><h3>No hay prendas con estos filtros</h3><p class="muted">Prueba otro filtro o añade una prenda.</p><button class="primary" id="emptyAdd">Añadir prenda</button></div>');
  $("#bannerBackup")?.addEventListener("click",downloadBackup);
@@ -721,6 +722,7 @@ function renderWardrobe(root){
  $$("[data-garment]",root).forEach(x=>x.addEventListener("click",()=>openGarment(x.dataset.garment)));
  $$("[data-fav]",root).forEach(b=>b.addEventListener("click",async()=>{const g=myGarments().find(x=>x.id===b.dataset.fav);if(g)await mutate(()=>{g.favorite=!g.favorite;g.updatedAt=new Date().toISOString()},"Favoritos actualizados")}));
  $$("[data-wear]",root).forEach(b=>b.addEventListener("click",()=>promptWear([b.dataset.wear],null)));
+ $("#wardrobeInsights")?.addEventListener("click",()=>setView("insights"));
 }
 let lastAnalysis=null,metaConfidence="";
 /* Foto de la ficha abierta: la original y, si se ha podido, la versión mejorada (con fondo blanco o solo retocada).
