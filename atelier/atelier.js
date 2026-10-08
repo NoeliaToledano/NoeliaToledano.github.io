@@ -993,7 +993,7 @@ function pairs(a,b){
  if(a.id&&a.id===b.id)return false;
  if(a.category&&b.category&&!(PAIRS[a.category]||[]).includes(b.category))return false;
  if(!a.category&&!b.category)return false;
- if(a.style&&b.style&&!(STYLE_OK[a.style]||[]).includes(b.style))return false;
+ // La mezcla de estilos se evalúa sobre el look completo, no se descarta aquí por etiqueta.
  if(a.season&&b.season&&a.season!=="all"&&b.season!=="all"&&a.season!==b.season)return false;
  return colorsMatch(colorInfo(a.color,a.pattern),colorInfo(b.color,b.pattern));
 }
@@ -1240,7 +1240,8 @@ function occasionFits(g,occ){
 }
 /* Compatibilidad dura: relación de categorías y estilos compatibles. El color ya no descarta: puntúa (spec §4). */
 const related=(a,b)=>(PAIRS[a.category]||[]).includes(b.category)||(PAIRS[b.category]||[]).includes(a.category);
-const stylesOk=(a,b)=>!a.style||!b.style||(STYLE_OK[a.style]||[]).includes(b.style);
+// No bloquear combinaciones por una sola etiqueta: el estilo se puntúa en scoreOutfit.
+const stylesOk=(a,b)=>true;
 /* Color: rueda de familias. Mismo tono 1 · neutro 0,9 · vecinos 0,8 · a dos pasos 0,6 · opuestos 0,45 (solo bien como acento). */
 const WHEEL=["rojo","naranja","amarillo","verde","azul","morado","rosa"];
 function pairColor(a,b){
