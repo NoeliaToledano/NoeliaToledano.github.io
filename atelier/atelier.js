@@ -1005,9 +1005,9 @@ function renderStylist(root){
 function renderToday(root){
  const p=appState.data.preferences,u=aiUsage(),candidates=recommendGarments().filter(g=>forgottenStatus(g).forgotten||wornCount(g.id)===0).slice(0,5);
  const info=p.autoWeather&&p.weatherDay===dayISO()?"Tiempo de hoy en tu zona: media de "+p.temperature+" °C.":p.autoWeather?"Actualizando el tiempo de hoy…":"";
- stylistShell(root,"Hoy","Combina lo que ya tienes. La IA no inventará prendas.",
-  plannedTodayHtml()+
-  '<div class="feature-card"><div class="section-head"><h2>¿Qué me pongo hoy?</h2><span class="muted">IA</span></div>'+
+ stylistShell(root,"Hoy",capFirst(new Intl.DateTimeFormat("es-ES",{weekday:"long",day:"numeric",month:"long"}).format(new Date())),
+  dailyLookHtml()+plannedTodayHtml()+
+  '<details class="feature-card more-ideas"><summary><strong>Más ideas con IA</strong> <span class="muted">· ocasión, temperatura y preferencias</span></summary>'+
   '<div class="filter-grid"><label class="field"><span>Ocasión</span><select id="prefOccasion">'+optionList(Object.entries(occasions),p.occasion)+'</select></label>'+
   '<label class="field"><span>Temporada</span><select id="prefSeason">'+optionList(Object.entries(seasons),p.season)+'</select></label></div>'+
   '<label class="field"><span>Temperatura exterior (°C; por defecto '+DEFAULT_TEMPERATURE+')</span><input id="prefTemperature" type="number" min="-30" max="55" step="1" placeholder="Si lo dejas vacío, uso '+DEFAULT_TEMPERATURE+' °C" value="'+fx(currentTemperature())+'"></label>'+
@@ -1016,14 +1016,15 @@ function renderToday(root){
   extrasTogglesHtml()+
   '<label class="switch-line"><input id="prefAvoid" type="checkbox"'+(p.avoidRepeats?' checked':'')+'> Evitar repetir combinaciones recientes</label>'+
   '<button class="primary wide" id="suggestSmart">✦ Generar looks con mi ropa</button>'+
-  '<p class="helper">Se envían solo los nombres y atributos de tus prendas, nunca las fotos. Sugerencias con IA hoy: '+u.looks+' de '+AI_LIMITS.looks+'.</p></div>'+
+  '<p class="helper">Se envían solo los nombres y atributos de tus prendas, nunca las fotos. Sugerencias con IA hoy: '+u.looks+' de '+AI_LIMITS.looks+'.</p></details>'+
   '<div class="actions"><button class="secondary" id="createManual">+ Crear look manual</button><button class="secondary" id="openCalendar">Calendario de uso</button></div>'+
   '<div class="section-head"><h2>Rescata una prenda olvidada</h2></div>'+
   (candidates.length?'<div class="insight-list">'+candidates.map(g=>'<button class="list-line link-line" data-rescue="'+fx(g.id)+'"><strong>'+fx(g.name)+'</strong><span class="muted">'+fx(plural(wornCount(g.id),"uso","usos"))+' · ver looks ›</span></button>').join("")+'</div>':'<div class="empty">No tienes prendas olvidadas. ¡Bien!</div>'));
- $("#prefOccasion")?.addEventListener("change",e=>setPref("occasion",e.target.value,true));
- bindExtrasToggles(root);
+ $("#prefOccasion")?.addEventListener("change",e=>{const d=p.dailyLook;if(d&&!d.touched)d.date=null;setPref("occasion",e.target.value,true)});
+ bindExtrasToggles(root,()=>{const d=p.dailyLook;if(d&&!d.touched)d.date=null;render()});
+ bindDailyLook(root);
  $("#prefSeason")?.addEventListener("change",e=>setPref("season",e.target.value,false));
- $("#prefTemperature")?.addEventListener("change",e=>{const v=e.target.value,n=Number(v);if(v===""||(Number.isFinite(n)&&n>=-30&&n<=55)){p.autoWeather=false;setPref("temperature",v===""?DEFAULT_TEMPERATURE:n,v==="")}else toast("Introduce entre -30 y 55 °C")});
+ $("#prefTemperature")?.addEventListener("change",e=>{const v=e.target.value,n=Number(v);if(v===""||(Number.isFinite(n)&&n>=-30&&n<=55)){p.autoWeather=false;if(p.dailyLook&&!p.dailyLook.touched)p.dailyLook.date=null;setPref("temperature",v===""?DEFAULT_TEMPERATURE:n,true)}else toast("Introduce entre -30 y 55 °C")});
  $("#prefDiversity")?.addEventListener("input",e=>{$("#diversityText").textContent=e.target.value;setPref("diversity",Number(e.target.value),false)});
  $("#prefAvoid")?.addEventListener("change",e=>setPref("avoidRepeats",e.target.checked,false));
  $("#suggestSmart")?.addEventListener("click",()=>suggestLooks());
@@ -1251,7 +1252,7 @@ async function fetchTodayTemperature(ask){
  if(!r.ok)throw new Error("WEATHER_"+r.status);
  const d=await r.json(),max=d?.daily?.temperature_2m_max?.[0],min=d?.daily?.temperature_2m_min?.[0];
  if(typeof max!=="number"||typeof min!=="number")throw new Error("WEATHER_DATA");
- Object.assign(p,{weatherPlace:pos,temperature:Math.round((max+min)/2),weatherDay:dayISO(),autoWeather:true});
+ Object.assign(p,{weatherPlace:pos,temperature:Math.round((max+min)/2),weatherMin:Math.round(min),weatherMax:Math.round(max),weatherDay:dayISO(),autoWeather:true});
  await saveState({fromSync:true});return {mean:p.temperature,max:Math.round(max),min:Math.round(min)};
 }
 let weatherInFlight=false;
@@ -1279,11 +1280,11 @@ async function setPlan(date,garmentIds,{name,lookId}={}){
 }
 /* Propuestas para un día: bases que combinan, completadas con calzado (y capa si hace frío), puntuadas por favoritas,
    prendas olvidadas, «Tus gustos» y sin repetir prendas de los días cercanos de la semana. */
-function dayProposals(date,max=3){
+function dayProposals(date,max=3,avoid=new Set()){
  const season=seasonFor(date),near=new Set(myPlans().filter(p=>p.date!==date&&Math.abs(Date.parse(p.date)-Date.parse(date))<=3*86400000).flatMap(p=>p.garmentIds||[]));
  const gs=myGarments().filter(g=>fitsSeason(g,season)&&!["Casa","Baño"].includes(g.category)),taste=tasteProfile(),likeT=new Set(taste.likes.map(x=>x.k)),disT=new Set(taste.dislikes.map(x=>x.k));
  const cold=date===dayISO()?currentTemperature()<17:season==="cold";
- const gScore=g=>(g.favorite?1:0)+(forgottenStatus(g).forgotten?1.5:1/(1+wornCount(g.id)))-(near.has(g.id)?3:0);
+ const gScore=g=>(g.favorite?1:0)+(forgottenStatus(g).forgotten?1.5:1/(1+wornCount(g.id)))-(near.has(g.id)||avoid.has(g.id)?3:0);
  const temp=date===dayISO()?currentTemperature():cold?12:DEFAULT_TEMPERATURE;
  const looks=outfitBases(gs).map(base=>{const l=completeLook(base,gs,gScore,{temp,cold});
   // Más completo, mejor: cada pieza añadida suma
@@ -1354,12 +1355,69 @@ function renderWeek(root){
  $("#weekToday")?.addEventListener("click",()=>{ui.weekStart=weekStartOf(today);render()});
  bindPlanActions(root);
 }
+/* Tu look de hoy: una propuesta completa nada más entrar, según el tiempo de tu zona (o 25 °C), sin IA.
+   Cambia cada día: evita las prendas de los looks del día de los 3 días anteriores y lo que te has puesto hace poco.
+   «Otro look» pasa a la siguiente propuesta distinta. Se guarda en preferences.dailyLook (se sincroniza). */
+function dailyAvoid(date){
+ const p=appState.data.preferences,prev=(p.dailyHistory||[]).filter(h=>h.date<date&&h.date>=addDays(date,-3)).flatMap(h=>h.ids||[]);
+ const worn=logs().filter(l=>validDay(l.date)&&l.date<date&&l.date>=addDays(date,-3)).flatMap(l=>l.garmentIds||[]);
+ return new Set([...prev,...worn]);
+}
+function computeDaily(date,skip=[]){
+ const options=dayProposals(date,12,dailyAvoid(date)),seen=new Set(skip);
+ return options.find(l=>!seen.has(lookSig(l.map(g=>g.id))))||null;
+}
+let dailyDirty=false;
+function ensureDailyLook(force=false){
+ const p=appState.data.preferences,today=dayISO(),temp=currentTemperature();let d=p.dailyLook;
+ const stale=!d||d.date!==today||(!d.touched&&Math.abs((d.temp??temp)-temp)>=5);
+ if(!stale&&!force)return d;
+ dailyDirty=true;
+ if(d&&validDay(d.date)&&d.date!==today&&d.ids?.length){p.dailyHistory=[...(p.dailyHistory||[]).filter(h=>h.date>=addDays(today,-7)),{date:d.date,ids:d.ids}].slice(-7)}
+ const skip=force&&d?.date===today?[...(d.skip||[]),lookSig(d.ids||[])]:[];
+ let l=computeDaily(today,skip),wrapped=false;
+ if(!l&&skip.length){wrapped=true;l=computeDaily(today,[]);if(l)toast("Ya has visto todas las propuestas de hoy: vuelvo a empezar")}
+ d=p.dailyLook={date:today,ids:l?l.map(g=>g.id):[],temp,skip:wrapped?[]:skip,touched:force||d?.date===today&&!!d?.touched,worn:false};
+ return d;
+}
+function weatherLabel(){
+ const p=appState.data.preferences;
+ if(p.autoWeather&&p.weatherDay===dayISO())return (p.weatherMin!=null&&p.weatherMax!=null?p.weatherMin+"–"+p.weatherMax+" °C":p.temperature+" °C")+" en tu zona";
+ return p.autoWeather?"Actualizando el tiempo…":currentTemperature()+" °C"+(currentTemperature()===DEFAULT_TEMPERATURE?" (por defecto)":"");
+}
+function dailyLookHtml(){
+ const t=planFor(dayISO()),p=appState.data.preferences;
+ const weather='<p class="daily-weather muted">'+fx(weatherLabel())+(p.autoWeather?'':' · <button type="button" class="link-button" id="dailyWeather">📍 Usar el tiempo de mi zona</button>')+'</p>';
+ if(t)return '<section class="feature-card daily-look"><div class="section-head"><h2>Tu look de hoy</h2><span class="muted">Planificado</span></div>'+weather+planCardHtml(t)+'</section>';
+ const d=ensureDailyLook(),gs=(d.ids||[]).map(id=>myGarments().find(g=>g.id===id)).filter(Boolean);
+ if(gs.length<1)return '<section class="feature-card daily-look"><div class="section-head"><h2>Tu look de hoy</h2></div>'+weather+'<p class="muted">Añade al menos una parte de arriba y una de abajo (o un vestido) y aquí tendrás cada día un look listo.</p><button type="button" class="primary" id="dailyAdd">+ Añadir prendas</button></section>';
+ return '<section class="feature-card daily-look"><div class="section-head"><h2>Tu look de hoy</h2></div>'+weather+
+  '<div class="daily-board">'+outfitBoard(gs)+'</div><div class="look-items">'+gs.map(g=>'<span class="look-chip">'+fx(g.name)+'</span>').join("")+'</div>'+
+  '<div class="daily-actions">'+(d.worn?'<span class="badge-ok">✓ Te lo has puesto hoy</span>':'<button type="button" class="primary" id="dailyWear">Me lo pongo</button>')+
+  '<button type="button" class="secondary" id="dailyNext">↻ Otro look</button></div>'+
+  '<div class="plan-actions"><button type="button" class="chip-button" id="dailySave">♡ Guardar en Mis looks</button><button type="button" class="chip-button" id="dailySwap">Cambiar una prenda</button></div></section>';
+}
+function bindDailyLook(root){
+ const p=appState.data.preferences,today=dayISO();
+ if(dailyDirty){dailyDirty=false;saveState().catch(()=>{})}
+ $("#dailyAdd",root)?.addEventListener("click",()=>setView("wardrobe"));
+ $("#dailyNext",root)?.addEventListener("click",async()=>{ensureDailyLook(true);await saveState();render()});
+ $("#dailyWear",root)?.addEventListener("click",async()=>{const d=p.dailyLook;if(!d?.ids?.length)return;const now=new Date().toISOString();
+  await mutate(()=>{logs().unshift({id:uid(),date:today,garmentIds:[...d.ids],lookId:null,updatedAt:now});d.worn=true;d.touched=true},"Registrado: te lo has puesto hoy")});
+ $("#dailySave",root)?.addEventListener("click",async()=>{const d=p.dailyLook;if(!d?.ids?.length)return;
+  if(myLooks().some(l=>lookSig(l.garmentIds||[])===lookSig(d.ids)))return toast("Ese look ya está guardado");
+  await mutate(()=>{d.touched=true;myLooks().unshift({id:uid(),name:"Look del "+fmtDay(today),garmentIds:[...d.ids],occasion:p.occasion||"daily",ai:false,updatedAt:new Date().toISOString()})},"Look guardado")});
+ // Cambiar una prenda: el look de hoy pasa a ser el plan de hoy, y se abre «Cambiar prenda» sobre él
+ $("#dailySwap",root)?.addEventListener("click",async()=>{const d=p.dailyLook;if(!d?.ids?.length)return;d.touched=true;
+  if(await setPlan(today,d.ids,{name:"Look de hoy"})){const t=planFor(today);if(t)openSwap(t.id,"plan")}});
+ $("#dailyWeather",root)?.addEventListener("click",async e=>{e.target.disabled=true;e.target.textContent="Consultando…";
+  try{await fetchTodayTemperature(true);render()}catch(err){console.warn("WEATHER",err);toast(err?.code===1?"Sin permiso de ubicación: uso "+currentTemperature()+" °C":"No se pudo consultar el tiempo");e.target.disabled=false;e.target.textContent="📍 Usar el tiempo de mi zona"}});
+}
 /* En «Hoy»: lo planificado para hoy y mañana */
 function plannedTodayHtml(){
- const t=planFor(dayISO()),m=planFor(shiftDay(1));
- if(!t&&!m)return '<div class="feature-card plan-today"><div class="section-head"><h2>Mi semana</h2></div><p class="muted">No tienes looks planificados para hoy ni mañana.</p><button type="button" class="secondary" data-open-week>Planificar mi semana</button></div>';
- return '<div class="feature-card plan-today"><div class="section-head"><h2>Planificado</h2><button type="button" class="chip-button" data-open-week>Mi semana ›</button></div>'+
-  (t?'<p><strong>Hoy</strong></p>'+planCardHtml(t,{compact:true}):'')+(m?'<p><strong>Mañana</strong></p>'+planCardHtml(m,{compact:true}):'')+'</div>';
+ const m=planFor(shiftDay(1));
+ if(!m)return '<div class="plan-link"><button type="button" class="link-button" data-open-week>Planificar mi semana ›</button></div>';
+ return '<div class="feature-card plan-today"><div class="section-head"><h2>Mañana</h2><button type="button" class="chip-button" data-open-week>Mi semana ›</button></div>'+planCardHtml(m,{compact:true})+'</div>';
 }
 
 /* Maletas: lista de equipaje por viaje, calculada en el móvil (sin IA).

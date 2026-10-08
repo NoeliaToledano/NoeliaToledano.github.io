@@ -33,6 +33,7 @@ try{
  await page.locator("#password").fill("test");
  await page.locator("#loginBtn").click();
  await page.getByRole("heading",{name:"Hoy",exact:true}).waitFor({timeout:6000}).catch(async e=>{console.log("LOGIN_DIAGNOSTIC",{error:await page.locator("#authError").textContent(),authVisible:await page.locator("#auth").isVisible(),appVisible:await page.locator("#app").isVisible(),browserErrors:errors});throw e});
+ await page.locator(".daily-look").waitFor(); // «Tu look de hoy» nada más entrar
  assert.equal(await page.locator("#app").isVisible(),true);
  assert.equal(await page.locator("#auth").isVisible(),false);
  const bg=await page.locator("body").evaluate(el=>getComputedStyle(el).backgroundColor);
@@ -116,8 +117,9 @@ try{
  await page.locator("section.is-today [data-plan-worn]").click();
  await page.locator("section.is-today .badge-ok").waitFor();
  assert.equal(await page.evaluate(()=>logs().length),usesBefore+1);
+ // En Hoy, lo planificado para hoy ocupa «Tu look de hoy»
  await page.locator('[data-view="today"]').click();
- await page.locator(".plan-today .badge-ok").waitFor();
+ await page.locator(".daily-look .badge-ok").waitFor();
  await page.locator('[data-view="shopping"]').click();
  await page.locator('[data-shop-tab="wish"]').click();
  await page.locator('[name="wishName"]').fill("Abrigo de prueba");
