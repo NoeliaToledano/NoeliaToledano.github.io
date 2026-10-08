@@ -696,7 +696,7 @@ function buildMetadataSection(){
  const pv=$("#garmentPreview"),pc=$("#photoControls");if(pv&&pc)pc.before(pv);
 }
 function updateOccasionSummary(){
- const values=$$$('[name="meta-occasion"]:checked').map(x=>occasions[x.value]||x.value);
+ const values=$('[name="meta-occasion"]:checked').map(x=>occasions[x.value]||x.value);
  const el=$("#occasionSummary");if(el)el.textContent=values.length?values.slice(0,3).join(" · ")+(values.length>3?" +"+(values.length-3):""):"Sin ocasiones sugeridas · puedes elegirlas";
 }
 /* Reglas estables de uso: complementan a la IA, sin impedir cambios manuales. */
