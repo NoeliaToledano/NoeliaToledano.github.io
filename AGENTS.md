@@ -2,7 +2,14 @@
 
 Este repositorio lo modifican varios asistentes. Para no pisarse:
 
-1. **Trabaja en una rama y abre una PR.** No subas directamente a `main`: `main` es lo que está publicado. Noelia decide cuándo se fusiona.
+1. **Trabaja en una rama y abre una PR.** No subas directamente a `main`: `main` es lo que está publicado.
+   **Fusión automática** (decisión de Noelia): una PR se fusiona en cuanto se cumplen las cuatro condiciones:
+   - la comprobación «Atelier checks» está en verde con el último commit (si la PR solo cambia documentación y no se ejecuta, basta con `node atelier/validate.mjs` en local);
+   - no tiene conflictos con `main`;
+   - no es borrador ni lleva «WIP» en el título;
+   - su autor la da por terminada.
+   La puede fusionar su autor o el otro asistente. Si un asistente encuentra un problema en la PR del otro, lo deja como comentario (o pide el cambio con `@codex`) en lugar de tocar su rama. Si tras dos rondas no hay acuerdo, decide Noelia.
+   Cada fusión en `main` intenta desplegar Vercel (límite de 100 despliegues al día): agrupa los cambios pequeños en una sola PR cuando se pueda.
 2. Antes de empezar, trae lo último de `main` y mira las PR abiertas. Si otra PR toca los mismos archivos, coordínalo antes de seguir.
 3. Edita solo lo necesario. No reescribas archivos enteros sin decirlo en la PR.
 4. Antes de abrir la PR, ejecuta `node atelier/validate.mjs`: comprueba la app **y la sintaxis del backend** (las pruebas de navegador simulan el backend y no detectan sus errores).
