@@ -14,6 +14,7 @@ await page.route("https://atelier-ai-backend-pi.vercel.app/**",async route=>{
  console.log("MOCK",req.method(),url);if(req.method()==="OPTIONS")return route.fulfill({status:204,headers,body:""});
  if(url.endsWith("/api/login")){const body=JSON.parse(req.postData()||"{}");return route.fulfill({status:200,headers,body:JSON.stringify({profileId:body.profileId,token:"test-token"})})}
  if(url.endsWith("/api/session"))return route.fulfill({status:200,headers,body:JSON.stringify({authenticated:true,profileId:currentProfile})});
+ if(url.endsWith("/api/render-garment"))return route.fulfill({status:503,headers,body:JSON.stringify({error:"Image generation unavailable in test"})});
  if(url.endsWith("/api/analyze")&&skipAnalyze)return route.fulfill({status:503,headers,body:JSON.stringify({error:"Mock temporarily unavailable"})});
  if(url.endsWith("/api/analyze"))return route.fulfill({status:200,headers,body:JSON.stringify({garment:{name:"Camisa reconocida por IA",type:"top",color:"Azul",fabric:"cotton",pattern:"stripes",fit:"regular",sleeve:"larga",subtype:"camisa",confidence:"media",details:"botones frontales",occasions:["daily","work"]}})});
  if(url.endsWith("/api/looks")&&forceUnauthorized){forceUnauthorized=false;return route.fulfill({status:401,headers,body:JSON.stringify({error:"Sesión caducada"})})}
