@@ -18,7 +18,7 @@ await page.addInitScript(()=>{
    return respond({profileId:body.profileId,token:"local-test-token"});
   }
   if(path.endsWith("/api/session")){
-   const data=JSON.parse(sessionStorage.getItem("atelier-session")||"{}");
+   const data=JSON.parse(localStorage.getItem("atelier-session")||"{}");
    return respond({authenticated:true,profileId:data.profile});
   }
   if(path.endsWith("/api/analyze"))return respond({garment:{name:"Foto analizada",type:"top",color:"Azul"}});
