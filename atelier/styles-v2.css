@@ -47,3 +47,14 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 @media(max-width:370px){.content{padding:18px 12px}.nav-btn{font-size:9px}.card-body{padding:9px}.tile-tools{padding:0 5px 7px}}
 
 .garment-preview{display:block;object-fit:contain;width:100%;max-height:230px;border-radius:15px;background:#f4f1ec;border:1px solid var(--line);margin:8px 0}
+
+/* Family edition: packing list controls */
+.packing-picker{border:1px solid var(--line);border-radius:14px;padding:10px 14px;margin:12px 0;max-height:230px;overflow:auto}
+.packing-picker summary{font-weight:650;cursor:pointer;padding:7px 0}
+.packing-picker .switch-line{border-bottom:1px solid var(--line);font-size:13px}
+.packing-item{display:flex;gap:12px;align-items:center;min-height:48px;padding:11px 4px;border-bottom:1px solid var(--line);font-size:14px}
+.packing-item input{accent-color:var(--ink);width:20px;height:20px;flex:none}
+.packing-item input:checked+span{text-decoration:line-through;color:var(--muted)}
+[data-packing-open][aria-current=true]{background:var(--ink);color:#fff}
+.tile-tools{flex-wrap:wrap}
+@media(max-width:390px){[data-combine]{flex-basis:100%}}
