@@ -10,9 +10,12 @@ Documento de trabajo para el futuro **motor de estilismo**. Recoge las reglas co
    - **media**: consejo profesional habitual;
    - **baja**: gusto o convención que muchas fuentes discuten.
    Las de solidez baja nunca son restricciones, solo matices de la puntuación.
+   Equivale a separar **reglas fundamentadas** (alta), **criterios editoriales** (media) y **decisiones experimentales** (baja). Antes de programar, cada regla debe tener además sus excepciones, los estilos en los que aplica y cómo se comprueba en el banco de pruebas (§ 6).
 3. **Los pesos son una hipótesis inicial** y se ajustarán con looks reales y con los «me gusta / no me gusta» de cada perfil.
 4. **Toda recomendación se explica** con frases cortas que salen de las reglas aplicadas («el plateado es el protagonista; la americana negra da estructura»).
 5. **No siempre lo más neutro.** Entre los looks válidos se ofrece al menos una alternativa con más color o contraste cuando la haya.
+6. **Diversidad.** No se enseñan varios looks casi iguales: se buscan versiones distintas (más clásica, más moderna, más creativa, más cómoda).
+7. **Gustos por perfil.** Se aprende de looks guardados, rechazados, usados y favoritos de cada persona, sin suponer que el gusto de una es el de toda la familia.
 
 ## 2. Datos de cada prenda que usa el motor
 
@@ -141,10 +144,26 @@ Caso de referencia (propuesto por ChatGPT): falda plateada, deportivas negras, c
 
 ## 8. Orden de trabajo propuesto
 
-1. Revisar y acordar este documento.
-2. Datos: colores medidos solo en la prenda, escala del estampado, formalidad 1–5 (PR aparte).
-3. Banco de pruebas.
-4. Motor nuevo con puntuación y explicaciones, sustituyendo `pairs` y `colorsMatch` de `atelier/atelier.js`, y usado también para elegir qué prendas se envían a la IA.
+| Fase | Entregable | Coste recurrente |
+| --- | --- | --- |
+| 1 | Este manual: reglas con fuente, excepciones y forma de comprobarlas | Ninguno |
+| 2 | Análisis ampliado: colores medidos solo en la prenda, escala del estampado, volumen, formalidad 1–5 | Bajo (llamadas de IA ya existentes) |
+| 3 | Motor local de compatibilidad y puntuación con explicaciones, sustituyendo `pairs` y `colorsMatch` de `atelier/atelier.js`, y usado para elegir qué prendas se envían a la IA | Sin coste de API |
+| 4 | Perfiles de estilo y banco de looks de prueba | Ninguno |
+| 5 | Personalización por perfil | Sin coste de API |
+| 6 | Opcional: modelos de compatibilidad visual (§ 9) | Según el modelo |
+
+Peticiones que el motor debería poder atender: «tres looks para trabajar, cómodos pero elegantes», «¿con qué combina esta falda?», «sorpréndeme», «una alternativa más atrevida», «cambia los zapatos sin estropear el conjunto».
+
+## 9. Investigación para una fase posterior (no se usa todavía)
+
+Modelos que aprenden qué prendas van juntas a partir de looks completos:
+
+- Vasileva et al. (2018), *Learning Type-Aware Embeddings for Fashion Compatibility*, ECCV: distingue prendas parecidas de prendas que se complementan.
+- Sarkar et al. (2023), *OutfitTransformer*, WACV: puntúa looks completos y busca la prenda que falta.
+- Una revisión de 2024 (ACM) sobre modelos de compatibilidad explicables, citada por ChatGPT; pendiente de localizar la referencia exacta.
+
+Se entrenan con datos tipo Polyvore. Antes de usarlos habría que revisar disponibilidad, licencias, actualidad y sesgos. No se entrenaría un modelo grande: sería caro y difícil de validar sin el banco de pruebas.
 
 ## Fuentes
 
