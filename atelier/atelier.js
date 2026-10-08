@@ -29,7 +29,7 @@ function normalizeData(v){
  return d;
 }
 const copyData=d=>structuredClone(d);
-const appState={profile:null,token:null,data:emptyData(),view:"wardrobe",authExpired:false};
+const appState={profile:null,token:null,data:emptyData(),view:"today",authExpired:false};
 let lastSavedData=emptyData();
 const ui={search:"",category:"",season:"",onlyFavorites:false,onlyForgotten:false,sort:"recent",calendarMonth:new Date().toISOString().slice(0,7),lookFilter:"all",wishlistFilter:"all",stylistTab:"today",shopTab:"buy",aroundId:"",tripId:""};
 
@@ -616,7 +616,9 @@ async function enterApp(){
  const p=appState.data.preferences;
  // Una vez por perfil: las temperaturas antiguas escritas a mano pasan a 25 °C.
  if(p.tempDefault25!==true){if(!p.autoWeather)p.temperature=DEFAULT_TEMPERATURE;p.tempDefault25=true;await saveState({fromSync:true})}
- $("#auth").classList.add("hidden");$("#app").classList.remove("hidden");$("#profileName").textContent=appState.profile.name;
+ $("#auth").classList.add("hidden");$("#app").classList.remove("hidden");$("#profileName").textContent=appState.profile.name+" · Ajustes";
+ appState.view="today";
+ $$(".nav-btn").forEach(b=>{const active=b.dataset.view==="today";b.classList.toggle("active",active);if(active)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
  render();
  await ensurePersistence();
  syncNow();
@@ -639,15 +641,15 @@ async function restoreSession(){
   appState.profile=null;appState.token=null;return false;
  }
 }
-const NAV_PARENT={looks:"stylist",calendar:"insights"};
+const NAV_PARENT={looks:"stylist",calendar:"wardrobe",insights:"wardrobe"};
 function setView(v){
  appState.view=v;
- $$(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.view===v||b.dataset.view===NAV_PARENT[v]));
+ $$(".nav-btn").forEach(b=>{const active=b.dataset.view===v||b.dataset.view===NAV_PARENT[v];b.classList.toggle("active",active);if(active)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
  render();window.scrollTo?.(0,0);
 }
 function render(){
  const root=$("#content");if(!appState.profile)return;
- const views={wardrobe:renderWardrobe,stylist:renderStylist,looks:renderLooks,shopping:renderShopping,insights:renderInsights,calendar:renderCalendar,settings:renderSettings};
+ const views={today:renderToday,wardrobe:renderWardrobe,stylist:renderStylist,trips:renderTrips,looks:renderLooks,shopping:renderShopping,insights:renderInsights,calendar:renderCalendar,settings:renderSettings};
  (views[appState.view]||renderWardrobe)(root);
 }
 
@@ -708,6 +710,7 @@ function renderWardrobe(root){
  const cards=gs.map(g=>{const f=forgottenStatus(g),n=wornCount(g.id);return '<div class="garment-tile">'+garmentCard(g)+'<div class="tile-tools"><button class="chip-button" data-fav="'+fx(g.id)+'" aria-label="Favorito">'+(g.favorite?'♥':'♡')+'</button><button class="chip-button" data-wear="'+fx(g.id)+'" aria-label="Registrar uso">✓ Usada</button></div><div class="tile-hints">'+fx(plural(n,"uso registrado","usos registrados"))+(f.forgotten?' · ✦ Olvidada':'')+'</div></div>'}).join("");
  root.innerHTML=heroHtml("Mi armario","Toda tu ropa, aprovechada al máximo.")+safetyBanner()+
   '<div class="stats">'+miniStat("prendas",myGarments().length)+miniStat("favoritas",myGarments().filter(g=>g.favorite).length)+miniStat("olvidadas",myGarments().filter(g=>forgottenStatus(g).forgotten).length)+miniStat("looks",myLooks().length)+'</div>'+
+  '<div class="actions"><button type="button" class="secondary wide" id="wardrobeInsights">Mi armario en cifras · Estadísticas e historial</button></div>'+
   '<div class="section-head"><h2>Prendas <span class="muted">('+gs.length+')</span></h2><button id="addGarment" class="primary">+ Añadir</button></div>'+filters+
   (gs.length?'<div class="grid">'+cards+'</div>':'<div class="empty"><h3>No hay prendas con estos filtros</h3><p class="muted">Prueba otro filtro o añade una prenda.</p><button class="primary" id="emptyAdd">Añadir prenda</button></div>');
  $("#bannerBackup")?.addEventListener("click",downloadBackup);
@@ -721,6 +724,7 @@ function renderWardrobe(root){
  $$("[data-garment]",root).forEach(x=>x.addEventListener("click",()=>openGarment(x.dataset.garment)));
  $$("[data-fav]",root).forEach(b=>b.addEventListener("click",async()=>{const g=myGarments().find(x=>x.id===b.dataset.fav);if(g)await mutate(()=>{g.favorite=!g.favorite;g.updatedAt=new Date().toISOString()},"Favoritos actualizados")}));
  $$("[data-wear]",root).forEach(b=>b.addEventListener("click",()=>promptWear([b.dataset.wear],null)));
+ $("#wardrobeInsights")?.addEventListener("click",()=>setView("insights"));
 }
 let lastAnalysis=null,metaConfidence="";
 /* Foto de la ficha abierta: la original y, si se ha podido, la versión mejorada (con fondo blanco o solo retocada).
@@ -988,19 +992,20 @@ function outfitBases(gs){
 }
 
 /* ===================== 7. Estilista ===================== */
-const STYLIST_TABS=[["today","Hoy"],["week","Mi semana"],["around","Combinar prenda"],["looks","Mis looks",' id="openLooks"'],["trips","Maletas"]];
+const STYLIST_TABS=[["week","Mi semana"],["around","Combinar prenda"],["looks","Mis looks",' id="openLooks"']];
 function stylistShell(root,title,subtitle,body){
- root.innerHTML=heroHtml(title,subtitle)+tabsHtml("stylist",STYLIST_TABS,appState.view==="looks"?"looks":ui.stylistTab)+body;
+ root.innerHTML=heroHtml(title,subtitle)+((appState.view==="stylist"||appState.view==="looks")?tabsHtml("stylist",STYLIST_TABS,appState.view==="looks"?"looks":ui.stylistTab):"")+body;
  $$("[data-stylist-tab]",root).forEach(b=>b.addEventListener("click",()=>{const t=b.dataset.stylistTab;if(t==="looks")return setView("looks");ui.stylistTab=t;setView("stylist")}));
 }
 function renderStylist(root){
- if(ui.stylistTab==="looks")ui.stylistTab="today";
+ if(ui.stylistTab==="today"||ui.stylistTab==="trips"||ui.stylistTab==="looks")ui.stylistTab="around";
  if(ui.stylistTab==="around")return renderAround(root);
- if(ui.stylistTab==="trips")return renderTrips(root);
- if(ui.stylistTab==="week")return renderWeek(root);
+ return renderWeek(root);
+}
+function renderToday(root){
  const p=appState.data.preferences,u=aiUsage(),candidates=recommendGarments().filter(g=>forgottenStatus(g).forgotten||wornCount(g.id)===0).slice(0,5);
  const info=p.autoWeather&&p.weatherDay===dayISO()?"Tiempo de hoy en tu zona: media de "+p.temperature+" °C.":p.autoWeather?"Actualizando el tiempo de hoy…":"";
- stylistShell(root,"Tu estilista","Combina lo que ya tienes. La IA no inventará prendas.",
+ stylistShell(root,"Hoy","Combina lo que ya tienes. La IA no inventará prendas.",
   plannedTodayHtml()+
   '<div class="feature-card"><div class="section-head"><h2>¿Qué me pongo hoy?</h2><span class="muted">IA</span></div>'+
   '<div class="filter-grid"><label class="field"><span>Ocasión</span><select id="prefOccasion">'+optionList(Object.entries(occasions),p.occasion)+'</select></label>'+
@@ -1024,8 +1029,8 @@ function renderStylist(root){
  $("#suggestSmart")?.addEventListener("click",()=>suggestLooks());
  $("#createManual")?.addEventListener("click",()=>openLook());
  $("#openCalendar")?.addEventListener("click",()=>setView("calendar"));
- bindPlanActions(root);$$("[data-open-week]",root).forEach(b=>b.addEventListener("click",()=>{ui.stylistTab="week";render()}));
- $$("[data-rescue]",root).forEach(b=>b.addEventListener("click",()=>{ui.aroundId=b.dataset.rescue;ui.stylistTab="around";render()}));
+ bindPlanActions(root);$$("[data-open-week]",root).forEach(b=>b.addEventListener("click",()=>{ui.stylistTab="week";setView("stylist")}));
+ $$("[data-rescue]",root).forEach(b=>b.addEventListener("click",()=>{ui.aroundId=b.dataset.rescue;ui.stylistTab="around";setView("stylist")}));
  $("#useWeather")?.addEventListener("click",async e=>{e.target.disabled=true;e.target.textContent="Consultando…";
   try{const w=await fetchTodayTemperature(true);toast("Hoy: entre "+w.min+" y "+w.max+" °C (media "+w.mean+" °C)");render()}
   catch(err){console.warn("WEATHER",err);toast(err?.code===1?"Sin permiso de ubicación: sigo usando "+DEFAULT_TEMPERATURE+" °C":"No se pudo consultar el tiempo");e.target.disabled=false;e.target.textContent="📍 Usar el tiempo de hoy"}});
@@ -1054,7 +1059,7 @@ async function suggestLooks(){
   }
   if(!added)return toast("Estas combinaciones ya están guardadas. Cambia la ocasión o la diversidad.");
   if(!await saveState())return;
-  if(appState.view==="stylist")setView("looks");else render();
+  setView("looks");
   toast(plural(added,"look sugerido","looks sugeridos"));
  }catch(e){console.error("LOOKS_AI",e);if(e.message!=="AI_QUOTA")toast(e.message==="SESSION_EXPIRED"?"La sesión ha caducado":"No se pudieron generar looks")}
  finally{const a=$("#aiLooks"),s=$("#suggestSmart");if(a){a.disabled=false;a.textContent="✦ Sugerir nuevos looks"}if(s){s.disabled=false;s.textContent="✦ Generar looks con mi ropa"}}
@@ -1254,7 +1259,7 @@ async function refreshWeatherIfNeeded(){
  const p=appState.data.preferences;
  if(weatherInFlight||!p.autoWeather||!p.weatherPlace||p.weatherDay===dayISO())return;
  weatherInFlight=true;
- try{await fetchTodayTemperature(false);if(appState.view==="stylist")render()}catch(e){console.warn("WEATHER",e)}finally{weatherInFlight=false}
+ try{await fetchTodayTemperature(false);if(appState.view==="today"||appState.view==="stylist")render()}catch(e){console.warn("WEATHER",e)}finally{weatherInFlight=false}
 }
 
 /* Mi semana: un look planificado por día (sin IA).

@@ -5,7 +5,7 @@ const context=await browser.newContext({...devices["iPhone 13"],browserName:unde
 const page=await context.newPage();
 const errors=[];
 let forceUnauthorized=false,forceServerError=false;
-page.on("pageerror",e=>errors.push(e.message));
+page.on("pageerror",e=>{errors.push(e.message);console.log("PAGEERROR_STACK",e.stack)});
 page.on("console",m=>{if(m.type()==="error")console.log("BROWSER_CONSOLE",m.text())});
 page.on("requestfailed",r=>console.log("FAILED_REQUEST",r.url(),r.failure()?.errorText));
 await page.route("https://atelier-ai-backend-pi.vercel.app/**",async route=>{
@@ -32,11 +32,12 @@ try{
  await page.getByRole("button",{name:"Noelia"}).click();
  await page.locator("#password").fill("test");
  await page.locator("#loginBtn").click();
- await page.getByRole("heading",{name:"Mi armario"}).waitFor({timeout:6000}).catch(async e=>{console.log("LOGIN_DIAGNOSTIC",{error:await page.locator("#authError").textContent(),authVisible:await page.locator("#auth").isVisible(),appVisible:await page.locator("#app").isVisible(),browserErrors:errors});throw e});
+ await page.getByRole("heading",{name:"Hoy",exact:true}).waitFor({timeout:6000}).catch(async e=>{console.log("LOGIN_DIAGNOSTIC",{error:await page.locator("#authError").textContent(),authVisible:await page.locator("#auth").isVisible(),appVisible:await page.locator("#app").isVisible(),browserErrors:errors});throw e});
  assert.equal(await page.locator("#app").isVisible(),true);
  assert.equal(await page.locator("#auth").isVisible(),false);
  const bg=await page.locator("body").evaluate(el=>getComputedStyle(el).backgroundColor);
  assert.notEqual(bg,"rgba(0, 0, 0, 0)","CSS not applied");
+ await page.locator('[data-view="wardrobe"]').click();
  await page.locator("#addGarment").click();
  console.log("GARMENT_DIAGNOSTIC",{classes:await page.locator("#garmentSheet").getAttribute("class"),visible:await page.locator("#garmentName").isVisible(),errors});
  await page.locator("#autoAnalyze").evaluate(el=>{el.checked=false;el.dispatchEvent(new Event("change",{bubbles:true}))});
@@ -48,8 +49,13 @@ try{
  await page.locator("#garmentForm button[type=submit]").click();
  await page.getByText("Prenda auditada").waitFor();
  await page.reload({waitUntil:"networkidle"});
+ await page.locator('[data-view="today"]').click();
+ await page.locator('[data-open-week]').first().click();
+ assert.equal(await page.evaluate(()=>appState.view),"stylist");
+ assert.equal(await page.evaluate(()=>ui.stylistTab),"week");
+ await page.locator('[data-view="wardrobe"]').click();
  await page.getByText("Prenda auditada").waitFor();
- await page.locator('[data-view="stylist"]').click(); await page.locator('#openLooks').click();
+ await page.locator('[data-view="stylist"]').click(); await page.locator("#openLooks").click();
  await page.locator("#newLook").click();
  await page.locator("#lookName").fill("Look auditado");
  await page.locator('#lookGarments input[type="checkbox"]').first().check();
@@ -72,11 +78,12 @@ try{
  await page.locator("#garmentForm button[type=submit]").click();
  await page.getByText("Camisa reconocida por IA").first().waitFor();
  await page.reload({waitUntil:"networkidle"});
+ await page.locator('[data-view="wardrobe"]').click();
  await page.locator('[data-garment]').filter({hasText:"Camisa reconocida por IA"}).first().click();
  assert.equal(await page.locator("#meta-fit").inputValue(),"regular");
  assert.equal(await page.locator("#meta-brand").inputValue(),"Marca introducida a mano");
  await page.locator("#closeGarment").click();
- await page.locator('[data-view="stylist"]').click(); await page.locator('#openLooks').click();
+ await page.locator('[data-view="stylist"]').click(); await page.locator("#openLooks").click();
  await page.locator("#aiLooks").click();
  await page.getByText("Look de prueba IA").waitFor();
  await page.locator('[data-view="wardrobe"]').click();
@@ -86,7 +93,7 @@ try{
  await page.locator("#toast",{hasText:"Uso registrado"}).waitFor();
  // Maletas: crear un viaje, marcar una prenda como preparada y comprobar que se conserva
  await page.locator('[data-view="stylist"]').click();
- await page.locator('[data-stylist-tab="trips"]').click();
+ await page.locator('[data-view="trips"]').click();
  await page.locator("#tripName").fill("Viaje de prueba");
  await page.locator("#tripStart").fill("2026-12-04");
  await page.locator("#tripEnd").fill("2026-12-06");
@@ -100,7 +107,7 @@ try{
  await page.locator("[data-trip]").filter({hasText:"Viaje de prueba"}).click();
  assert.equal(await page.locator("[data-extra]:checked").count(),1,"La casilla de la maleta debe conservarse");
  // Mi semana: planificar hoy con un look guardado; planificado no es usado hasta «Me lo he puesto»
- await page.locator('[data-stylist-tab="week"]').click();
+ await page.locator('[data-view="stylist"]').click(); await page.locator('[data-stylist-tab="week"]').click();
  const usesBefore=await page.evaluate(()=>logs().length);
  await page.locator("section.is-today [data-plan-pick]").click();
  await page.locator("#planSheet [data-plan-saved]").first().click();
@@ -109,7 +116,7 @@ try{
  await page.locator("section.is-today [data-plan-worn]").click();
  await page.locator("section.is-today .badge-ok").waitFor();
  assert.equal(await page.evaluate(()=>logs().length),usesBefore+1);
- await page.locator('[data-stylist-tab="today"]').click();
+ await page.locator('[data-view="today"]').click();
  await page.locator(".plan-today .badge-ok").waitFor();
  await page.locator('[data-view="shopping"]').click();
  await page.locator('[data-shop-tab="wish"]').click();
@@ -117,22 +124,22 @@ try{
  await page.locator('[name="wishPrice"]').fill("80");
  await page.locator('#wishlistForm button[type="submit"]').click();
  await page.getByText("Abrigo de prueba").waitFor();
- await page.locator('[data-view="insights"]').click();
+ await page.locator('[data-view="wardrobe"]').click(); await page.locator('#wardrobeInsights').click();
  await page.getByRole("heading",{name:"Prendas olvidadas"}).waitFor();
  await page.locator("#goCalendar").click();
  await page.getByRole("heading",{name:"Calendario de looks"}).waitFor();
  assert.ok(await page.locator("[data-remove-use]").count()>0,"Wear records must appear in calendar");
- await page.locator('[data-view="stylist"]').click();
+ await page.locator('[data-view="today"]').click();
  await page.locator("#prefDiversity").evaluate(el=>{el.value="80";el.dispatchEvent(new Event("input",{bubbles:true}))});
- await page.locator("#openLooks").click();
+ await page.locator('[data-view="stylist"]').click(); await page.locator("#openLooks").click();
  const existingLooks=await page.locator("[data-look]").count();
  forceServerError=true;
  await page.locator("#aiLooks").click();
  await page.getByText("No se pudieron generar looks").waitFor();
  assert.equal(await page.locator("[data-look]").count(),existingLooks,"Server failures must not create looks");
- await page.locator('[data-view="stylist"]').click();
+ await page.locator('[data-view="today"]').click();
  await page.locator("#prefDiversity").evaluate(el=>{el.value="90";el.dispatchEvent(new Event("input",{bubbles:true}))});
- await page.locator("#openLooks").click();
+ await page.locator('[data-view="stylist"]').click(); await page.locator("#openLooks").click();
  forceUnauthorized=true;
  await page.locator("#aiLooks").click();
  await page.locator("#auth").waitFor({state:"visible"});
@@ -143,7 +150,8 @@ try{
  await page.getByRole("button",{name:"Irene"}).click();
  await page.locator("#password").fill("test");
  await page.locator("#loginBtn").click();
- await page.getByRole("heading",{name:"Mi armario"}).waitFor();
+ await page.getByRole("heading",{name:"Hoy",exact:true}).waitFor();
+ await page.locator('[data-view="wardrobe"]').click();
  assert.equal(await page.getByText("Prenda auditada").count(),0,"Profile isolation broken");
  assert.equal(await page.getByText("No hay prendas con estos filtros").count(),1);
  assert.deepEqual(errors,[]);

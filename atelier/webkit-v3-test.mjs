@@ -47,9 +47,11 @@ try{
  await page.getByRole("button",{name:"Noelia"}).click();
  await page.locator("#password").fill("test");
  await page.locator("#loginBtn").click();
- await page.getByRole("heading",{name:"Mi armario"}).waitFor({timeout:10000});
+ await page.getByRole("heading",{name:"Hoy",exact:true}).waitFor({timeout:10000});
+ await page.locator('[data-view="wardrobe"]').click();
  await addGarment("Camiseta WebKit");
  await page.reload({waitUntil:"networkidle"});
+ await page.locator('[data-view="wardrobe"]').click();
  await page.getByText("Camiseta WebKit",{exact:true}).first().waitFor();
  await addGarment("Chaqueta WebKit");
  await page.locator('[data-view="stylist"]').click();
@@ -61,7 +63,7 @@ try{
  await page.locator('[name="wishName"]').fill("Zapatos de prueba");
  await page.locator('#wishlistForm button[type="submit"]').click();
  await page.getByText("Zapatos de prueba").waitFor();
- await page.locator('[data-view="settings"]').click();
+ await page.locator('#profileName').click();
  const downloadPromise=page.waitForEvent("download");
  await page.locator("#exportBackup").click();
  const download=await downloadPromise;
@@ -76,7 +78,8 @@ try{
  await page.getByRole("button",{name:"Irene"}).click();
  await page.locator("#password").fill("test");
  await page.locator("#loginBtn").click();
- await page.getByRole("heading",{name:"Mi armario"}).waitFor();
+ await page.getByRole("heading",{name:"Hoy",exact:true}).waitFor();
+ await page.locator('[data-view="wardrobe"]').click();
  assert.equal(await page.getByText("Camiseta WebKit").count(),0,"Cross-profile leak");
  assert.equal(await page.getByText("No hay prendas con estos filtros").count(),1);
  assert.deepEqual(errors,[]);
