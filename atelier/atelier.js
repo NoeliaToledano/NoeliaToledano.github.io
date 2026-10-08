@@ -15,7 +15,7 @@ const DB_NAME="atelier-armario-db",DB_VERSION=2,STORE="kv";
 const IMAGE_MAX=900,IMAGE_QUALITY=.8,AI_IMAGE_MAX=512;
 const AI_LIMITS={analyze:40,looks:20},DEFAULT_TEMPERATURE=25;
 const CATEGORIES=["Arriba","Abajo","Vestidos","Capas","Zapatos","Bolsos","Accesorios","Interior","Baño"];
-const occasions={daily:"Día a día",work:"Trabajo",dinner:"Cena",event:"Evento",travel:"Viaje",sport:"Deporte",gym:"Gimnasio",running:"Running",yoga:"Yoga / pilates",tennis:"Tenis / pádel",hiking:"Senderismo",beach:"Playa",pool:"Piscina",spa:"Spa",home:"Estar en casa",sleep:"Dormir",formal:"Formal",wedding:"Boda",ceremony:"Ceremonia",party:"Fiesta",night:"Salir de noche",date:"Cita",school:"Estudios",holiday:"Vacaciones",cold:"Frío / nieve",rain:"Lluvia"};
+const occasions={daily:"Día a día",work:"Trabajo",dinner:"Cena",event:"Evento",sport:"Deporte",gym:"Gimnasio",running:"Running",yoga:"Yoga / pilates",tennis:"Tenis / pádel",hiking:"Senderismo",beach:"Playa",pool:"Piscina",spa:"Spa",home:"Estar en casa",sleep:"Dormir",formal:"Formal",wedding:"Boda",ceremony:"Ceremonia",party:"Fiesta",night:"Salir de noche",date:"Cita",school:"Estudios",holiday:"Vacaciones",cold:"Frío / nieve",rain:"Lluvia"};
 const seasons={all:"Todo el año",warm:"Primavera / verano",cold:"Otoño / invierno"};
 const styleNames={casual:"casual",smart:"arreglado",party:"fiesta",sport:"deporte"};
 const ANALYSIS_FIELDS={pattern:["plain","stripes","checks","floral","animal","dots","graphic","other"],fabric:["unknown","cotton","denim","linen","wool","knit","leather","satin","silk","synthetic","mixed"],length:["na","cropped","regular","midi","long"],formality:["casual","smartcasual","formal","party","sport"]};
@@ -701,8 +701,8 @@ function updateOccasionSummary(){
 }
 /* Reglas estables de uso: complementan a la IA, sin impedir cambios manuales. */
 const OCCASION_BY_TYPE={
- "Pijama":["home","sleep","travel"],"Camisón":["home","sleep","travel"],"Bata":["home","sleep","travel"],
- "Zapatillas de casa":["home","travel"],"Sujetador deportivo":["sport","gym","yoga"],
+ "Pijama":["home","sleep"],"Camisón":["home","sleep"],"Bata":["home","sleep"],
+ "Zapatillas de casa":["home"],"Sujetador deportivo":["sport","gym","yoga"],
  "Mallas deportivas":["sport","gym","yoga"],"Pantalón deportivo":["sport","gym"],
  "Camiseta técnica":["sport","gym","running","hiking"],
  "Bañador":["beach","pool","spa","holiday"],"Bikini":["beach","pool","holiday"],
@@ -1142,7 +1142,7 @@ function renderTrip(root,t){
  $("#extraForm")?.addEventListener("submit",e=>{e.preventDefault();const text=$("#extraText").value.trim();if(text)touch(()=>{t.extras=[...(t.extras||[]),{id:uid(),text,done:false}]})});
  $$("[data-trip-look]",root).forEach(b=>b.addEventListener("click",async()=>{const l=examples[Number(b.dataset.tripLook)];if(!l)return;
   const sig=l.map(x=>x.id).sort().join("|");if(myLooks().some(x=>(x.garmentIds||[]).slice().sort().join("|")===sig))return toast("Ese look ya está guardado");
-  await mutate(()=>myLooks().unshift({id:uid(),name:"Viaje: "+t.name,garmentIds:l.map(x=>x.id),occasion:"travel",ai:false,updatedAt:new Date().toISOString()}),"Look guardado")}));
+  await mutate(()=>myLooks().unshift({id:uid(),name:"Viaje: "+t.name,garmentIds:l.map(x=>x.id),occasion:"daily",ai:false,updatedAt:new Date().toISOString()}),"Look guardado")}));
  $("#tripDelete")?.addEventListener("click",async()=>{if(!confirm("¿Eliminar la maleta «"+t.name+"»?"))return;const id=t.id;if(await mutate(()=>{appState.data.trips=myTrips().filter(x=>x.id!==id);tomb(id)},"Maleta eliminada")){ui.tripId="";render()}});
 }
 
