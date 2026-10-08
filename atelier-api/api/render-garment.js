@@ -22,11 +22,14 @@ export default async function handler(req, res) {
   const timeout=setTimeout(()=>controller.abort(),52000);
   try{
     const form=new FormData();
-    form.append("model",process.env.OPENAI_IMAGE_MODEL||"gpt-image-1-mini");
+    const model=process.env.OPENAI_IMAGE_MODEL||"gpt-image-1";
+    form.append("model",model);
+    if(model==="gpt-image-1")form.append("input_fidelity","high");
     form.append("image",new Blob([binary],{type:mime}),"garment."+({jpeg:"jpg",png:"png",webp:"webp"}[match[1]]));
     form.append("size","1024x1536");
     form.append("quality","medium");
     form.append("output_format","jpeg");
+    form.append("output_compression","85");
     form.append("prompt",[
       "Edit this exact real clothing item into a premium fashion e-commerce product photograph.",
       "Place the garment alone, centered and entirely visible, against pure white (#FFFFFF), in a 2:3 vertical studio framing.",
