@@ -729,7 +729,7 @@ function renderPhotoControls(){
  preview.src=img||"";preview.classList.toggle("hidden",!img);preview.classList.toggle("on-white",!!img&&ph?.mode==="edited"&&!!ph.editedWhite);
  if(!ph||!img){box.innerHTML="";return}
  if(ph.busy){box.innerHTML='<p class="helper" role="status">Mejorando la foto…</p>';return}
- const note=ph.asIs&&ph.mode==="edited"?'<p class="helper">La foto ya tenía aspecto de catálogo: se usa tal cual, sin retocar.</p>':ph.edited&&!ph.editedWhite&&ph.mode==="edited"?'<p class="helper">No he podido quitar el fondo (funciona mejor con la prenda extendida sobre una superficie lisa de otro color); he mejorado la luz y el color.</p>':'';
+ const note=ph.asIs&&ph.mode==="edited"?'<p class="helper">La foto ya tenía aspecto de catálogo: se usa tal cual, sin retocar.</p>':ph.edited&&!ph.editedWhite&&ph.mode==="edited"?'<p class="helper">Hemos mejorado la fotografía, pero hemos conservado el fondo para no alterar la prenda. Para fondo blanco, extiéndela sobre una superficie lisa de otro color.</p>':'';
  box.innerHTML=(ph.asIs?'':ph.edited&&ph.original&&ph.original!==ph.edited
   ?'<div class="seg-tabs photo-mode" role="group" aria-label="Foto que se guarda"><button type="button" class="seg-tab'+(ph.mode==="edited"?' active':'')+'" data-photo-mode="edited" aria-pressed="'+(ph.mode==="edited")+'">'+(ph.editedWhite?"Fondo blanco":"Mejorada")+'</button><button type="button" class="seg-tab'+(ph.mode==="original"?' active':'')+'" data-photo-mode="original" aria-pressed="'+(ph.mode==="original")+'">Original</button></div>'
   :ph.edited?'<p class="helper">Foto mejorada'+(ph.editedWhite?' con fondo blanco':'')+'.</p>'
@@ -1483,7 +1483,7 @@ async function whiteAll(btn){
  }
  if(done)await saveState();
  render();
- toast(done?plural(done,"foto mejorada","fotos mejoradas")+(done-white?" ("+(done-white)+" sin quitar el fondo)":""):"No he podido mejorar ninguna foto");
+ toast(done?plural(done,"foto mejorada","fotos mejoradas")+(done-white?" ("+(done-white)+" conservando el fondo para no alterar la prenda)":""):"No he podido mejorar ninguna foto");
 }
 function renderSettings(root){
  const p=appState.data.preferences,u=aiUsage(),since=daysSince(p.lastBackupAt);
