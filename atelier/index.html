@@ -10,11 +10,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Atelier · Mi Armario</title>
 <link rel="manifest" href="./manifest.json">
-<link rel="stylesheet" href="./styles-v2.css">
-<link rel="stylesheet" href="./styles-v4.css">
-<script src="./app-v2.js" defer></script>
-<script src="./features-v3.js" defer></script>
-<script src="./features-v4.js" defer></script>
+<link rel="stylesheet" href="./atelier.css">
+<script src="./atelier.js" defer></script>
 </head>
 <body>
 <section id="auth" class="auth">
@@ -51,7 +48,7 @@
 <form id="garmentForm">
 <div class="section-head"><h2 id="garmentTitle">Nueva prenda</h2><button type="button" id="closeGarment" class="secondary">Cerrar</button></div>
 <input type="hidden" id="garmentId">
-<div class="field"><label for="garmentImage">Foto de la prenda (obligatoria)</label><input id="garmentImage" type="file" accept="image/*"><img id="garmentPreview" class="garment-preview hidden" alt="Vista previa de la prenda"><button id="analyzeBtn" type="button" class="secondary">✨ Analizar foto</button></div>
+<div class="field"><span class="field-title">Foto de la prenda (obligatoria)</span><div class="photo-buttons"><button type="button" class="secondary" data-photo-pick="garmentCamera">📷 Hacer foto</button><button type="button" class="secondary" data-photo-pick="garmentImage">🖼️ Galería</button></div><input id="garmentImage" class="file-hidden" type="file" accept="image/*" aria-label="Elegir foto de la galería"><input id="garmentCamera" class="file-hidden" type="file" accept="image/*" capture="environment" aria-label="Hacer foto con la cámara"><img id="garmentPreview" class="garment-preview hidden" alt="Vista previa de la prenda"><button id="analyzeBtn" type="button" class="secondary">✨ Analizar foto</button></div>
 <div class="field"><label for="garmentName">Nombre</label><input id="garmentName" maxlength="80" required></div>
 <div class="field"><label for="garmentCategory">Categoría</label><select id="garmentCategory"><option value="">Sin categoría</option><option>Arriba</option><option>Abajo</option><option>Vestidos</option><option>Capas</option><option>Zapatos</option><option>Bolsos</option><option>Accesorios</option></select></div>
 <div class="field"><label for="garmentColor">Color</label><input id="garmentColor" maxlength="60"></div>
