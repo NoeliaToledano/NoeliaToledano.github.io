@@ -171,3 +171,12 @@ p.notice-card{display:block}
 /* Look como composición sobre blanco: las prendas se funden con «multiply» */
 .board{position:relative;aspect-ratio:4/5;background:#fff;isolation:isolate;overflow:hidden;border-bottom:1px solid var(--line)}
 .board img{position:absolute;object-fit:contain;mix-blend-mode:multiply}
+
+/* Login en dos pasos: al seleccionar perfil solo aparece la contraseña */
+.auth-card:has(#passwordStep:not(.hidden)) .auth-prompt,.auth-card:has(#passwordStep:not(.hidden)) .profiles{display:none}
+.auth-back{border:0;background:transparent;color:#80624d;font-weight:650;font-size:13px;padding:8px 0 16px;text-align:left}
+.auth-back:hover{text-decoration:underline}
+.auth-selected-profile{display:flex;align-items:center;gap:14px;padding:16px;margin:0 0 20px;border-radius:16px;background:#f8f0e9}
+.auth-selected-profile .profile-avatar{width:48px;height:48px;background:#b88d73;color:white;font-size:24px}
+.auth-selected-profile strong{display:block;font-family:Georgia,serif;font-size:23px;font-weight:500}
+.auth-selected-caption{display:block;font-size:10px;letter-spacing:.13em;color:#927864;margin-bottom:3px}
