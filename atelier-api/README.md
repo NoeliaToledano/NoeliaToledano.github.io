@@ -18,5 +18,10 @@ Endpoints:
 - GET /api/sync → { rev, data, images } · PUT /api/sync — { baseRev, data } → { rev } (409 si otro dispositivo guardó antes)
 - GET /api/sync-image?id= → { image } · POST /api/sync-image — { id, image }
 
+## Despliegues en Vercel
+- `atelier-api/vercel.json` solo despliega el backend cuando hay cambios en `atelier-api` desde el último despliegue correcto (si no se puede comprobar, despliega).
+- `vercel.json` en la raíz limita a `main` los despliegues del proyecto que publica todo el repositorio: las ramas de las PR ya no crean vistas previas.
+- La cuenta gratuita permite 100 despliegues al día.
+
 ## Activar la sincronización
 En Vercel, abre el proyecto del backend › Storage (o Marketplace) › crea una base de datos **Upstash Redis** (plan gratuito) y conéctala al proyecto. Vercel añade las variables automáticamente; después, vuelve a desplegar.

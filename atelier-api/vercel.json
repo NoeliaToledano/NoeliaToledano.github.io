@@ -1,0 +1,4 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "ignoreCommand": "if [ -n \"$VERCEL_GIT_PREVIOUS_SHA\" ] && git diff --quiet \"$VERCEL_GIT_PREVIOUS_SHA\" HEAD -- . 2>/dev/null; then echo 'Sin cambios en atelier-api desde el ultimo despliegue: se omite'; exit 0; else echo 'Hay cambios en atelier-api (o no se puede comprobar): se despliega'; exit 1; fi"
+}
