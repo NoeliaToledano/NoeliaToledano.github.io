@@ -64,9 +64,9 @@ try{
  await page.locator('[data-view="wardrobe"]').click();
  await page.locator('[data-fav]').first().click();
  await page.getByText("Favoritos actualizados").waitFor();
- page.once("dialog",d=>d.accept(new Date().toISOString().slice(0,10)));
+ page.once("dialog",d=>{console.log("WEAR_DIALOG",d.type(),d.message());return d.accept(new Date().toISOString().slice(0,10))});
  await page.locator('[data-wear]').first().click();
- await page.getByText("Uso registrado").waitFor();
+ await page.getByText("Uso registrado").waitFor({timeout:7000}).catch(async e=>{console.log("WEAR_DIAGNOSTIC",{toast:await page.locator("#toast").textContent(),state:await page.evaluate(()=>({profile:appState.profile?.id,view:appState.view,wearLog:appState.data.wearLog,garments:appState.data.garments.map(g=>g.id),today:dayISO()})),browserErrors:errors});throw e});
  await page.locator('[data-view="shopping"]').click();
  await page.locator('[name="wishName"]').fill("Abrigo de prueba");
  await page.locator('[name="wishPrice"]').fill("80");
