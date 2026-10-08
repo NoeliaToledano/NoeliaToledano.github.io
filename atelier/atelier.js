@@ -618,7 +618,7 @@ async function enterApp(){
  if(p.tempDefault25!==true){if(!p.autoWeather)p.temperature=DEFAULT_TEMPERATURE;p.tempDefault25=true;await saveState({fromSync:true})}
  $("#auth").classList.add("hidden");$("#app").classList.remove("hidden");$("#profileName").textContent=appState.profile.name+" · Ajustes";
  appState.view="today";
- $(".nav-btn").forEach(b=>{const active=b.dataset.view==="today";b.classList.toggle("active",active);if(active)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
+ $$(".nav-btn").forEach(b=>{const active=b.dataset.view==="today";b.classList.toggle("active",active);if(active)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
  render();
  await ensurePersistence();
  syncNow();
