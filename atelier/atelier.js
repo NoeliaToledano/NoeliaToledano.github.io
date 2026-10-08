@@ -1008,13 +1008,15 @@ function renderStylist(root){
   '<label class="field"><span>Temperatura exterior (°C; por defecto '+DEFAULT_TEMPERATURE+')</span><input id="prefTemperature" type="number" min="-30" max="55" step="1" placeholder="Si lo dejas vacío, uso '+DEFAULT_TEMPERATURE+' °C" value="'+fx(currentTemperature())+'"></label>'+
   '<div class="weather-line"><button type="button" class="chip-button" id="useWeather">📍 Usar el tiempo de hoy</button>'+(p.autoWeather?'<button type="button" class="chip-button" id="stopWeather">Volver a '+DEFAULT_TEMPERATURE+' °C</button>':'')+'</div>'+(info?'<p class="helper">'+fx(info)+'</p>':'')+
   '<div class="field"><label for="prefDiversity">Diversidad <abbr title="Cuánto priorizar prendas poco usadas para variar tus looks">ⓘ</abbr>: <strong id="diversityText">'+fx(p.diversity)+'</strong>%</label><input id="prefDiversity" type="range" min="0" max="100" step="5" value="'+fx(p.diversity)+'"></div>'+
+  extrasTogglesHtml()+
   '<label class="switch-line"><input id="prefAvoid" type="checkbox"'+(p.avoidRepeats?' checked':'')+'> Evitar repetir combinaciones recientes</label>'+
   '<button class="primary wide" id="suggestSmart">✦ Generar looks con mi ropa</button>'+
   '<p class="helper">Se envían solo los nombres y atributos de tus prendas, nunca las fotos. Sugerencias con IA hoy: '+u.looks+' de '+AI_LIMITS.looks+'.</p></div>'+
   '<div class="actions"><button class="secondary" id="createManual">+ Crear look manual</button><button class="secondary" id="openCalendar">Calendario de uso</button></div>'+
   '<div class="section-head"><h2>Rescata una prenda olvidada</h2></div>'+
   (candidates.length?'<div class="insight-list">'+candidates.map(g=>'<button class="list-line link-line" data-rescue="'+fx(g.id)+'"><strong>'+fx(g.name)+'</strong><span class="muted">'+fx(plural(wornCount(g.id),"uso","usos"))+' · ver looks ›</span></button>').join("")+'</div>':'<div class="empty">No tienes prendas olvidadas. ¡Bien!</div>'));
- $("#prefOccasion")?.addEventListener("change",e=>setPref("occasion",e.target.value,false));
+ $("#prefOccasion")?.addEventListener("change",e=>setPref("occasion",e.target.value,true));
+ bindExtrasToggles(root);
  $("#prefSeason")?.addEventListener("change",e=>setPref("season",e.target.value,false));
  $("#prefTemperature")?.addEventListener("change",e=>{const v=e.target.value,n=Number(v);if(v===""||(Number.isFinite(n)&&n>=-30&&n<=55)){p.autoWeather=false;setPref("temperature",v===""?DEFAULT_TEMPERATURE:n,v==="")}else toast("Introduce entre -30 y 55 °C")});
  $("#prefDiversity")?.addEventListener("input",e=>{$("#diversityText").textContent=e.target.value;setPref("diversity",Number(e.target.value),false)});
@@ -1035,7 +1037,8 @@ async function suggestLooks(){
  const btn=$("#aiLooks")||$("#suggestSmart");if(!btn||btn.disabled)return;btn.disabled=true;btn.textContent="Pensando…";
  try{
   const p=appState.data.preferences;
-  const items=recommendGarments().slice(0,24).map(g=>({i:g.id,n:g.name,c:g.category||"",color:g.color||"",style:g.style||"",pattern:g.pattern||"",formality:g.formality||"",forgotten:forgottenStatus(g).forgotten}));
+  const ex=lookExtras();
+  const items=recommendGarments().filter(g=>(ex.shoes||g.category!=="Zapatos")&&(ex.bag||g.category!=="Bolsos")).slice(0,24).map(g=>({i:g.id,n:g.name,c:g.category||"",color:g.color||"",style:g.style||"",pattern:g.pattern||"",formality:g.formality||"",forgotten:forgottenStatus(g).forgotten}));
   const recent=logs().slice(0,8).flatMap(l=>l.garmentIds||[]),avoid=p.avoidRepeats?[...new Set(recent)].slice(0,12):[];
   const fb=appState.data.feedback||{},taste=v=>myLooks().filter(l=>fb[l.id]===v&&Array.isArray(l.garmentIds)&&l.garmentIds.length>1).slice(0,4).map(l=>l.garmentIds.slice(0,6));
   const body={items,need:3,liked:taste("up"),disliked:taste("down"),occasion:p.occasion||"daily",season:p.season||"all",weather:currentTemperature()+" °C",avoid};
@@ -1174,6 +1177,16 @@ function renderLooks(root){
  $$("[data-look-wear]",root).forEach(b=>b.addEventListener("click",()=>{const l=myLooks().find(l=>l.id===b.dataset.lookWear);if(l)promptWear(l.garmentIds,l.id)}));
  $$("[data-feedback]",root).forEach(b=>b.addEventListener("click",async()=>{const id=b.dataset.feedback;await mutate(()=>{if(fb[id]===b.dataset.vote)delete fb[id];else fb[id]=b.dataset.vote},"Preferencia guardada")}));
 }
+/* Complementos en las propuestas: calzado y bolso se pueden quitar (preferencia por perfil).
+   En «Estar en casa» y «Playa y piscina» el calzado no se añade nunca. */
+const NO_SHOES_OCCASIONS=new Set(["home","beach"]);
+function lookExtras(){const p=appState.data.preferences;return {shoes:p.lookShoes!==false&&!NO_SHOES_OCCASIONS.has(p.occasion),bag:p.lookBag!==false}}
+function extrasTogglesHtml(){
+ const p=appState.data.preferences,auto=NO_SHOES_OCCASIONS.has(p.occasion);
+ return '<div class="extras-line" role="group" aria-label="Qué incluir en las propuestas"><label class="switch-line"><input type="checkbox" data-extra-pref="lookShoes"'+(p.lookShoes!==false?' checked':'')+(auto?' disabled':'')+'> Incluir calzado</label><label class="switch-line"><input type="checkbox" data-extra-pref="lookBag"'+(p.lookBag!==false?' checked':'')+'> Incluir bolso</label></div>'+
+  (auto?'<p class="helper">Con la ocasión «'+fx(occasions[p.occasion]||"")+'» las propuestas no llevan calzado.</p>':'');
+}
+function bindExtrasToggles(root,after){$$("[data-extra-pref]",root).forEach(c=>c.addEventListener("change",async()=>{appState.data.preferences[c.dataset.extraPref]=c.checked;await saveState();after?after():render()}))}
 /* Combinar una prenda: looks calculados en el móvil, sin IA */
 function looksAround(g,max=8){
  const gs=myGarments().filter(x=>x.id!==g.id&&!notInSeason(x));
@@ -1185,7 +1198,7 @@ function looksAround(g,max=8){
  else if(g.category==="Vestidos")bases=[[g]];
  else if(g.category)bases=outfitBases(gs).filter(p=>p.every(x=>pairs(g,x))).map(p=>[...p,g]);
  const cold=thisSeason()==="cold"||currentTemperature()<17;
- const looks=bases.map(base=>{const l=[...base];for(const cat of ["Zapatos",cold?"Capas":null,"Bolsos"]){if(!cat||l.some(x=>x.category===cat))continue;const s=best(cat,l);if(s)l.push(s)}return l}).filter(l=>l.length>=2);
+ const looks=bases.map(base=>{const l=[...base];const ex=lookExtras();for(const cat of [ex.shoes?"Zapatos":null,cold?"Capas":null,ex.bag?"Bolsos":null]){if(!cat||l.some(x=>x.category===cat))continue;const s=best(cat,l);if(s)l.push(s)}return l}).filter(l=>l.length>=2);
  const seen=new Set();
  return looks.map(l=>({l,s:l.reduce((t,x)=>t+(x.id===g.id?0:score(x)),0)})).sort((a,b)=>b.s-a.s).map(x=>x.l)
   .filter(l=>{const k=l.map(x=>x.id).sort().join("|");if(seen.has(k))return false;seen.add(k);return true}).slice(0,max);
@@ -1193,11 +1206,12 @@ function looksAround(g,max=8){
 function renderAround(root){
  const gs=myGarments().slice().sort((a,b)=>String(a.name).localeCompare(String(b.name),"es")),sel=gs.find(g=>g.id===ui.aroundId),looks=sel?looksAround(sel):[];
  let body='<div class="feature-card" id="aroundCard"><div class="section-head"><h2>Combina una prenda</h2><span class="muted">Sin IA</span></div>'+
-  '<label class="field"><span>¿Qué prenda quieres ponerte?</span><select id="aroundSelect">'+optionList([["","Elige una prenda"],...gs.map(g=>[g.id,g.name+(g.category?" · "+g.category:"")])],ui.aroundId)+'</select></label>';
+  extrasTogglesHtml()+'<label class="field"><span>¿Qué prenda quieres ponerte?</span><select id="aroundSelect">'+optionList([["","Elige una prenda"],...gs.map(g=>[g.id,g.name+(g.category?" · "+g.category:"")])],ui.aroundId)+'</select></label>';
  if(sel)body+=looks.length?'<p class="muted">'+plural(looks.length,"combinación","combinaciones")+' con «'+fx(sel.name)+'», empezando por las prendas que menos usas.</p><div class="grid">'+looks.map((l,i)=>'<div class="look-tile"><article class="card">'+outfitBoard(l)+'<div class="card-body"><div class="look-items">'+l.map(x=>'<span class="look-chip'+(x.id===sel.id?' new':'')+'">'+fx(x.name)+'</span>').join("")+'</div></div></article><div class="tile-tools"><button class="chip-button" data-around-save="'+i+'">Guardar look</button><button class="chip-button" data-around-wear="'+i+'">✓ Llevado</button></div></div>').join("")+'</div>'
   :'<p class="muted">No encuentro combinaciones para esta prenda con tu armario actual. Mira «Recomendaciones» en Compras para ver qué le falta.</p>';
  stylistShell(root,"Tu estilista","Elige una prenda y te digo con qué ponértela.",body+'</div>');
  $("#aroundSelect")?.addEventListener("change",e=>{ui.aroundId=e.target.value;render()});
+ bindExtrasToggles(root);
  $$("[data-around-save]",root).forEach(b=>b.addEventListener("click",async()=>{const l=looks[Number(b.dataset.aroundSave)];if(!l)return;
   const sig=l.map(x=>x.id).sort().join("|");if(myLooks().some(x=>(x.garmentIds||[]).slice().sort().join("|")===sig))return toast("Ese look ya está guardado");
   await mutate(()=>myLooks().unshift({id:uid(),name:"Con "+sel.name,garmentIds:l.map(x=>x.id),occasion:appState.data.preferences.occasion||"daily",ai:false,updatedAt:new Date().toISOString()}),"Look guardado")}));
@@ -1245,7 +1259,7 @@ function dayProposals(date,max=3){
  const cold=date===dayISO()&&appState.data.preferences.autoWeather?currentTemperature()<17:season==="cold";
  const gScore=g=>(g.favorite?1:0)+(forgottenStatus(g).forgotten?1.5:1/(1+wornCount(g.id)))-(near.has(g.id)?3:0);
  const best=(cat,pieces)=>gs.filter(x=>x.category===cat&&pieces.every(p=>pairs(x,p))).sort((a,b)=>gScore(b)-gScore(a))[0];
- const looks=outfitBases(gs).map(base=>{const l=[...base];for(const cat of ["Zapatos",cold?"Capas":null]){if(!cat)continue;const s=best(cat,l);if(s)l.push(s)}
+ const ex=lookExtras(),looks=outfitBases(gs).map(base=>{const l=[...base];for(const cat of [ex.shoes?"Zapatos":null,cold?"Capas":null,ex.bag?"Bolsos":null]){if(!cat)continue;const s=best(cat,l);if(s)l.push(s)}
   let sc=l.reduce((t,g)=>t+gScore(g),0);for(const k of lookTraits({garmentIds:l.map(g=>g.id)})){if(likeT.has(k))sc+=1.5;if(disT.has(k))sc-=1.5}return {l,sc}}).sort((a,b)=>b.sc-a.sc);
  // Variedad: cada propuesta comparte como mucho el calzado con las anteriores
  const out=[];for(const c of looks){if(out.length>=max)break;if(out.some(o=>c.l.some(g=>g.category!=="Zapatos"&&o.includes(g))))continue;out.push(c.l)}
@@ -1264,8 +1278,9 @@ const miniLook=(gs,extra="")=>'<div class="mini-look"><div class="mini-look-img"
 function openPlanPicker(date){
  const props=dayProposals(date),saved=myLooks().filter(l=>(l.garmentIds||[]).some(id=>myGarments().some(g=>g.id===id))).slice(0,30);
  const {el,close}=showSheet("planSheet",'<div class="section-head"><h2 id="planSheetTitle">'+fx(capFirst(weekdayName(date))+" "+fmtDay(date))+'</h2><button type="button" class="secondary" data-close-sheet>Cerrar</button></div>'+
-  '<h3>Propuestas para ese día</h3>'+(props.length?'<div class="plan-options">'+props.map((l,i)=>miniLook(l,'<button type="button" class="primary" data-plan-prop="'+i+'">Usar este look</button>')).join("")+'</div>':'<p class="muted">Añade prendas de arriba y de abajo (o vestidos) para recibir propuestas.</p>')+
+  '<h3>Propuestas para ese día</h3>'+extrasTogglesHtml()+(props.length?'<div class="plan-options">'+props.map((l,i)=>miniLook(l,'<button type="button" class="primary" data-plan-prop="'+i+'">Usar este look</button>')).join("")+'</div>':'<p class="muted">Añade prendas de arriba y de abajo (o vestidos) para recibir propuestas.</p>')+
   '<h3>Tus looks guardados</h3>'+(saved.length?'<div class="plan-options">'+saved.map((l,i)=>miniLook((l.garmentIds||[]).map(id=>myGarments().find(g=>g.id===id)).filter(Boolean),'<strong>'+fx(l.name)+'</strong><button type="button" class="secondary" data-plan-saved="'+i+'">Usar este look</button>')).join("")+'</div>':'<p class="muted">Todavía no tienes looks guardados.</p>'));
+ bindExtrasToggles(el,()=>{close();openPlanPicker(date)});
  $$("[data-plan-prop]",el).forEach(b=>b.addEventListener("click",async()=>{const l=props[Number(b.dataset.planProp)];close();await setPlan(date,l.map(g=>g.id),{name:"Propuesta de Atelier"})}));
  $$("[data-plan-saved]",el).forEach(b=>b.addEventListener("click",async()=>{const l=saved[Number(b.dataset.planSaved)];close();await setPlan(date,l.garmentIds,{name:l.name,lookId:l.id})}));
 }
