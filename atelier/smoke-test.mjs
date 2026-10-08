@@ -62,6 +62,9 @@ try{
  await page.getByText("Look de prueba IA").waitFor();
  await page.locator('[data-view="wardrobe"]').click();
  await page.locator('[data-fav]').first().click();
+ page.once("dialog",d=>d.accept(new Date().toISOString().slice(0,10)));
+ await page.locator('[data-wear]').first().click();
+ await page.getByText("Uso registrado").waitFor();
  await page.locator('[data-view="shopping"]').click();
  await page.locator('[name="wishName"]').fill("Abrigo de prueba");
  await page.locator('[name="wishPrice"]').fill("80");
@@ -71,6 +74,7 @@ try{
  await page.getByRole("heading",{name:"Prendas olvidadas"}).waitFor();
  await page.locator("#goCalendar").click();
  await page.getByRole("heading",{name:"Calendario de looks"}).waitFor();
+ assert.ok(await page.locator("[data-remove-use]").count()>0,"Wear records must appear in calendar");
  await page.locator('[data-view="stylist"]').click();
  await page.locator("#prefDiversity").evaluate(el=>{el.value="80";el.dispatchEvent(new Event("input",{bubbles:true}))});
  await page.locator("#openLooks").click();
