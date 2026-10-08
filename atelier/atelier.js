@@ -764,6 +764,7 @@ async function analyzeGarment(){
  const btn=$("#analyzeBtn");if(btn.disabled)return;btn.disabled=true;btn.textContent="Analizando…";setAnalyzeStatus("La IA está completando tu ficha…");
  try{
   const out=await api("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image})});
+  if(sheetPhoto!==ph)return; // No aplicar un análisis antiguo a una foto nueva.
   const d=mapAnalysis(out.garment||out.result||out);lastAnalysis=cleanAnalysis(d);
   $("#garmentName").value=d.name||"Prenda sin identificar";$("#garmentCategory").value=d.category||"";syncGarmentCategory(true);const typeOptions=GARMENT_TYPES[d.category]||[];const detected=[d.garmentType,d.subtype].find(t=>typeof t==="string"&&typeOptions.some(o=>o.toLocaleLowerCase("es")===t.trim().toLocaleLowerCase("es")));if(detected)$("#garmentType").value=typeOptions.find(t=>t.toLocaleLowerCase("es")===detected.trim().toLocaleLowerCase("es"));$("#garmentColor").value=d.color||"";
   $("#garmentStyle").value=d.style||"";$("#garmentSeason").value=d.season||"all";if(d.notes&&!$("#garmentNotes").value.trim())$("#garmentNotes").value=d.notes;
