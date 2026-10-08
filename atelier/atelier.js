@@ -10,7 +10,7 @@
 
 /* ===================== 1. Configuración y utilidades ===================== */
 const API_BASE="https://atelier-ai-backend-pi.vercel.app";
-const PROFILES=[{id:"noelia",name:"Noelia"},{id:"ana-maria",name:"Ana María"},{id:"irene",name:"Irene"}];
+const PROFILES=[{id:"noelia",name:"Noelia"},{id:"ana-maria",name:"Ana María"},{id:"irene",name:"Irene"},{id:"eva",name:"Eva"},{id:"virginia",name:"Virginia"}];
 const DB_NAME="atelier-armario-db",DB_VERSION=2,STORE="kv";
 const IMAGE_MAX=900,IMAGE_QUALITY=.8,AI_IMAGE_MAX=512;
 const AI_LIMITS={analyze:40,looks:20},DEFAULT_TEMPERATURE=25;
