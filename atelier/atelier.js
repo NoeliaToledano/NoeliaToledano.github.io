@@ -636,20 +636,20 @@ async function enhanceGarmentPhoto(src){
  return canvas.toDataURL("image/jpeg",IMAGE_QUALITY);
 }
 let sheetPhoto=null;
-const sheetImage=()=>sheetPhoto?(sheetPhoto.mode==="white"&&sheetPhoto.white?sheetPhoto.white:sheetPhoto.mode==="enhanced"&&sheetPhoto.enhanced?sheetPhoto.enhanced:sheetPhoto.original):null;
+const sheetImage=()=>sheetPhoto?(sheetPhoto.mode==="generated"&&sheetPhoto.generated?sheetPhoto.generated:sheetPhoto.mode==="white"&&sheetPhoto.white?sheetPhoto.white:sheetPhoto.mode==="enhanced"&&sheetPhoto.enhanced?sheetPhoto.enhanced:sheetPhoto.original||sheetPhoto.generated):null;
 function renderPhotoControls(){
  const box=$("#photoControls");if(!box)return;
  const ph=sheetPhoto,preview=$("#garmentPreview"),img=sheetImage();
  preview.src=img||"";preview.classList.toggle("hidden",!img);preview.classList.toggle("on-white",!!img&&ph?.mode==="white");
  if(!ph||!img){box.innerHTML="";return}
- if(ph.busy){box.innerHTML='<p class="helper" role="status">Preparando una versión con fondo blanco…</p>';return}
- const modes=[...(ph.white?[["white","Fondo blanco"]]:[]),...(ph.enhanced?[["enhanced","Mejorada"]]:[]),["original","Original"]];
+ if(ph.generating){box.innerHTML='<p class="helper" role="status">✨ Creando una foto de catálogo con IA…</p>';return}
+ const modes=[...(ph.generated?[["generated","Foto de catálogo"]]:[]),...(ph.white?[["white","Fondo blanco"]]:[]),...(ph.enhanced?[["enhanced","Mejorada"]]:[]),...(ph.original?[["original","Original"]]:[])];
  box.innerHTML=(modes.length>1?'<div class="seg-tabs photo-mode" role="group" aria-label="Foto que se guarda">'+modes.map(([mode,label])=>'<button type="button" class="seg-tab'+(ph.mode===mode?' active':'')+'" data-photo-mode="'+mode+'" aria-pressed="'+(ph.mode===mode)+'">'+label+'</button>').join("")+'</div>':'')+
- (!ph.white?'<button type="button" class="secondary wide" id="makeWhite">Volver a probar fondo blanco</button>':'')+
+ 
  (ph.enhanced?'<p class="helper">La foto era oscura: hemos ajustado suavemente la luz. Puedes conservar la original.</p>':'')+
- (ph.failed?'<p class="helper">No se pudo separar bien el fondo; se conserva la foto sin modificar.</p>':'');
+ (ph.failed?'<p class="helper">La generación no se completó. Puedes guardar la fotografía original.</p>':'');
  $$("[data-photo-mode]",box).forEach(b=>b.addEventListener("click",()=>{ph.mode=b.dataset.photoMode;ph.changed=true;renderPhotoControls()}));
- $("#makeWhite",box)?.addEventListener("click",()=>makeSheetWhite());
+ 
 }
 async function makeSheetWhite(){
  const ph=sheetPhoto;if(!ph?.original||ph.busy)return;
@@ -658,6 +658,25 @@ async function makeSheetWhite(){
  if(sheetPhoto!==ph)return;
  ph.busy=false;if(white){ph.white=white;ph.mode="white";ph.changed=true}else ph.failed=true;
  renderPhotoControls();
+}
+async function generateGarmentCatalogPhoto(ph){
+ if(!ph?.original||ph.generating||sheetPhoto!==ph)return;
+ ph.generating=true;ph.failed=false;renderPhotoControls();
+ setAnalyzeStatus("Generando una nueva foto de catálogo…");
+ try{
+  const source=ph.original;
+  const out=await api("/api/render-garment",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image:source})});
+  if(sheetPhoto!==ph)return;
+  if(!validImage(out?.image))throw new Error("INVALID_GENERATED_IMAGE");
+  // Reduce la foto generada antes de persistirla o sincronizarla.
+  const output=await shrinkDataUrl(out.image);
+  if(sheetPhoto!==ph)return;
+  if(!validImage(output))throw new Error("INVALID_GENERATED_IMAGE");
+  ph.generated=output;ph.mode="generated";ph.changed=true;
+  setAnalyzeStatus("Foto de catálogo lista. Revisa que los detalles coincidan con la prenda real.");
+ }catch(err){
+  if(sheetPhoto===ph){console.warn("CATALOG_IMAGE",err?.message);ph.failed=true;setAnalyzeStatus("No se pudo crear una imagen fiel. Conservamos tu fotografía original o mejorada.")}
+ }finally{ph.generating=false;if(sheetPhoto===ph)renderPhotoControls()}
 }
 /* Ficha de características dentro de la hoja de la prenda (se crea una vez) */
 function buildMetadataSection(){
@@ -719,8 +738,8 @@ function syncGarmentCategory(resetType=false){
 function openGarment(id){
  const g=myGarments().find(x=>x.id===id);
  $("#garmentTitle").textContent=g?"Editar prenda":"Nueva prenda";$("#garmentId").value=g?.id||"";$("#garmentName").value=g?.name||"";$("#garmentCategory").value=g?.category||"";$("#garmentColor").value=g?.color||"";$("#garmentNotes").value=g?.notes||"";$("#garmentSeason").value=g?.season||"all";$("#garmentStyle").value=g?.style||"";$("#garmentPrice").value=g?.price??"";$("#garmentBought").value=g?.boughtAt||"";$("#garmentFavorite").checked=!!g?.favorite;$("#garmentImage").value="";$("#garmentCamera").value="";
- sheetPhoto=validImage(g?.image)?(g.bgWhite?{original:null,white:g.image,mode:"white",changed:false}:{original:g.image,white:null,mode:"original",changed:false}):null;
- if(sheetPhoto&&g.bgWhite){const ph=sheetPhoto;dbGet(origKey(g.id)).then(o=>{if(sheetPhoto===ph&&validImage(o)){ph.original=o;renderPhotoControls()}}).catch(()=>{})}
+ sheetPhoto=validImage(g?.image)?(g.aiGenerated?{original:null,generated:g.image,mode:"generated",changed:false}:g.bgWhite?{original:null,white:g.image,mode:"white",changed:false}:{original:g.image,mode:"original",changed:false}):null;
+ if(sheetPhoto&&(g.bgWhite||g.aiGenerated)){const ph=sheetPhoto;dbGet(origKey(g.id)).then(o=>{if(sheetPhoto===ph&&validImage(o)){ph.original=o;renderPhotoControls()}}).catch(()=>{})}
  syncGarmentCategory();$("#garmentType").value=g?.type||"";
  $("#deleteGarment").classList.toggle("hidden",!g);
  let btn=$("#garmentAround");
@@ -731,22 +750,22 @@ function openGarment(id){
  const extra=$("#garmentExtra");if(extra)extra.open=!!g;
  lastAnalysis=null;$("#garmentSheet").classList.remove("hidden");
 }
-function closeGarment(){$("#garmentSheet").classList.add("hidden")}
+function closeGarment(){sheetPhoto=null;$("#garmentSheet").classList.add("hidden")}
 async function saveGarment(e){
  e.preventDefault();
  const id=$("#garmentId").value||uid(),old=myGarments().find(x=>x.id===id),ph=sheetPhoto;
- if(ph?.busy)return toast("Espera a que termine el fondo blanco");
+ if(ph?.generating||ph?.analyzing)return toast("Espera a que termine el procesamiento de la fotografía");
  const image=sheetImage()||old?.image||"",changed=!!ph?.changed&&image!==old?.image,white=!!ph&&ph.mode==="white"&&!!ph.white;
  if(!validImage(image)&&!old?.hasImage)return toast("Añade una fotografía de la prenda antes de guardarla");
  const kept=Object.fromEntries(Object.entries(old||{}).filter(([k])=>!META_KEYS.has(k)));
  const g={...kept,...readMetadata(),id,name:$("#garmentName").value.trim()||"Sin nombre",category:$("#garmentCategory").value,type:$("#garmentType").value,color:$("#garmentColor").value.trim(),notes:$("#garmentNotes").value.trim(),season:$("#garmentSeason").value,style:$("#garmentStyle").value,price:$("#garmentPrice").value===""?null:Number($("#garmentPrice").value),boughtAt:$("#garmentBought").value,favorite:$("#garmentFavorite").checked,createdAt:old?.createdAt||new Date().toISOString(),image,updatedAt:new Date().toISOString()};
  if(!validImage(image)&&old?.hasImage)g.hasImage=true;
- if(ph)g.bgWhite=white;
+ if(ph){g.bgWhite=white;g.aiGenerated=ph.mode==="generated"&&!!ph.generated;}
  g.imageAt=changed?new Date().toISOString():old?.imageAt;if(!g.imageAt)delete g.imageAt;
  const i=myGarments().findIndex(x=>x.id===id);if(i>=0)myGarments()[i]=g;else myGarments().unshift(g);
  if(!await saveState())return;
  // La original se guarda solo en este móvil, para poder volver a ella; se toca solo si el guardado ha ido bien
- try{if(white&&validImage(ph.original))await dbSet(origKey(id),ph.original);else if(ph&&!white)await dbBatch([],[origKey(id)])}catch(err){console.warn("ORIG",err)}
+ try{if((white||g.aiGenerated)&&validImage(ph.original))await dbSet(origKey(id),ph.original);else if(ph&&!white&&!g.aiGenerated)await dbBatch([],[origKey(id)])}catch(err){console.warn("ORIG",err)}
  closeGarment();render();toast("Prenda guardada");
 }
 async function deleteGarment(){
@@ -1419,7 +1438,7 @@ function bind(){
   let original;try{original=await readImage(f)}catch(err){return toast(err.message==="IMAGE_TOO_LARGE"?"La imagen es demasiado grande":"No se pudo leer la foto")}
   const ph=sheetPhoto={original,enhanced:null,white:null,mode:"original",changed:true};renderPhotoControls();
   try{ph.enhanced=await enhanceGarmentPhoto(original);if(sheetPhoto!==ph)return;if(ph.enhanced)ph.mode="enhanced";renderPhotoControls()}catch(err){console.warn("PHOTO_ENHANCE",err)}
-  if(sheetPhoto===ph){analyzeGarment();makeSheetWhite()} };
+  if(sheetPhoto===ph){analyzeGarment();generateGarmentCatalogPhoto(ph)} };
  $("#garmentImage").addEventListener("change",onPhoto);$("#garmentCamera").addEventListener("change",onPhoto);
  // Botones «Hacer foto» y «Galería»: abren el selector correspondiente (en la ficha y en «¿Lo compro?»)
  document.addEventListener("click",e=>{const b=e.target.closest?.("[data-photo-pick]");if(b)$("#"+b.dataset.photoPick)?.click()});
