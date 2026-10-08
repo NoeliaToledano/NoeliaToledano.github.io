@@ -5,7 +5,7 @@ const context=await browser.newContext({...devices["iPhone 13"],browserName:unde
 const page=await context.newPage();
 const errors=[];
 let forceUnauthorized=false,forceServerError=false;
-page.on("pageerror",e=>errors.push(e.message));
+page.on("pageerror",e=>{errors.push(e.message);console.log("PAGEERROR_STACK",e.stack)});
 page.on("console",m=>{if(m.type()==="error")console.log("BROWSER_CONSOLE",m.text())});
 page.on("requestfailed",r=>console.log("FAILED_REQUEST",r.url(),r.failure()?.errorText));
 await page.route("https://atelier-ai-backend-pi.vercel.app/**",async route=>{
