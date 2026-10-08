@@ -700,7 +700,7 @@ function thumbs(list,max=12){
 function garmentCard(g){const image=validImage(g.image)?g.image:"";return `<article class="card" data-garment="${esc(g.id)}"><div class="card-img"${image?` style="background-image:url(${image})"`:""}></div><div class="card-body"><div class="card-title">${esc(g.name||"Sin nombre")}</div><div class="card-meta">${esc([g.category,g.color].filter(Boolean).join(" · "))}</div></div></article>`}
 function lookCard(l){
  const gs=(l.garmentIds||[]).map(id=>myGarments().find(g=>g.id===id)).filter(Boolean),imgs=gs.map(g=>g.image).filter(validImage);
- return '<article class="card" data-look="'+esc(l.id)+'">'+outfitBoard(gs)+'<div class="card-body"><div class="card-title">'+esc(l.name)+'</div><div class="look-items">'+gs.map(g=>'<span class="look-chip">'+esc(g.name)+'</span>').join("")+'</div></div></article>';
+ return '<article class="card" data-look="'+esc(l.id)+'">'+outfitBoard(gs)+'<div class="card-body"><div class="card-title">'+esc(l.name)+'</div><div class="look-items">'+gs.map(g=>'<span class="look-chip">'+(validImage(g.image)?'<img class="look-chip-photo" src="'+g.image+'" alt="" loading="lazy">':'<span class="look-chip-placeholder" aria-hidden="true">◇</span>')+'<span class="look-chip-name">'+esc(g.name||g.category||"Prenda")+'</span></span>').join("")+'</div></div></article>';
 }
 function safetyBanner(){
  const p=appState.data.preferences,msgs=[];

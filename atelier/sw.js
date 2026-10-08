@@ -1,4 +1,4 @@
-const CACHE="atelier-shell-v46";
+const CACHE="atelier-shell-v47";
 const ASSETS=["./","./atelier.css","./atelier.js","./manifest.json"];
 self.addEventListener("install",event=>{
  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()));

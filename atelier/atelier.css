@@ -259,3 +259,10 @@ p.notice-card{display:block}
 :where(.section-head h2,.hero h1,.day-head strong){overflow-wrap:anywhere}
 @media(max-width:360px){.nav-btn{font-size:11px;letter-spacing:-.1px}.bottom-nav{padding-inline:2px}.content{padding-inline:12px}.section-head{gap:8px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition-duration:0.01ms!important;animation-duration:0.01ms!important}}
+
+/* D4: prendas reconocibles en tarjetas de looks, también con nombres repetidos. */
+.look-items{flex-wrap:wrap;overflow:visible;gap:6px}
+.look-chip{display:inline-flex;align-items:center;gap:6px;max-width:100%;min-height:34px;padding:3px 8px 3px 3px;white-space:normal;text-align:left}
+.look-chip-photo,.look-chip-placeholder{display:block;flex:none;width:28px;height:28px;border-radius:7px;object-fit:contain;background:#fff;border:1px solid var(--line)}
+.look-chip-placeholder{display:grid;place-items:center;color:var(--muted);font-size:16px}
+.look-chip-name{min-width:0;overflow-wrap:anywhere;font-size:12px;line-height:1.25}
