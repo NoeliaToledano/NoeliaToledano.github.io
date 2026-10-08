@@ -1053,6 +1053,49 @@ async function suggestLooks(){
  }catch(e){console.error("LOOKS_AI",e);if(e.message!=="AI_QUOTA")toast(e.message==="SESSION_EXPIRED"?"La sesión ha caducado":"No se pudieron generar looks")}
  finally{const a=$("#aiLooks"),s=$("#suggestSmart");if(a){a.disabled=false;a.textContent="✦ Sugerir nuevos looks"}if(s){s.disabled=false;s.textContent="✦ Generar looks con mi ropa"}}
 }
+/* Tus gustos: rasgos de los looks que te gustan (👍 o ♥) y de los que no (👎), calculado en el móvil, sin IA.
+   Cada look se describe con rasgos (monocromático, con estampados, con color, vestido, estilo…) y se compara
+   cuántas veces gusta un rasgo con lo que gustan los looks en general. Solo se muestra con datos suficientes. */
+const TASTE_LABELS={mono:"looks monocromáticos (un solo color)",neutral:"looks solo en neutros",color:"looks con color",multicolor:"looks con varios colores",pattern:"looks con estampados",plain:"looks lisos, sin estampados",dress:"looks con vestido o mono",layer:"looks con una capa encima"};
+function lookTraits(l){
+ const byId=new Map(myGarments().map(g=>[g.id,g])),gs=(l.garmentIds||[]).map(id=>byId.get(id)).filter(Boolean),t=new Set();
+ const main=gs.filter(g=>["Arriba","Abajo","Vestidos","Capas"].includes(g.category));
+ const tones=main.map(g=>{const c=colorInfo(g.color,g.pattern);return c.fam==="neutro"?"n:"+c.word.replace(/a$/,"o"):c.fam}).filter(Boolean);
+ const fams=new Set(main.map(g=>colorInfo(g.color,g.pattern).fam).filter(f=>f&&f!=="neutro"&&f!=="estampado"));
+ if(tones.length>=2&&new Set(tones).size===1)t.add("mono");
+ if(tones.length>=2&&tones.every(x=>x.startsWith("n:"))&&!t.has("mono"))t.add("neutral");
+ if(fams.size>=1)t.add("color");if(fams.size>=2)t.add("multicolor");
+ for(const f of fams)t.add("fam:"+f);
+ if(gs.some(g=>(g.pattern&&g.pattern!=="plain")||colorInfo(g.color).fam==="estampado"))t.add("pattern");else if(gs.length)t.add("plain");
+ if(gs.some(g=>g.category==="Vestidos"))t.add("dress");if(gs.some(g=>g.category==="Capas"))t.add("layer");
+ const st=gs.map(g=>g.style).filter(Boolean),top=st.sort((a,b)=>st.filter(x=>x===b).length-st.filter(x=>x===a).length)[0];
+ if(top&&st.filter(x=>x===top).length*2>st.length)t.add("style:"+top);
+ return t;
+}
+const tasteLabel=k=>TASTE_LABELS[k]||(k.startsWith("fam:")?"looks con "+k.slice(4):k.startsWith("style:")?"looks de estilo "+(styleNames[k.slice(6)]||k.slice(6)):k);
+function tasteProfile(){
+ const fb=appState.data.feedback||{},looks=myLooks().filter(l=>(l.garmentIds||[]).length>=2);
+ const vote=l=>fb[l.id]==="down"?-1:fb[l.id]==="up"||l.favorite?1:0;
+ const N=looks.length,U=looks.filter(l=>vote(l)>0).length,D=looks.filter(l=>vote(l)<0).length,stats=new Map();
+ for(const l of looks){const v=vote(l);for(const k of lookTraits(l)){const s=stats.get(k)||{n:0,u:0,d:0};s.n++;if(v>0)s.u++;if(v<0)s.d++;stats.set(k,s)}}
+ const enough=N>=5&&U+D>=4,likes=[],dislikes=[];
+ if(enough)for(const [k,s] of stats){
+  const lift=s.u/s.n-U/N,drop=s.d/s.n-D/N;
+  if(s.u>=3&&lift>=.2)likes.push({k,s,w:lift});
+  else if((s.d>=2&&drop>=.2)||(s.n>=4&&s.u===0&&U>=3))dislikes.push({k,s,w:Math.max(drop,U/N)});
+ }
+ const top=a=>a.sort((x,y)=>y.w-x.w).slice(0,3);
+ return {enough,N,U,D,likes:top(likes),dislikes:top(dislikes)};
+}
+function tasteCardHtml(){
+ const t=tasteProfile();
+ const line=(x,good)=>'<li>'+fx(tasteLabel(x.k))+' <span class="muted">('+(good?x.s.u+' de '+x.s.n+' te gustan':x.s.d?x.s.d+' de '+x.s.n+' no te gustan':'0 de '+x.s.n+' con 👍')+')</span></li>';
+ const body=!t.enough?'<p class="muted">Da 👍 o 👎 a unos cuantos looks (o márcalos con ♥) y aquí verás hacia dónde tienden tus gustos.</p>'
+  :!t.likes.length&&!t.dislikes.length?'<p class="muted">Todavía no se ve una tendencia clara en tus valoraciones.</p>'
+  :(t.likes.length?'<p><strong>Te suelen gustar</strong></p><ul class="taste-list">'+t.likes.map(x=>line(x,true)).join("")+'</ul>':'')+
+   (t.dislikes.length?'<p><strong>Te gustan menos</strong></p><ul class="taste-list">'+t.dislikes.map(x=>line(x,false)).join("")+'</ul>':'');
+ return '<details class="feature-card taste-card"'+(t.enough?' open':'')+'><summary><strong>Tus gustos</strong> <span class="muted">· según '+plural(t.U+t.D,"valoración","valoraciones")+'</span></summary>'+body+'<p class="helper">Se calcula en tu móvil con tus 👍, 👎 y favoritos; sin IA.</p></details>';
+}
 function renderLooks(root){
  let looks=myLooks();
  if(ui.lookFilter==="favorites")looks=looks.filter(l=>l.favorite);
@@ -1062,6 +1105,7 @@ function renderLooks(root){
   '<div class="section-head"><h2>Conjuntos ('+looks.length+')</h2><button class="primary" id="newLook">+ Crear</button></div>'+
   '<div class="filter-tabs">'+[["all","Todos"],["favorites","Favoritos ♡"],["ai","Sugeridos por IA"]].map(([k,t])=>'<button class="chip-button'+(ui.lookFilter===k?' on':'')+'" data-look-filter="'+k+'">'+t+'</button>').join("")+'</div>'+
   '<button class="secondary wide" id="aiLooks">✦ Sugerir nuevos looks</button>'+
+  tasteCardHtml()+
   (looks.length?'<div class="grid">'+looks.map(l=>'<div class="look-tile">'+lookCard(l)+
    '<div class="tile-tools"><button class="chip-button" data-look-fav="'+fx(l.id)+'">'+(l.favorite?'♥':'♡')+'</button><button class="chip-button" data-look-wear="'+fx(l.id)+'">✓ Llevado</button></div>'+
    '<div class="tile-tools"><button class="chip-button'+(fb[l.id]==="up"?' on':'')+'" data-feedback="'+fx(l.id)+'" data-vote="up" aria-label="Me gusta">👍</button><button class="chip-button'+(fb[l.id]==="down"?' on':'')+'" data-feedback="'+fx(l.id)+'" data-vote="down" aria-label="No me gusta">👎</button></div>'+
