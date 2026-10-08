@@ -162,7 +162,7 @@ function labArrays(d,n){
 }
 const quantile=(a,q)=>{const s=Float32Array.from(a).sort();return s.length?s[Math.min(s.length-1,Math.floor(q*s.length))]:0};
 /* Máscara de la prenda frente al fondo, a resolución reducida; null si no se puede separar con fiabilidad */
-function garmentMask(d,w,h){
+function garmentMask(d,w,h,stats){
  const n=w*h,[L,A,B]=labArrays(d,n),band=Math.max(2,Math.round(Math.min(w,h)*.03)),border=[];
  for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(x<band||y<band||x>=w-band||y>=h-band)border.push(y*w+x);
  const bl=quantile(border.map(i=>L[i]),.5),ba=quantile(border.map(i=>A[i]),.5),bb=quantile(border.map(i=>B[i]),.5);
@@ -186,9 +186,11 @@ function garmentMask(d,w,h){
  const biggest=sizes.reduce((m,v)=>v>m?v:m,0),minSize=Math.max(biggest*.02,n*.002),mask=new Uint8Array(n);
  let fg=0,x0=w,y0=h,x1=-1,y1=-1;
  for(let i=0;i<n;i++)if(!bg[i]&&sizes[comp[i]]>=minSize){mask[i]=1;fg++;const x=i%w,y=(i-x)/w;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}
- const frac=fg/n,edge=border.filter(i=>mask[i]).length/border.length;
- // Casi nada, casi todo, o «prenda» pegada a gran parte del borde (la prenda llena la foto y se ha tomado por fondo)
- if(frac<.04||frac>.9||edge>.3)return null;
+ const frac=fg/n,edge=border.filter(i=>mask[i]).length/border.length,borderBg=border.filter(i=>bg[i]).length/border.length;
+ if(stats)Object.assign(stats,{spread,noise,borderBg,edge,frac,chroma:Math.hypot(ba,bb),bl});
+ // No se recorta si: casi nada o casi todo es prenda; la «prenda» toca mucho borde (llena la foto);
+ // o el fondo no es liso (colores muy variados en el borde, como un cuarto desordenado)
+ if(frac<.04||frac>.9||edge>.3||spread>22||borderBg<.85)return null;
  // Borde suave: se encoge un poco (quita el halo del fondo) y se difumina
  const alpha=new Float32Array(n);
  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x;if(!mask[i])continue;let sum=0,cnt=0;
@@ -196,36 +198,74 @@ function garmentMask(d,w,h){
   alpha[i]=sum===cnt?1:Math.max(0,(sum-3)/(cnt-3))}
  // Color del fondo (para corregir el tono de la luz si el fondo es neutro)
  const rgb=[0,1,2].map(c=>quantile(border.filter(i=>bg[i]).map(i=>d[i*4+c]),.5));
- return {alpha,w,h,x0,y0,x1,y1,neutral:Math.hypot(ba,bb)<14&&bl>40,light:bl>72,rgb};
+ return {alpha,w,h,x0,y0,x1,y1,neutral:Math.hypot(ba,bb)<20&&bl>35,rgb};
+}
+/* Retoque de la foto (sin IA): luz, contraste suave, color algo más vivo y nitidez.
+   curveLUT: tablas por canal con ganancia de color (gain), punto negro (lo) y estiramiento (scale), más una curva en S suave. */
+const curveLUT=(gain,lo,scale)=>[0,1,2].map(c=>Uint8ClampedArray.from({length:256},(_,v)=>{let x=((v*gain[c]-lo)*scale+lo*.3)/255;x=Math.min(1,Math.max(0,x));x=x*.86+.14*x*x*(3-2*x);return Math.round(x*255)}));
+function applyTone(p,lut,sat=1.08){
+ for(let j=0;j<p.length;j+=4){if(p[j+3]===0)continue;const r=lut[0][p[j]],g=lut[1][p[j+1]],b=lut[2][p[j+2]],l=.299*r+.587*g+.114*b;p[j]=l+(r-l)*sat;p[j+1]=l+(g-l)*sat;p[j+2]=l+(b-l)*sat}
+}
+/* Enfoque suave (máscara de enfoque); el blanco puro del fondo no se toca */
+function sharpen(ctx,w,h,amount=.45){
+ const id=ctx.getImageData(0,0,w,h),p=id.data,s=Uint8ClampedArray.from(p),row=w*4;
+ for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){const j=(y*w+x)*4;if(s[j]>248&&s[j+1]>248&&s[j+2]>248)continue;
+  for(let c=0;c<3;c++){const k=j+c,blur=(s[k-4]+s[k+4]+s[k-row]+s[k+row]+4*s[k])/8;p[k]=s[k]+amount*(s[k]-blur)}}
+ ctx.putImageData(id,0,0);
 }
 async function whiteBackground(src){
  try{
   const img=await loadImg(src),W=img.naturalWidth||img.width,H=img.naturalHeight||img.height;
   const k=Math.min(1,MASK_MAX/Math.max(W,H)),w=Math.max(1,Math.round(W*k)),h=Math.max(1,Math.round(H*k));
   const c=document.createElement("canvas");c.width=w;c.height=h;const cx=c.getContext("2d",{willReadFrequently:true});cx.drawImage(img,0,0,w,h);
-  const m=garmentMask(cx.getImageData(0,0,w,h).data,w,h);if(!m)return null;
+  const small=cx.getImageData(0,0,w,h).data,m=garmentMask(small,w,h);if(!m)return null;
   // Recorte de la prenda con margen, a la resolución completa de la foto
   const s=W/w,pad=.04*Math.max(m.x1-m.x0,m.y1-m.y0);
   const fx0=Math.max(0,Math.floor((m.x0-pad)*s)),fy0=Math.max(0,Math.floor((m.y0-pad)*s)),fx1=Math.min(W,Math.ceil((m.x1+1+pad)*s)),fy1=Math.min(H,Math.ceil((m.y1+1+pad)*s));
   const cw=fx1-fx0,ch=fy1-fy0,fc=document.createElement("canvas");fc.width=cw;fc.height=ch;
   const fcx=fc.getContext("2d",{willReadFrequently:true});fcx.drawImage(img,-fx0,-fy0);
-  const id=fcx.getImageData(0,0,cw,ch),p=id.data;
-  // Corrección suave de la luz: quita el tono de color de la luz (±8 %) y solo aclara si el fondo ya es claro
-  const mean=(m.rgb[0]+m.rgb[1]+m.rgb[2])/3,bright=m.light?Math.min(1.12,Math.max(1,236/Math.max(1,mean))):1;
-  const gain=m.neutral?m.rgb.map(v=>Math.min(1.08,Math.max(.92,mean/Math.max(1,v)))*bright):[1,1,1];
+  const id=fcx.getImageData(0,0,cw,ch),p=id.data,bgc=m.rgb;
   const a=(x,y)=>{x=Math.min(m.w-1,Math.max(0,x));y=Math.min(m.h-1,Math.max(0,y));return m.alpha[y*m.w+x]};
   for(let y=0;y<ch;y++){const my=(fy0+y+.5)/s-.5,yb=Math.floor(my),ty=my-yb;
    for(let x=0;x<cw;x++){const mx=(fx0+x+.5)/s-.5,xb=Math.floor(mx),tx=mx-xb,j=(y*cw+x)*4;
     const al=(a(xb,yb)*(1-tx)+a(xb+1,yb)*tx)*(1-ty)+(a(xb,yb+1)*(1-tx)+a(xb+1,yb+1)*tx)*ty;
-    p[j]=Math.min(255,p[j]*gain[0]);p[j+1]=Math.min(255,p[j+1]*gain[1]);p[j+2]=Math.min(255,p[j+2]*gain[2]);p[j+3]=Math.round(al*255)}}
+    // Bordes sin halo: en los píxeles a medias se quita la parte del color del fondo
+    if(al>.15&&al<.985)for(let q=0;q<3;q++)p[j+q]=(p[j+q]-(1-al)*bgc[q])/al;
+    p[j+3]=Math.round(al*255)}}
+  // Luz y color. Si el fondo es claro y casi neutro (sábana, pared), se toma como blanco: se quita el tono de la luz
+  // (±12 %) y se aclara hasta un 30 %. Si no, solo se aclara (hasta un 20 %) cuando a la foto le faltan luces.
+  const mean=(bgc[0]+bgc[1]+bgc[2])/3;let gain;
+  if(m.neutral){const exp=Math.min(1.3,Math.max(1,236/Math.max(1,mean)));gain=bgc.map(v=>Math.min(1.12,Math.max(.88,mean/Math.max(1,v)))*exp)}
+  else{const lum=[];for(let j=0;j<small.length;j+=8)lum.push(.299*small[j]+.587*small[j+1]+.114*small[j+2]);const hi=quantile(lum,.995);gain=Array(3).fill(hi<200?Math.min(1.2,Math.max(1,236/Math.max(1,hi))):1)}
+  applyTone(p,curveLUT(gain,0,1));
   fcx.putImageData(id,0,0);
   // Centrada sobre un lienzo blanco de proporción fija (4:5), como una ficha de producto
-  const out=document.createElement("canvas");out.width=WHITE_W;out.height=WHITE_H;const o=out.getContext("2d");
+  const out=document.createElement("canvas");out.width=WHITE_W;out.height=WHITE_H;const o=out.getContext("2d",{willReadFrequently:true});
   o.fillStyle="#fff";o.fillRect(0,0,WHITE_W,WHITE_H);o.imageSmoothingQuality="high";
   const sc=Math.min(WHITE_W*.86/cw,WHITE_H*.86/ch,2.2),dw=cw*sc,dh=ch*sc;
   o.drawImage(fc,(WHITE_W-dw)/2,(WHITE_H-dh)/2,dw,dh);
+  sharpen(o,WHITE_W,WHITE_H);
   return out.toDataURL("image/jpeg",.86);
  }catch(e){console.warn("WHITE_BG",e);return null}
+}
+/* Solo retoque, cuando no se puede quitar el fondo: niveles de luz (sin pasarse), curva suave, color y nitidez */
+async function retouchOnly(src){
+ try{
+  const img=await loadImg(src),W=img.naturalWidth||img.width,H=img.naturalHeight||img.height;
+  const c=document.createElement("canvas");c.width=W;c.height=H;const cx=c.getContext("2d",{willReadFrequently:true});cx.drawImage(img,0,0);
+  const id=cx.getImageData(0,0,W,H),p=id.data,lum=[];
+  for(let j=0;j<p.length;j+=28)lum.push(.299*p[j]+.587*p[j+1]+.114*p[j+2]);
+  const lo=Math.min(30,quantile(lum,.005)),hi=quantile(lum,.995);
+  // Foto oscura (nada pasa de gris medio): se aclara algo más, hasta un 38 %
+  const scale=hi-lo>20?Math.min(hi>120?1.3:1.38,Math.max(1,(246-lo*.3)/(hi-lo))):1;
+  applyTone(p,curveLUT([1,1,1],lo,scale));cx.putImageData(id,0,0);sharpen(cx,W,H);
+  return c.toDataURL("image/jpeg",.86);
+ }catch(e){console.warn("RETOUCH",e);return null}
+}
+/* Mejora completa: fondo blanco si se puede; si no, solo retoque. → {image, white} o null */
+async function enhancePhoto(src){
+ const white=await whiteBackground(src);if(white)return {image:white,white:true};
+ const tuned=await retouchOnly(src);return tuned?{image:tuned,white:false}:null;
 }
 async function loadState(){
  appState.data=emptyData();storedImages=new Map();let migrate=false;
@@ -617,46 +657,30 @@ function renderWardrobe(root){
  $$("[data-wear]",root).forEach(b=>b.addEventListener("click",()=>promptWear([b.dataset.wear],null)));
 }
 let lastAnalysis=null,metaConfidence="";
-/* Foto de la ficha abierta: la original y, si se ha podido, la versión con fondo blanco.
+/* Foto de la ficha abierta: la original y, si se ha podido, la versión mejorada (con fondo blanco o solo retocada).
    mode decide cuál se guarda; changed indica que la foto es nueva o ha cambiado. */
-/* Corrección suave y local de fotos oscuras: conserva la imagen original y el color. */
-async function enhanceGarmentPhoto(src){
- const img=await loadImg(src),w=img.naturalWidth,h=img.naturalHeight;
- const canvas=document.createElement("canvas");canvas.width=w;canvas.height=h;
- const ctx=canvas.getContext("2d",{willReadFrequently:true});ctx.drawImage(img,0,0);
- const sample=document.createElement("canvas");sample.width=64;sample.height=64;
- const sc=sample.getContext("2d",{willReadFrequently:true});sc.drawImage(img,0,0,64,64);
- const pixels=sc.getImageData(0,0,64,64).data;let sum=0,low=0,high=0;
- for(let i=0;i<pixels.length;i+=4){const y=.2126*pixels[i]+.7152*pixels[i+1]+.0722*pixels[i+2];sum+=y;if(y<45)low++;if(y>220)high++}
- const mean=sum/4096;
- // No aclarar fotos ya correctas ni quemar fondos claros.
- if(mean>=112||high>2250)return null;
- const gain=Math.min(1.38,Math.max(1.08,125/Math.max(mean,45)));
- ctx.clearRect(0,0,w,h);ctx.filter="brightness("+gain.toFixed(3)+") contrast(1.035)";ctx.drawImage(img,0,0);ctx.filter="none";
- return canvas.toDataURL("image/jpeg",IMAGE_QUALITY);
-}
 let sheetPhoto=null;
-const sheetImage=()=>sheetPhoto?(sheetPhoto.mode==="white"&&sheetPhoto.white?sheetPhoto.white:sheetPhoto.mode==="enhanced"&&sheetPhoto.enhanced?sheetPhoto.enhanced:sheetPhoto.original):null;
+const sheetImage=()=>sheetPhoto?(sheetPhoto.mode==="edited"&&sheetPhoto.edited?sheetPhoto.edited:sheetPhoto.original):null;
 function renderPhotoControls(){
  const box=$("#photoControls");if(!box)return;
  const ph=sheetPhoto,preview=$("#garmentPreview"),img=sheetImage();
- preview.src=img||"";preview.classList.toggle("hidden",!img);preview.classList.toggle("on-white",!!img&&ph?.mode==="white");
+ preview.src=img||"";preview.classList.toggle("hidden",!img);preview.classList.toggle("on-white",!!img&&ph?.mode==="edited"&&!!ph.editedWhite);
  if(!ph||!img){box.innerHTML="";return}
- if(ph.busy){box.innerHTML='<p class="helper" role="status">Poniendo fondo blanco…</p>';return}
- const modes=[...(ph.white?[["white","Fondo blanco"]]:[]),...(ph.enhanced?[["enhanced","Mejorada"]]:[]),["original","Original"]];
- box.innerHTML=(modes.length>1?'<div class="seg-tabs photo-mode" role="group" aria-label="Foto que se guarda">'+modes.map(([mode,label])=>'<button type="button" class="seg-tab'+(ph.mode===mode?' active':'')+'" data-photo-mode="'+mode+'" aria-pressed="'+(ph.mode===mode)+'">'+label+'</button>').join("")+'</div>':'')+
- (!ph.white?'<button type="button" class="secondary wide" id="makeWhite">✨ Poner fondo blanco</button>':'')+
- (ph.enhanced?'<p class="helper">La foto era oscura: hemos ajustado suavemente la luz. Puedes conservar la original.</p>':'')+
- (ph.failed?'<p class="helper">No se pudo separar bien el fondo. Puedes guardar la foto sin fondo blanco.</p>':'');
+ if(ph.busy){box.innerHTML='<p class="helper" role="status">Mejorando la foto…</p>';return}
+ const note=ph.edited&&!ph.editedWhite&&ph.mode==="edited"?'<p class="helper">No he podido quitar el fondo (funciona mejor con la prenda extendida sobre una superficie lisa de otro color); he mejorado la luz y el color.</p>':'';
+ box.innerHTML=(ph.edited&&ph.original
+  ?'<div class="seg-tabs photo-mode" role="group" aria-label="Foto que se guarda"><button type="button" class="seg-tab'+(ph.mode==="edited"?' active':'')+'" data-photo-mode="edited" aria-pressed="'+(ph.mode==="edited")+'">'+(ph.editedWhite?"Fondo blanco":"Mejorada")+'</button><button type="button" class="seg-tab'+(ph.mode==="original"?' active':'')+'" data-photo-mode="original" aria-pressed="'+(ph.mode==="original")+'">Original</button></div>'
+  :ph.edited?'<p class="helper">Foto mejorada'+(ph.editedWhite?' con fondo blanco':'')+'.</p>'
+  :'<button type="button" class="secondary wide" id="makeWhite">✨ Mejorar foto</button>'+(ph.failed?'<p class="helper">No he podido mejorar esta foto.</p>':''))+note;
  $$("[data-photo-mode]",box).forEach(b=>b.addEventListener("click",()=>{ph.mode=b.dataset.photoMode;ph.changed=true;renderPhotoControls()}));
  $("#makeWhite",box)?.addEventListener("click",()=>makeSheetWhite());
 }
 async function makeSheetWhite(){
  const ph=sheetPhoto;if(!ph?.original||ph.busy)return;
  ph.busy=true;ph.failed=false;renderPhotoControls();
- const white=await whiteBackground(ph.enhanced||ph.original);
+ const res=await enhancePhoto(ph.original);
  if(sheetPhoto!==ph)return;
- ph.busy=false;if(white){ph.white=white;ph.mode="white";ph.changed=true}else ph.failed=true;
+ ph.busy=false;if(res){ph.edited=res.image;ph.editedWhite=res.white;ph.mode="edited";ph.changed=true}else ph.failed=true;
  renderPhotoControls();
 }
 /* Ficha de características dentro de la hoja de la prenda (se crea una vez) */
@@ -670,7 +694,7 @@ function buildMetadataSection(){
   '<div class="filter-grid">'+META_FIELDS.filter(d=>d[3]==="ia").map(field).join("")+'</div>'+
   '<div class="field"><span class="field-title">Ocasiones</span><div class="occ-grid">'+Object.entries(occasions).map(([k,t])=>'<label class="switch-line"><input type="checkbox" name="meta-occasion" value="'+k+'"> '+fx(t)+'</label>').join("")+'</div></div>'+
   '<div class="filter-grid">'+META_FIELDS.filter(d=>d[3]==="manual").map(field).join("")+'</div></details>');
- $("#garmentImage")?.closest(".field")?.insertAdjacentHTML("beforeend",'<div id="photoControls"></div><label class="switch-line" id="autoWhiteOption"><input type="checkbox" id="autoWhite" checked> Poner fondo blanco automáticamente</label><label class="switch-line" id="autoAnalyzeOption"><input type="checkbox" id="autoAnalyze" checked> Analizar automáticamente al elegir la foto</label><p class="helper" id="autoAnalyzeStatus" role="status" aria-live="polite"></p>');
+ $("#garmentImage")?.closest(".field")?.insertAdjacentHTML("beforeend",'<div id="photoControls"></div><label class="switch-line" id="autoWhiteOption"><input type="checkbox" id="autoWhite" checked> Mejorar la foto automáticamente (luz, color y fondo blanco)</label><label class="switch-line" id="autoAnalyzeOption"><input type="checkbox" id="autoAnalyze" checked> Analizar automáticamente al elegir la foto</label><p class="helper" id="autoAnalyzeStatus" role="status" aria-live="polite"></p>');
  const occasionField=$("#metadataDetails .occ-grid")?.closest(".field"),occasionSlot=$("#occasionSlot");
  if(occasionField&&occasionSlot){occasionSlot.append(occasionField);$$(`[name="meta-occasion"]`,occasionSlot).forEach(input=>input.addEventListener("change",updateOccasionSummary));updateOccasionSummary()}
  $("#autoAnalyze")?.addEventListener("change",e=>{if(appState.profile)setPref("autoAnalyze",e.target.checked,false)});
@@ -721,8 +745,9 @@ function syncGarmentCategory(resetType=false){
 function openGarment(id){
  const g=myGarments().find(x=>x.id===id);
  $("#garmentTitle").textContent=g?"Editar prenda":"Nueva prenda";$("#garmentId").value=g?.id||"";$("#garmentName").value=g?.name||"";$("#garmentCategory").value=g?.category||"";$("#garmentColor").value=g?.color||"";$("#garmentNotes").value=g?.notes||"";$("#garmentSeason").value=g?.season||"all";$("#garmentStyle").value=g?.style||"";$("#garmentPrice").value=g?.price??"";$("#garmentBought").value=g?.boughtAt||"";$("#garmentFavorite").checked=!!g?.favorite;$("#garmentImage").value="";$("#garmentCamera").value="";
- sheetPhoto=validImage(g?.image)?(g.bgWhite?{original:null,white:g.image,mode:"white",changed:false}:{original:g.image,white:null,mode:"original",changed:false}):null;
- if(sheetPhoto&&g.bgWhite){const ph=sheetPhoto;dbGet(origKey(g.id)).then(o=>{if(sheetPhoto===ph&&validImage(o)){ph.original=o;renderPhotoControls()}}).catch(()=>{})}
+ const edited=!!(g?.photoFx||g?.bgWhite);
+ sheetPhoto=validImage(g?.image)?(edited?{original:null,edited:g.image,editedWhite:!!g.bgWhite,mode:"edited",changed:false}:{original:g.image,edited:null,mode:"original",changed:false}):null;
+ if(sheetPhoto&&edited){const ph=sheetPhoto;dbGet(origKey(g.id)).then(o=>{if(sheetPhoto===ph&&validImage(o)){ph.original=o;renderPhotoControls()}}).catch(()=>{})}
  syncGarmentCategory();$("#garmentType").value=g?.type||"";
  $("#deleteGarment").classList.toggle("hidden",!g);
  let btn=$("#garmentAround");
@@ -739,18 +764,18 @@ function closeGarment(){$("#garmentSheet").classList.add("hidden")}
 async function saveGarment(e){
  e.preventDefault();
  const id=$("#garmentId").value||uid(),old=myGarments().find(x=>x.id===id),ph=sheetPhoto;
- if(ph?.busy)return toast("Espera a que termine el fondo blanco");
- const image=sheetImage()||old?.image||"",changed=!!ph?.changed&&image!==old?.image,white=!!ph&&ph.mode==="white"&&!!ph.white;
+ if(ph?.busy)return toast("Espera a que termine de mejorar la foto");
+ const image=sheetImage()||old?.image||"",changed=!!ph?.changed&&image!==old?.image,edited=!!ph&&ph.mode==="edited"&&!!ph.edited;
  if(!validImage(image)&&!old?.hasImage)return toast("Añade una fotografía de la prenda antes de guardarla");
  const kept=Object.fromEntries(Object.entries(old||{}).filter(([k])=>!META_KEYS.has(k)));
  const g={...kept,...readMetadata(),id,name:$("#garmentName").value.trim()||"Sin nombre",category:$("#garmentCategory").value,type:$("#garmentType").value,color:$("#garmentColor").value.trim(),notes:$("#garmentNotes").value.trim(),season:$("#garmentSeason").value,style:$("#garmentStyle").value,price:$("#garmentPrice").value===""?null:Number($("#garmentPrice").value),boughtAt:$("#garmentBought").value,favorite:$("#garmentFavorite").checked,createdAt:old?.createdAt||new Date().toISOString(),image,updatedAt:new Date().toISOString()};
  if(!validImage(image)&&old?.hasImage)g.hasImage=true;
- if(ph)g.bgWhite=white;
+ if(ph){g.bgWhite=edited&&!!ph.editedWhite;if(edited)g.photoFx=1;else delete g.photoFx}
  g.imageAt=changed?new Date().toISOString():old?.imageAt;if(!g.imageAt)delete g.imageAt;
  const i=myGarments().findIndex(x=>x.id===id);if(i>=0)myGarments()[i]=g;else myGarments().unshift(g);
  if(!await saveState())return;
  // La original se guarda solo en este móvil, para poder volver a ella; se toca solo si el guardado ha ido bien
- try{if(white&&validImage(ph.original))await dbSet(origKey(id),ph.original);else if(ph&&!white)await dbBatch([],[origKey(id)])}catch(err){console.warn("ORIG",err)}
+ try{if(edited&&validImage(ph.original))await dbSet(origKey(id),ph.original);else if(ph&&!edited)await dbBatch([],[origKey(id)])}catch(err){console.warn("ORIG",err)}
  closeGarment();render();toast("Prenda guardada");
 }
 async function deleteGarment(){
@@ -766,8 +791,9 @@ async function analyzeGarment(){
   const out=await api("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image})});
   if(sheetPhoto!==ph)return; // No aplicar un análisis antiguo a una foto nueva.
   const d=mapAnalysis(out.garment||out.result||out);lastAnalysis=cleanAnalysis(d);
-  $("#garmentName").value=d.name||"Prenda sin identificar";$("#garmentCategory").value=d.category||"";syncGarmentCategory(true);const typeOptions=GARMENT_TYPES[d.category]||[];const detected=[d.garmentType,d.subtype].find(t=>typeof t==="string"&&typeOptions.some(o=>o.toLocaleLowerCase("es")===t.trim().toLocaleLowerCase("es")));if(detected)$("#garmentType").value=typeOptions.find(t=>t.toLocaleLowerCase("es")===detected.trim().toLocaleLowerCase("es"));$("#garmentColor").value=d.color||"";
-  $("#garmentStyle").value=d.style||"";$("#garmentSeason").value=d.season||"all";if(d.notes&&!$("#garmentNotes").value.trim())$("#garmentNotes").value=d.notes;
+  // Solo se rellena lo que la IA reconoce: no se borra lo que ya estaba escrito
+  if(d.name||!$("#garmentName").value.trim())$("#garmentName").value=d.name||"Prenda sin identificar";if(d.category){$("#garmentCategory").value=d.category;syncGarmentCategory(true)}const typeOptions=GARMENT_TYPES[d.category]||[];const detected=[d.garmentType,d.subtype].find(t=>typeof t==="string"&&typeOptions.some(o=>o.toLocaleLowerCase("es")===t.trim().toLocaleLowerCase("es")));if(detected)$("#garmentType").value=typeOptions.find(t=>t.toLocaleLowerCase("es")===detected.trim().toLocaleLowerCase("es"));if(d.color)$("#garmentColor").value=d.color;
+  if(d.style)$("#garmentStyle").value=d.style;if(d.season)$("#garmentSeason").value=d.season;if(d.notes&&!$("#garmentNotes").value.trim())$("#garmentNotes").value=d.notes;
   if(sheetPhoto===ph){
    const manual=Object.fromEntries(Object.entries(readMetadata()).filter(([k])=>META_FIELDS.find(x=>x[0]===k)?.[3]==="manual"));
    populateMetadata({...manual,...lastAnalysis});const details=$("#metadataDetails");if(details)details.open=true;
@@ -775,7 +801,7 @@ async function analyzeGarment(){
   }
   toast("Análisis completado");
  }catch(e){console.error("ANALYZE",e);setAnalyzeStatus("No se pudo analizar. Puedes rellenar los datos a mano o reintentarlo.");if(e.message!=="AI_QUOTA")toast("No se pudo analizar la prenda")}
- finally{btn.disabled=false;btn.textContent="✨ Analizar foto"}
+ finally{btn.disabled=false;btn.textContent="✨ Analizar foto con IA"}
 }
 function promptWear(ids,lookId){
  const valid=[...new Set(ids||[])].filter(id=>myGarments().some(g=>g.id===id));
@@ -1161,8 +1187,9 @@ async function startBuyCheck(file){
  if(!image)return;
  const token={};buyCheck={image,loading:true,token};render();
  let bgWhite=false;const original=image;
- if(appState.data.preferences.autoWhite!==false){const w=await whiteBackground(image);if(buyCheck?.token!==token)return;if(w){image=w;bgWhite=true}}
- const c={image,original,bgWhite,token,name:"",category:"",color:"",style:"",season:"all",price:null,looks:null,analyzeFailed:false};
+ let photoFx=false;
+ if(appState.data.preferences.autoWhite!==false){const r=await enhancePhoto(image);if(buyCheck?.token!==token)return;if(r){image=r.image;bgWhite=r.white;photoFx=true}}
+ const c={image,original,bgWhite,photoFx,token,name:"",category:"",color:"",style:"",season:"all",price:null,looks:null,analyzeFailed:false};
  try{const out=await api("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image})});const d=mapAnalysis(out.garment||out.result||out);Object.assign(c,d,{season:d.season||"all",notes:undefined})}
  catch(e){console.error("BUY_ANALYZE",e);c.analyzeFailed=true;if(e.message==="SESSION_EXPIRED"){buyCheck=null;return}}
  if(buyCheck?.token===token){buyCheck=c;render();$("#buyCheck")?.scrollIntoView?.({block:"start",behavior:"smooth"})}
@@ -1289,9 +1316,9 @@ function renderShopping(root){
  $("#buyAdd")?.addEventListener("click",async()=>{readBuyFields();const c=buyCheck;if(!validImage(c.image))return;
   if(!confirm("¿Añadir esta prenda a tu armario?"))return;
   const now=new Date().toISOString(),newId=uid();
-  const ok=await mutate(()=>myGarments().unshift({...cleanAnalysis(c),id:newId,name:c.name||"Prenda nueva",category:c.category,color:c.color,notes:"",season:c.season||"all",style:c.style,price:c.price,boughtAt:dayISO(),favorite:false,createdAt:now,image:c.image,bgWhite:!!c.bgWhite,imageAt:now,updatedAt:now}),"Prenda añadida a tu armario");
+  const ok=await mutate(()=>myGarments().unshift({...cleanAnalysis(c),id:newId,name:c.name||"Prenda nueva",category:c.category,color:c.color,notes:"",season:c.season||"all",style:c.style,price:c.price,boughtAt:dayISO(),favorite:false,createdAt:now,image:c.image,bgWhite:!!c.bgWhite,...(c.photoFx?{photoFx:1}:{}),imageAt:now,updatedAt:now}),"Prenda añadida a tu armario");
   // Igual que en la ficha: la original queda en este móvil para poder volver a ella
-  if(ok&&c.bgWhite&&validImage(c.original)){try{await dbSet(origKey(newId),c.original)}catch(err){console.warn("ORIG",err)}}
+  if(ok&&c.photoFx&&validImage(c.original)){try{await dbSet(origKey(newId),c.original)}catch(err){console.warn("ORIG",err)}}
   if(ok){buyCheck=null;render()}});
  // Recomendaciones
  $$("[data-suggest-wish]",root).forEach(b=>b.addEventListener("click",async()=>{const s=suggestionCache.list[Number(b.dataset.suggestWish)];if(!s)return;
@@ -1361,21 +1388,22 @@ async function importBackup(file){
   await mutate(()=>{appState.data=data;for(const id of current)if(!kept.has(id))tomb(id)},"Copia restaurada");
  }catch(e){console.error("BACKUP",e);toast("No se pudo importar la copia")}
 }
-/* Fondo blanco para todas las prendas que aún no lo tienen; la original queda en este dispositivo */
+/* Mejora todas las fotos aún sin retocar; se parte de la original guardada en el móvil si la hay */
 async function whiteAll(btn){
- const todo=myGarments().filter(g=>validImage(g.image)&&!g.bgWhite),profile=appState.profile?.id;let done=0,failed=0;
+ const todo=myGarments().filter(g=>validImage(g.image)&&!g.photoFx),profile=appState.profile?.id;let done=0,white=0;
  btn.disabled=true;
  for(const [i,g] of todo.entries()){
-  btn.textContent="Procesando "+(i+1)+" de "+todo.length+"…";
-  const white=await whiteBackground(g.image);
+  btn.textContent="Mejorando "+(i+1)+" de "+todo.length+"…";
+  let source=g.image;try{const o=await dbGet(origKey(g.id));if(validImage(o))source=o}catch{}
+  const res=await enhancePhoto(source);
   if(appState.profile?.id!==profile)return;
-  if(!white){failed++;continue}
-  try{await dbSet(origKey(g.id),g.image)}catch(e){console.warn("ORIG",e)}
-  const now=new Date().toISOString();Object.assign(g,{image:white,bgWhite:true,imageAt:now,updatedAt:now});done++;
+  if(!res)continue;
+  try{await dbSet(origKey(g.id),source)}catch(e){console.warn("ORIG",e)}
+  const now=new Date().toISOString();Object.assign(g,{image:res.image,bgWhite:res.white,photoFx:1,imageAt:now,updatedAt:now});done++;if(res.white)white++;
  }
  if(done)await saveState();
  render();
- toast(done?plural(done,"foto","fotos")+" con fondo blanco"+(failed?". "+failed+" no se han podido separar del fondo":""):"No he podido separar ninguna prenda del fondo");
+ toast(done?plural(done,"foto mejorada","fotos mejoradas")+(done-white?" ("+(done-white)+" sin quitar el fondo)":""):"No he podido mejorar ninguna foto");
 }
 function renderSettings(root){
  const p=appState.data.preferences,u=aiUsage(),since=daysSince(p.lastBackupAt);
@@ -1388,8 +1416,8 @@ function renderSettings(root){
   '<label class="field"><span>Prenda olvidada tras (días)</span><input id="settingsForget" type="number" min="30" max="365" value="'+fx(p.forgottenDays)+'"></label>'+
   '<label class="field"><span>Diversidad de combinaciones: <strong id="settingsDiversityText">'+fx(p.diversity)+'</strong>%</span><input id="settingsDiversity" type="range" min="0" max="100" step="5" value="'+fx(p.diversity)+'"></label></div>'+
   '<div class="feature-card"><h2>Uso de la IA hoy</h2><p class="muted">Análisis de fotos: '+u.analyze+' de '+AI_LIMITS.analyze+'. Sugerencias de looks: '+u.looks+' de '+AI_LIMITS.looks+'.</p><p class="helper">Los límites diarios mantienen bajo el coste de la API. «¿Lo compro?», las recomendaciones y «Combinar prenda» no usan la IA.</p></div>'+
-  '<div class="feature-card"><h2>Fotos</h2><p class="muted">'+fx(plural(myGarments().filter(g=>g.bgWhite).length,"prenda","prendas")+" con fondo blanco de "+myGarments().filter(g=>validImage(g.image)).length+" con foto.")+'</p>'+
-  (myGarments().some(g=>validImage(g.image)&&!g.bgWhite)?'<button class="secondary wide" id="whiteAll">✨ Poner fondo blanco a todas</button><p class="helper">Se hace en tu móvil, sin gastar tokens. Las originales se guardan en este dispositivo y puedes volver a ellas desde cada prenda.</p>':'')+'</div>'+
+  '<div class="feature-card"><h2>Fotos</h2><p class="muted">'+fx(myGarments().filter(g=>g.photoFx).length+" de "+myGarments().filter(g=>validImage(g.image)).length+" fotos mejoradas ("+myGarments().filter(g=>g.bgWhite).length+" con fondo blanco).")+'</p>'+
+  (myGarments().some(g=>validImage(g.image)&&!g.photoFx)?'<button class="secondary wide" id="whiteAll">✨ Mejorar todas las fotos</button><p class="helper">Luz, color, nitidez y fondo blanco cuando se puede. Se hace en tu móvil, sin gastar tokens. Las originales se guardan en este dispositivo y puedes volver a ellas desde cada prenda.</p>':'')+'</div>'+
   '<div class="feature-card"><h2>Copias de seguridad</h2>'+(storage?'<p class="muted">'+fx(storage)+'</p>':'')+
   '<p class="muted">'+fx(isStandalone()?"Estás usando Atelier como app instalada.":"Estás usando Atelier desde el navegador, sin instalar.")+' '+fx(since===null?"Sin copias exportadas todavía.":"Última copia exportada hace "+plural(since,"día","días")+".")+'</p>'+
   '<button id="exportBackup" class="secondary wide">↓ Exportar copia JSON</button>'+
@@ -1409,7 +1437,7 @@ function renderSettings(root){
 /* ===================== 11. Arranque ===================== */
 function bind(){
  $$(".profile-option").forEach(b=>b.addEventListener("click",()=>selectProfile(b.dataset.profile)));
- $("#backToProfiles").addEventListener("click",()=>{appState.profile=null;$("#passwordStep").classList.add("hidden");$("#password").value="";$("#authError").textContent="";setPasswordVisible(false);$(".profile-option").forEach(x=>{x.classList.remove("selected");x.setAttribute("aria-pressed","false")});$(".profile-option")?.focus()});
+ $("#backToProfiles").addEventListener("click",()=>{appState.profile=null;$("#passwordStep").classList.add("hidden");$("#password").value="";$("#authError").textContent="";setPasswordVisible(false);$$(".profile-option").forEach(x=>{x.classList.remove("selected");x.setAttribute("aria-pressed","false")});$(".profile-option")?.focus()});
  $("#loginBtn").addEventListener("click",login);
  $("#togglePassword").addEventListener("click",()=>setPasswordVisible($("#password").type==="password"));
  $("#password").addEventListener("keydown",e=>{if(e.key==="Enter")login()});
@@ -1421,8 +1449,7 @@ function bind(){
  const onPhoto=async e=>{
   const f=e.target.files[0];e.target.value="";if(!f)return;
   let original;try{original=await readImage(f)}catch(err){return toast(err.message==="IMAGE_TOO_LARGE"?"La imagen es demasiado grande":"No se pudo leer la foto")}
-  const ph=sheetPhoto={original,enhanced:null,white:null,mode:"original",changed:true};renderPhotoControls();
-  try{ph.enhanced=await enhanceGarmentPhoto(original);if(sheetPhoto!==ph)return;if(ph.enhanced)ph.mode="enhanced";renderPhotoControls()}catch(err){console.warn("PHOTO_ENHANCE",err)}
+  const ph=sheetPhoto={original,edited:null,mode:"original",changed:true};renderPhotoControls();
   if($("#autoWhite")?.checked)await makeSheetWhite();
   if(sheetPhoto===ph&&$("#autoAnalyze")?.checked)analyzeGarment()};
  $("#garmentImage").addEventListener("change",onPhoto);$("#garmentCamera").addEventListener("change",onPhoto);
