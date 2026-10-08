@@ -1405,7 +1405,8 @@ function bind(){
  $("#password").addEventListener("keydown",e=>{if(e.key==="Enter")login()});
  $$(".nav-btn").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.view)));
  $("#garmentCategory").addEventListener("change",()=>syncGarmentCategory(true));
- $("[data-garment-category]").forEach(btn=>btn.addEventListener("click",()=>{$("#garmentCategory").value=btn.dataset.garmentCategory;syncGarmentCategory(true)}));
+
+ $$("[data-garment-category]").forEach(btn=>btn.addEventListener("click",()=>{$("#garmentCategory").value=btn.dataset.garmentCategory;syncGarmentCategory(true)}));
  $("#garmentForm").addEventListener("submit",saveGarment);$("#closeGarment").addEventListener("click",closeGarment);$("#deleteGarment").addEventListener("click",deleteGarment);$("#analyzeBtn").addEventListener("click",analyzeGarment);
  const onPhoto=async e=>{
   const f=e.target.files[0];e.target.value="";if(!f)return;
