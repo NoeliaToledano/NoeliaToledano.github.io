@@ -469,7 +469,7 @@ async function api(path,options={}){
  return out;
 }
 function mapAnalysis(d){
- const map={top:"Arriba",bottom:"Abajo",dress:"Vestidos",outerwear:"Capas",shoes:"Zapatos",bag:"Bolsos",accessory:"Accesorios"};
+ const map={top:"Arriba",bottom:"Abajo",dress:"Vestidos",outerwear:"Capas",shoes:"Zapatos",bag:"Bolsos",accessory:"Accesorios",underwear:"Interior",swimwear:"Baño"};
  const cat=map[d.category]||d.category||map[d.type],st=d.style==="basic"?"casual":d.style;
  return {name:String(d.name||"").slice(0,80),garmentType:typeof d.garmentType==="string"?d.garmentType:"",category:CATEGORIES.includes(cat)?cat:"",color:d.color?(Array.isArray(d.color)?d.color.join(", "):String(d.color)).slice(0,60):"",style:STYLE_OK[st]?st:"",season:seasons[d.season]?d.season:"",notes:d.notes?String(d.notes).slice(0,500):"",...cleanAnalysis(d)};
 }
