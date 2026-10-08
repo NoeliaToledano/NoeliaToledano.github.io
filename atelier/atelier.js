@@ -15,7 +15,7 @@ const DB_NAME="atelier-armario-db",DB_VERSION=2,STORE="kv";
 const IMAGE_MAX=900,IMAGE_QUALITY=.8,AI_IMAGE_MAX=512;
 const AI_LIMITS={analyze:40,looks:20},DEFAULT_TEMPERATURE=25;
 const CATEGORIES=["Arriba","Abajo","Vestidos","Capas","Zapatos","Bolsos","Accesorios","Interior","Baño"];
-const occasions={daily:"Día a día",work:"Trabajo",dinner:"Cena",event:"Evento",sport:"Deporte",gym:"Gimnasio",running:"Running",yoga:"Yoga / pilates",tennis:"Tenis / pádel",hiking:"Senderismo",beach:"Playa",pool:"Piscina",spa:"Spa",home:"Estar en casa",sleep:"Dormir",formal:"Formal",wedding:"Boda",ceremony:"Ceremonia",party:"Fiesta",night:"Salir de noche",date:"Cita",school:"Estudios",holiday:"Vacaciones",cold:"Frío / nieve",rain:"Lluvia"};
+const occasions={daily:"Día a día",work:"Trabajo",sport:"Deporte",beach:"Playa y piscina",home:"Estar en casa",sleep:"Dormir",event:"Eventos y celebraciones",party:"Fiesta y salir",formal:"Formal",holiday:"Vacaciones"};
 const seasons={all:"Todo el año",warm:"Primavera / verano",cold:"Otoño / invierno"};
 const styleNames={casual:"casual",smart:"arreglado",party:"fiesta",sport:"deporte"};
 const ANALYSIS_FIELDS={pattern:["plain","stripes","checks","floral","animal","dots","graphic","other"],fabric:["unknown","cotton","denim","linen","wool","knit","leather","satin","silk","synthetic","mixed"],length:["na","cropped","regular","midi","long"],formality:["casual","smartcasual","formal","party","sport"]};
@@ -702,18 +702,21 @@ function updateOccasionSummary(){
 /* Reglas estables de uso: complementan a la IA, sin impedir cambios manuales. */
 const OCCASION_BY_TYPE={
  "Pijama":["home","sleep"],"Camisón":["home","sleep"],"Bata":["home","sleep"],
- "Zapatillas de casa":["home"],"Sujetador deportivo":["sport","gym","yoga"],
- "Mallas deportivas":["sport","gym","yoga"],"Pantalón deportivo":["sport","gym"],
- "Camiseta técnica":["sport","gym","running","hiking"],
- "Bañador":["beach","pool","spa","holiday"],"Bikini":["beach","pool","holiday"],
- "Top de bikini":["beach","pool","holiday"],"Braguita de bikini":["beach","pool","holiday"],
- "Trikini":["beach","pool","holiday"],"Short de baño":["beach","pool","holiday"],
- "Pareos":["beach","pool","holiday"],"Salida de baño":["beach","pool","spa","holiday"]
+ "Zapatillas de casa":["home"],"Sujetador deportivo":["sport"],
+ "Mallas deportivas":["sport"],"Pantalón deportivo":["sport"],"Camiseta técnica":["sport"],
+ "Bañador":["beach","holiday"],"Bikini":["beach","holiday"],
+ "Top de bikini":["beach","holiday"],"Braguita de bikini":["beach","holiday"],
+ "Trikini":["beach","holiday"],"Short de baño":["beach","holiday"],
+ "Pareos":["beach","holiday"],"Salida de baño":["beach","holiday"]
 };
-const OCCASION_BY_CATEGORY={Baño:["beach","pool"],Interior:["home"]};
+const OCCASION_BY_CATEGORY={Baño:["beach"],Interior:["home"]};
+const OCCASION_ALIASES={gym:"sport",running:"sport",yoga:"sport",tennis:"sport",hiking:"sport",pool:"beach",spa:"beach",dinner:"party",night:"party",date:"party",wedding:"event",ceremony:"event",school:"daily",cold:"daily",rain:"daily"};
+function normalizedOccasions(values){
+ return [...new Set((Array.isArray(values)?values:[]).map(x=>OCCASION_ALIASES[x]||x).filter(x=>occasions[x]))];
+}
 function suggestedOccasions(category,type,ai=[]){
  const base=OCCASION_BY_TYPE[type]||OCCASION_BY_CATEGORY[category]||[];
- return [...new Set([...base,...(Array.isArray(ai)?ai:[])].filter(k=>occasions[k]))];
+ return [...new Set([...base,...normalizedOccasions(ai)].filter(k=>occasions[k]))];
 }
 function suggestOccasionsForSelection(){
  const cat=$("#garmentCategory").value,type=$("#garmentType").value;
@@ -725,7 +728,7 @@ function suggestOccasionsForSelection(){
 }
 function populateMetadata(src){
  for(const def of META_FIELDS){const el=$("#meta-"+def[0]);if(el)el.value=metaValue(def,src?.[def[0]])}
- const occ=new Set(Array.isArray(src?.occasions)?src.occasions:[]);
+ const occ=new Set(normalizedOccasions(src?.occasions));
  $$('[name="meta-occasion"]').forEach(x=>x.checked=occ.has(x.value));
  updateOccasionSummary();
  metaConfidence=CONFIDENCE.includes(src?.confidence)?src.confidence:"";
