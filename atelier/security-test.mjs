@@ -61,3 +61,49 @@ assert.equal(syncProbe.revived,1,"Un plan editado después de borrarse debe volv
 assert.equal(syncProbe.stale,0,"Un plan borrado después de su última edición no debe volver");
 assert.ok(syncProbe.bases<=400&&syncProbe.dresses===2&&syncProbe.tops===25,"Las bases deben incluir los vestidos y repartir las prendas");
 console.log("PASS: Sync merges by key, keeps unknown keys, tombstones vs edits, balanced outfit bases");
+
+// Motor de estilismo: banco de pruebas con armarios de 20, 100 y 500 prendas
+const engineProbe=new Function("document","sessionStorage","crypto",src+`
+const COLORS=["Negro","Blanco","Gris","Beige","Azul","Vaquero","Rojo","Verde","Rosa","Marrón"],STY=["casual","casual","smart","sport","party"];
+function wardrobe(n){
+ const cats=[["Arriba",.3],["Abajo",.2],["Vestidos",.08],["Capas",.12],["Zapatos",.15],["Bolsos",.08],["Accesorios",.07]],g=[];let k=0;
+ for(const [c,f] of cats)for(let i=0;i<Math.max(2,Math.round(n*f));i++){k++;g.push({id:c[0]+k,name:c+" "+k,category:c,color:COLORS[k%COLORS.length],style:STY[k%STY.length],season:"all",
+  pattern:k%7===0?"stripes":"plain",warmth:c==="Capas"?["bajo","medio","alto"][k%3]:undefined,createdAt:"2026-10-01",updatedAt:"x"})}
+ return g;
+}
+const out={};
+for(const n of [20,100,500]){
+ appState.profile={id:"noelia"};appState.data=emptyData();appState.data.garments=wardrobe(n);
+ const P=appState.data.preferences;P.occasion="daily";
+ const t0=Date.now();P.temperature=25;const warm=rankOutfits({max:3});const ms=Date.now()-t0;
+ P.temperature=10;const cold=rankOutfits({max:3});
+ P.temperature=25;P.occasion="work";const work=rankOutfits({max:3});
+ P.occasion="daily";const req=appState.data.garments.find(g=>g.category==="Abajo"),around=rankOutfits({required:req.id,max:5,occasion:null});
+ const big=l=>l.garments.filter(g=>["Arriba","Abajo","Vestidos"].includes(g.category)).map(g=>g.id);
+ out[n]={ms,
+  layersWarm:warm.filter(l=>l.garments.some(g=>g.category==="Capas")).length,
+  coldWithLayer:cold.filter(l=>l.garments.some(g=>g.category==="Capas")).length,
+  coldCovered:cold.every(l=>l.garments.some(g=>g.category==="Capas")||l.warnings.some(w=>/frío/.test(w))),
+  coldWarmest:cold.every(l=>{const c=l.garments.find(g=>g.category==="Capas");return !c||c.warmth==="alto"}),
+  shoesDistinct:new Set(warm.map(l=>l.garments.find(g=>g.category==="Zapatos")?.id).filter(Boolean)).size,
+  baseOverlap:warm.some((a,i)=>warm.some((b,j)=>j>i&&big(a).some(id=>big(b).includes(id)))),
+  workSport:work.some(l=>l.garments.some(g=>g.style==="sport")),
+  dresses:rankOutfits({max:40}).filter(l=>l.garments.some(g=>g.category==="Vestidos")).length,
+  required:around.every(l=>l.ids.includes(req.id)),
+  reasons:warm.every(l=>Array.isArray(l.reasons)),
+  dup:new Set(warm.map(l=>l.ids.slice().sort().join("|"))).size===warm.length};
+}
+return out;
+`)(document,sessionStorage,{randomUUID:()=>"test"});
+for(const [n,r] of Object.entries(engineProbe)){
+ assert.equal(r.layersWarm,0,n+": sin capa a 25 °C");
+ assert.ok(r.coldCovered&&r.coldWithLayer>=(n==="20"?1:3),n+": a 10 °C, capa (o aviso si ninguna combina)");
+ if(n!=="20")assert.ok(r.coldWarmest,n+": con frío, la capa que más abriga");
+ assert.ok(r.shoesDistinct>=2,n+": calzado variado entre las 3 propuestas");
+ assert.ok(!r.baseOverlap,n+": las 3 propuestas no repiten prendas principales");
+ assert.ok(!r.workSport,n+": «Trabajo» no propone ropa de deporte");
+ assert.ok(r.dresses>=1,n+": los vestidos aparecen");
+ assert.ok(r.required&&r.reasons&&r.dup,n+": prenda obligatoria, motivos y sin duplicados");
+ assert.ok(r.ms<1500,n+": rankOutfits en "+r.ms+" ms");
+}
+console.log("PASS: Styling engine (20/100/500 prendas): capas según tiempo, variedad, ocasión, vestidos — tiempos "+Object.entries(engineProbe).map(([n,r])=>n+":"+r.ms+"ms").join(" "));
