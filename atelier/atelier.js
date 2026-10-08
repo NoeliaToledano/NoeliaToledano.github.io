@@ -642,12 +642,12 @@ function renderPhotoControls(){
  const ph=sheetPhoto,preview=$("#garmentPreview"),img=sheetImage();
  preview.src=img||"";preview.classList.toggle("hidden",!img);preview.classList.toggle("on-white",!!img&&ph?.mode==="white");
  if(!ph||!img){box.innerHTML="";return}
- if(ph.busy){box.innerHTML='<p class="helper" role="status">Poniendo fondo blanco…</p>';return}
+ if(ph.busy){box.innerHTML='<p class="helper" role="status">Probando recorte de fondo…</p>';return}
  const modes=[...(ph.white?[["white","Fondo blanco"]]:[]),...(ph.enhanced?[["enhanced","Mejorada"]]:[]),["original","Original"]];
  box.innerHTML=(modes.length>1?'<div class="seg-tabs photo-mode" role="group" aria-label="Foto que se guarda">'+modes.map(([mode,label])=>'<button type="button" class="seg-tab'+(ph.mode===mode?' active':'')+'" data-photo-mode="'+mode+'" aria-pressed="'+(ph.mode===mode)+'">'+label+'</button>').join("")+'</div>':'')+
- (!ph.white?'<button type="button" class="secondary wide" id="makeWhite">✨ Poner fondo blanco</button>':'')+
+ (!ph.white?'<button type="button" class="secondary wide" id="makeWhite">Probar fondo blanco (experimental)</button>':'')+
  (ph.enhanced?'<p class="helper">La foto era oscura: hemos ajustado suavemente la luz. Puedes conservar la original.</p>':'')+
- (ph.failed?'<p class="helper">No se pudo separar bien el fondo. Puedes guardar la foto sin fondo blanco.</p>':'');
+ (ph.failed?'<p class="helper">No se pudo separar bien el fondo; se conserva la foto sin modificar.</p>':'');
  $$("[data-photo-mode]",box).forEach(b=>b.addEventListener("click",()=>{ph.mode=b.dataset.photoMode;ph.changed=true;renderPhotoControls()}));
  $("#makeWhite",box)?.addEventListener("click",()=>makeSheetWhite());
 }
@@ -656,7 +656,7 @@ async function makeSheetWhite(){
  ph.busy=true;ph.failed=false;renderPhotoControls();
  const white=await whiteBackground(ph.enhanced||ph.original);
  if(sheetPhoto!==ph)return;
- ph.busy=false;if(white){ph.white=white;ph.mode="white";ph.changed=true}else ph.failed=true;
+ ph.busy=false;if(white){ph.white=white;ph.changed=true}else ph.failed=true;
  renderPhotoControls();
 }
 /* Ficha de características dentro de la hoja de la prenda (se crea una vez) */
@@ -670,11 +670,9 @@ function buildMetadataSection(){
   '<div class="filter-grid">'+META_FIELDS.filter(d=>d[3]==="ia").map(field).join("")+'</div>'+
   '<div class="field"><span class="field-title">Ocasiones</span><div class="occ-grid">'+Object.entries(occasions).map(([k,t])=>'<label class="switch-line"><input type="checkbox" name="meta-occasion" value="'+k+'"> '+fx(t)+'</label>').join("")+'</div></div>'+
   '<div class="filter-grid">'+META_FIELDS.filter(d=>d[3]==="manual").map(field).join("")+'</div></details>');
- $("#garmentImage")?.closest(".field")?.insertAdjacentHTML("beforeend",'<div id="photoControls"></div><label class="switch-line" id="autoWhiteOption"><input type="checkbox" id="autoWhite" checked> Poner fondo blanco automáticamente</label><label class="switch-line" id="autoAnalyzeOption"><input type="checkbox" id="autoAnalyze" checked> Analizar automáticamente al elegir la foto</label><p class="helper" id="autoAnalyzeStatus" role="status" aria-live="polite"></p>');
+ $("#garmentImage")?.closest(".field")?.insertAdjacentHTML("beforeend",'<div id="photoControls"></div><p class="helper" id="autoAnalyzeStatus" role="status" aria-live="polite"></p>');
  const occasionField=$("#metadataDetails .occ-grid")?.closest(".field"),occasionSlot=$("#occasionSlot");
  if(occasionField&&occasionSlot){occasionSlot.append(occasionField);$$(`[name="meta-occasion"]`,occasionSlot).forEach(input=>input.addEventListener("change",updateOccasionSummary));updateOccasionSummary()}
- $("#autoAnalyze")?.addEventListener("change",e=>{if(appState.profile)setPref("autoAnalyze",e.target.checked,false)});
- $("#autoWhite")?.addEventListener("change",e=>{if(appState.profile)setPref("autoWhite",e.target.checked,false)});
  // La vista previa va justo encima de los controles de la foto
  const pv=$("#garmentPreview"),pc=$("#photoControls");if(pv&&pc)pc.before(pv);
 }
@@ -731,8 +729,6 @@ function openGarment(id){
  buildMetadataSection();renderPhotoControls();populateMetadata(g);setAnalyzeStatus("");
  const details=$("#metadataDetails");if(details)details.open=false;
  const extra=$("#garmentExtra");if(extra)extra.open=!!g;
- const auto=$("#autoAnalyze");if(auto)auto.checked=appState.data.preferences.autoAnalyze!==false;
- const aw=$("#autoWhite");if(aw)aw.checked=appState.data.preferences.autoWhite!==false;
  lastAnalysis=null;$("#garmentSheet").classList.remove("hidden");
 }
 function closeGarment(){$("#garmentSheet").classList.add("hidden")}
@@ -761,7 +757,7 @@ async function deleteGarment(){
 }
 async function analyzeGarment(){
  const ph=sheetPhoto,image=sheetImage();if(!image)return toast("Haz o elige una foto primero");
- const btn=$("#analyzeBtn");if(btn.disabled)return;btn.disabled=true;btn.textContent="Analizando…";setAnalyzeStatus("La IA está completando tu ficha…");
+ if(ph.analyzing)return;ph.analyzing=true;setAnalyzeStatus("La IA está completando tu ficha…");
  try{
   const out=await api("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image})});
   if(sheetPhoto!==ph)return; // No aplicar un análisis antiguo a una foto nueva.
@@ -775,7 +771,7 @@ async function analyzeGarment(){
   }
   toast("Análisis completado");
  }catch(e){console.error("ANALYZE",e);setAnalyzeStatus("No se pudo analizar. Puedes rellenar los datos a mano o reintentarlo.");if(e.message!=="AI_QUOTA")toast("No se pudo analizar la prenda")}
- finally{btn.disabled=false;btn.textContent="✨ Analizar foto"}
+ finally{ph.analyzing=false}
 }
 function promptWear(ids,lookId){
  const valid=[...new Set(ids||[])].filter(id=>myGarments().some(g=>g.id===id));
@@ -1417,14 +1413,13 @@ function bind(){
  $("#garmentCategory").addEventListener("change",()=>syncGarmentCategory(true));
 
  $$("[data-garment-category]").forEach(btn=>btn.addEventListener("click",()=>{$("#garmentCategory").value=btn.dataset.garmentCategory;syncGarmentCategory(true)}));
- $("#garmentForm").addEventListener("submit",saveGarment);$("#closeGarment").addEventListener("click",closeGarment);$("#deleteGarment").addEventListener("click",deleteGarment);$("#analyzeBtn").addEventListener("click",analyzeGarment);
+ $("#garmentForm").addEventListener("submit",saveGarment);$("#closeGarment").addEventListener("click",closeGarment);$("#deleteGarment").addEventListener("click",deleteGarment);
  const onPhoto=async e=>{
   const f=e.target.files[0];e.target.value="";if(!f)return;
   let original;try{original=await readImage(f)}catch(err){return toast(err.message==="IMAGE_TOO_LARGE"?"La imagen es demasiado grande":"No se pudo leer la foto")}
   const ph=sheetPhoto={original,enhanced:null,white:null,mode:"original",changed:true};renderPhotoControls();
   try{ph.enhanced=await enhanceGarmentPhoto(original);if(sheetPhoto!==ph)return;if(ph.enhanced)ph.mode="enhanced";renderPhotoControls()}catch(err){console.warn("PHOTO_ENHANCE",err)}
-  if($("#autoWhite")?.checked)await makeSheetWhite();
-  if(sheetPhoto===ph&&$("#autoAnalyze")?.checked)analyzeGarment()};
+  if(sheetPhoto===ph)analyzeGarment()};
  $("#garmentImage").addEventListener("change",onPhoto);$("#garmentCamera").addEventListener("change",onPhoto);
  // Botones «Hacer foto» y «Galería»: abren el selector correspondiente (en la ficha y en «¿Lo compro?»)
  document.addEventListener("click",e=>{const b=e.target.closest?.("[data-photo-pick]");if(b)$("#"+b.dataset.photoPick)?.click()});
