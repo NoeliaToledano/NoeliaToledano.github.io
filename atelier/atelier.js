@@ -471,7 +471,7 @@ async function api(path,options={}){
 function mapAnalysis(d){
  const map={top:"Arriba",bottom:"Abajo",dress:"Vestidos",outerwear:"Capas",shoes:"Zapatos",bag:"Bolsos",accessory:"Accesorios"};
  const cat=map[d.category]||d.category||map[d.type],st=d.style==="basic"?"casual":d.style;
- return {name:String(d.name||"").slice(0,80),category:CATEGORIES.includes(cat)?cat:"",color:d.color?(Array.isArray(d.color)?d.color.join(", "):String(d.color)).slice(0,60):"",style:STYLE_OK[st]?st:"",season:seasons[d.season]?d.season:"",notes:d.notes?String(d.notes).slice(0,500):"",...cleanAnalysis(d)};
+ return {name:String(d.name||"").slice(0,80),garmentType:typeof d.garmentType==="string"?d.garmentType:"",category:CATEGORIES.includes(cat)?cat:"",color:d.color?(Array.isArray(d.color)?d.color.join(", "):String(d.color)).slice(0,60):"",style:STYLE_OK[st]?st:"",season:seasons[d.season]?d.season:"",notes:d.notes?String(d.notes).slice(0,500):"",...cleanAnalysis(d)};
 }
 
 /* ===================== 5. Sesión y navegación ===================== */
@@ -756,7 +756,7 @@ async function analyzeGarment(){
  try{
   const out=await api("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image})});
   const d=mapAnalysis(out.garment||out.result||out);lastAnalysis=cleanAnalysis(d);
-  if(d.name)$("#garmentName").value=d.name;if(d.category)$("#garmentCategory").value=d.category;syncGarmentCategory();if(d.color)$("#garmentColor").value=d.color;
+  if(d.name)$("#garmentName").value=d.name;if(d.category)$("#garmentCategory").value=d.category;syncGarmentCategory();const typeOptions=GARMENT_TYPES[d.category]||[];const detected=[d.garmentType,d.subtype].find(t=>typeof t==="string"&&typeOptions.some(o=>o.toLocaleLowerCase("es")===t.trim().toLocaleLowerCase("es")));if(detected)$("#garmentType").value=typeOptions.find(t=>t.toLocaleLowerCase("es")===detected.trim().toLocaleLowerCase("es"));if(d.color)$("#garmentColor").value=d.color;
   if(d.style)$("#garmentStyle").value=d.style;if(d.season)$("#garmentSeason").value=d.season;if(d.notes&&!$("#garmentNotes").value.trim())$("#garmentNotes").value=d.notes;
   if(sheetPhoto===ph){
    const manual=Object.fromEntries(Object.entries(readMetadata()).filter(([k])=>META_FIELDS.find(x=>x[0]===k)?.[3]==="manual"));
