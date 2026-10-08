@@ -6,7 +6,7 @@ const node=id=>{if(!nodes.has(id))nodes.set(id,{classList:{add(){},remove(){},to
 const document={addEventListener(){},querySelector:q=>node(q),querySelectorAll:()=>[]};
 const sessionStorage={removeItem(){},getItem(){return null}};
 const run=new Function("document","sessionStorage","crypto",src+`
-const xssId='\\" onclick=\\"alert(1)';
+const xssId=String.fromCharCode(34)+' onclick='+String.fromCharCode(34)+'alert(1)';
 const badImage=garmentCard({id:xssId,name:"Zapatos",image:"javascript:alert(1)"});
 const goodImage=garmentCard({id:"safe",name:"Prenda",image:"data:image/jpeg;base64,AAAA"});
 const badLook=lookCard({id:xssId,name:"Look",garmentIds:[]});
