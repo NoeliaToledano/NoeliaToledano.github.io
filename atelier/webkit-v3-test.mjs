@@ -21,7 +21,7 @@ await page.addInitScript(()=>{
    const data=JSON.parse(localStorage.getItem("atelier-session")||"{}");
    return respond({authenticated:true,profileId:data.profile});
   }
-  if(path.endsWith("/api/render-garment"))return respond({error:"Unavailable"},503);
+  if(path.endsWith("/api/render-garment"))return respond({image:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/pVYAAAAASUVORK5CYII="});
   if(path.endsWith("/api/analyze"))return respond({garment:{name:"Foto analizada",type:"top",color:"Azul"}});
   if(path.endsWith("/api/looks")){
    if(window.__atelierAudit.badAuth)return respond({error:"Sesión caducada"},401);
@@ -39,6 +39,7 @@ async function addGarment(name){
  await page.locator("#garmentImage").setInputFiles({name:"prenda.png",mimeType:"image/png",buffer:png});
  await page.locator("#garmentPreview").waitFor({state:"visible"});
  await page.getByText("Análisis completado").waitFor();
+ await page.getByText("Foto de catálogo lista").waitFor();
  await page.locator("#garmentName").fill(name);
  await page.locator('#garmentForm button[type="submit"]').click();
  await page.getByText(name,{exact:true}).first().waitFor();
