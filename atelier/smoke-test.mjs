@@ -67,6 +67,26 @@ try{
   return failures;
  });
  assert.deepEqual(collageAudit,[],"Regresión de composición fotográfica de looks");
+
+ // El color de las prendas principales debe pesar más que 3 accesorios neutros:
+ // añadir complementos nunca puede disimular una base de colores incompatibles.
+ const colorPriority=await page.evaluate(()=>{
+  const ctx=engineContext({occasion:null,temp:20,extras:{shoes:false,bag:false}});
+  const top={id:"cp-top",category:"Arriba",color:"Rojo",style:"casual"};
+  const pants={id:"cp-bottom",category:"Abajo",color:"Verde",style:"casual"};
+  const neutral=[
+   {id:"cp-shoes",category:"Zapatos",color:"Negro",style:"casual"},
+   {id:"cp-bag",category:"Bolsos",color:"Negro",style:"casual"},
+   {id:"cp-acc",category:"Accesorios",color:"Negro",style:"casual"}
+  ];
+  const main=scoreOutfit([top,pants],ctx).score;
+  const decorated=scoreOutfit([top,pants,...neutral],ctx).score;
+  const harmonious=scoreOutfit([top,{...pants,color:"Rojo"},...neutral],ctx).score;
+  return {main,decorated,harmonious};
+ });
+ assert.ok(colorPriority.harmonious>colorPriority.decorated,
+  "Los accesorios neutros no pueden superar una armonía real entre las prendas principales");
+
  // Collages complejos: ocupan toda la fila también tras el breakpoint de 700 px.
  for(const width of [320,390,700,768,999]){
   await page.setViewportSize({width,height:844});
