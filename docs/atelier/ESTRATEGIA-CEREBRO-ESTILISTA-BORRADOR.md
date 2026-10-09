@@ -109,3 +109,31 @@ Prenda + atributos/procedencia + reglas actuales
 - [ ] Votos A/B para comparar look minimalista coherente vs look sobrecargado y para contrastar contextualización formal/casual, sin ajustar y certificar con el mismo lote.
 
 **Regla de aceptación**: la composición se valida como **unidad**. Compatibilidad por pares = condición de apoyo, nunca prueba suficiente de coherencia global. Se deberá adaptar `completeOutfitGreedy`/`completeOutfit` para que no añadan extras solo por disponibilidad.
+
+
+## Contraste de Claude recibido — acuerdo sobre arquitectura, calibraciones aún provisionales
+
+Claude respondió a las preguntas de #159 (comentario 10/10): **acepta E7–E12 y la separación** `pairEvidence` (evidencias + incertidumbre) → `contextualizePair` (ocasión, clima, perfil/feedback) → `comboIdentity` (todo el grupo) → `expandLook` (necesidad o mejora). Rehará su prototipo para evitar una puntuación paralela a las reglas de producción.
+
+| Tema | Consenso operativo | Requiere verificar |
+| --- | --- | --- |
+| Evidencia | Reutilizar `pairColor`, `styleAffinity`, `formalLevel`, `occasionFits`, temporada, térmica y restricciones. No mezclar 👎 en evidencia permanente | Ausencia de reglas contradictorias entre APIs |
+| Pieza opcional | Solo por necesidad contextual o ganancia global. **Propuesta inicial de Claude:** Δscore ≥ 1 punto y relación ≥ 0,6 con cada pieza relevante | Umbrales calibrados con votos; evitar sobreconservadurismo y mezclas estilísticas intencionadas |
+| Eslabón débil | No promediar conflictos. Claude propone aviso cuando mínimo entre relevantes < 0,4 y rechazo de ampliación con algún enlace < 0,6 | Caso de 5 prendas con cuatro enlaces buenos y uno malo; contextos con estética intencional |
+| Calzado/capa | Si son necesarios por contexto, buscar opción coherente; si no existe, **base parcial + aviso**, nunca fingir que el look de calle está resuelto | Diferenciar necesidades de usar zapatos y visualizarlos en el conjunto |
+| Cache | Claude tiene firma global perezosa que es correcta pero recalcula de más; ChatGPT diseña invalidación incremental **por prenda afectada** | Actualización remota/importación/borrado/reglas, aislamiento perfiles |
+| Performance | Claude refiere ≈ 320 ms en Node con 100 prendas en modo ligero | Ejecutar medición verificable y Safari/iPhone; no extrapolar Node al dispositivo |
+| Modelo visual | FashionCLIP probado offline por Claude, reconocimiento mejor que formalidad, **no juez de estilo** | Resultados reproducibles sin fotos, licencias, costes, test independiente |
+| Evaluación | 3–4 armarios cápsula de 25–40 prendas + eventual armario real autorizado; evaluación humana congelada | No solicitar fotos privadas hasta contar con un proceso explícito de consentimiento; no tocar reglas usando lote congelado |
+
+### Condición de aceptación: coherencia, no completitud
+
+Los tests deben probar conjuntamente:
+1. Una base con vestido/mono o arriba+abajo **puede ganar sin extras**.
+2. Añadir blazer adecuado al frío puede mejorar la función sin romper la coherencia estética; uno inadecuado se rechaza o se advierte si no hay alternativa.
+3. **Caso 4+1:** prenda nueva buena con cuatro piezas aisladas, pero incompatible con una quinta relevante ⇒ se rechaza; no compensar el conflicto con medias.
+4. El look mantiene la **identidad contextual** tras cada añadido; no se presenta como apto para trabajo/fiesta si cualquiera de las piezas relevantes incumple las restricciones.
+5. Los cambios de gusto personales no editan el dato general del par ni contaminan otros perfiles.
+6. La caché no tarda O(n²) en una **edición incremental típica**, aunque la generación inicial pueda evaluar muchos pares. Registrar coste real con 10, 100 y 500 prendas.
+
+**Estado:** coincidencia explícita de diseño en #159; no implica que los umbrales ni la implementación estén aprobados o validados. Acordar pruebas y revisión cruzada antes de fusionar PR de producto.
