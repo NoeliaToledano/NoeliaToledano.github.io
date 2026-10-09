@@ -32,3 +32,7 @@ Las salidas son vectores generados por **FashionCLIP real**, pero el siguiente p
 - Mantener pesos/dependencias fuera del bundle público y no subir datos de usuarias a terceros.
 - Medir coste de extracción, cobertura, latencia y resultados con votos humanos **congelados**.
 - Pruebas de lógica sin descarga: `python -m unittest discover -s atelier/benchmarks/real-photos -p 'test_fashionclip_export.py'`.
+
+## Piloto reducido
+
+Para empezar con solo fotografías autorizadas de dos looks, pasa sus IDs separados por comas usando `--ids ID1,ID2,...`. Solo se exige que existan los archivos de las prendas seleccionadas. **No se pueden pasar los vectores parciales al banco completo de 34 pares**: prepara un fichero de pares reducido cuyos conjuntos A y B tengan todas las prendas representadas. Declara esa cobertura en el informe. Este modo permite un ensayo técnico sin necesitar las 86 fotos originales.
