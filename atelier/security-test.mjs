@@ -1,4 +1,8 @@
 import fs from "node:fs";
+import {execFileSync} from "node:child_process";
+import {tmpdir} from "node:os";
+import {join,dirname} from "node:path";
+import {fileURLToPath} from "node:url";
 import assert from "node:assert/strict";
 const src=fs.readFileSync(new URL("./atelier.js",import.meta.url),"utf8");
 const nodes=new Map();
@@ -324,4 +328,22 @@ console.log("PASS: S6 long-offline devices don't resurrect deletions");
   const r=await probe(document,sessionStorage,{randomUUID:()=>"t"});
   assert.equal(r,"fondo,contraste,roto,|fondo,contraste,encuadre,roto");
   console.log("PASS: Failed cutouts report a reason with a photo tip");
+}
+
+/* Quality benchmark harness: 72 context runs over a local fixture.
+   The external 1000-photo dataset is a separate offline/manual evaluation. */
+{
+ const root=dirname(fileURLToPath(import.meta.url));
+ const resultFile=join(tmpdir(),"atelier-look-audit-"+process.pid+".json");
+ try{
+  execFileSync(process.execPath,[join(root,"benchmarks/evaluate-outfits.mjs"),
+   join(root,"benchmarks/sample-garments.json"),resultFile],{timeout:90000});
+  const report=JSON.parse(fs.readFileSync(resultFile,"utf8"));
+  assert.equal(report.scenarios.length,72,"4 armarios × 3 temperaturas × 6 ocasiones");
+  assert.ok(report.looks.length>0,"Debe generar looks auditables");
+  assert.equal(report.looks.filter(l=>l.flags.includes("mixed_summer_winter")||
+    l.flags.includes("summer_shoes_in_cold")||l.flags.includes("winter_hat_in_heat")).length,0,
+    "El motor no debe producir complementos incompatibles con la temperatura");
+  console.log("PASS: Visual look benchmark harness generated "+report.looks.length+" reviewed-ready outfits");
+ }finally{try{fs.unlinkSync(resultFile)}catch{}}
 }
