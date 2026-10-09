@@ -56,6 +56,7 @@ try{
  await addGarment("Pantalón WebKit","Abajo"); // un look necesita arriba y abajo
  await page.locator('[data-view="stylist"]').click();
  await page.locator("#openLooks").click();
+ await page.locator(".looks-tools").evaluate(el=>el.open=true);
  await page.locator("#aiLooks").click();
  await page.getByText("Combinación de prueba",{exact:true}).waitFor();
  await page.locator("#aiSheet [data-ai-save]").first().click();
