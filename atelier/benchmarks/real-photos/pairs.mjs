@@ -32,7 +32,7 @@ for(const p of PAIRS){
 const pct=(xs)=>xs.length?Math.round(100*xs.filter(r=>r.ok).length/xs.length)+"% ("+xs.filter(r=>r.ok).length+"/"+xs.length+")":"—";
 if(process.argv.includes("--json")){console.log(JSON.stringify(rows,null,1));process.exit(0)}
 const pctK=(xs,k)=>xs.length?Math.round(100*xs.filter(r=>r[k]).length/xs.length)+"% ("+xs.filter(r=>r[k]).length+"/"+xs.length+")":"—";
-const voted=rows.filter(r=>r.noelia==="a"||r.noelia==="b"),engineOf=r=>r.ok?r.better:r.pick;
+const voted=rows.filter(r=>r.noelia==="a"||r.noelia==="b"),engineOf=r=>r.va.length&&!r.vb.length?"b":r.vb.length&&!r.va.length?"a":r.pick; // independiente de la etiqueta de la estilista (revisión de Codex, #137)
 console.log("Acuerdo con Noelia (voto a ciegas): motor",voted.filter(r=>engineOf(r)===r.noelia).length+"/"+voted.length,"· estilista (Claude)",voted.filter(r=>r.better===r.noelia).length+"/"+voted.length,"· «igual»:",rows.filter(r=>r.noelia==="=").length);
 for(const r of voted.filter(r=>engineOf(r)!==r.noelia))console.log("  ≠ Noelia",r.id,r.occasion,r.temp+" °C","Noelia="+r.noelia,"motor="+engineOf(r),"a="+r.sa,"b="+r.sb,"—",r.why);
 console.log("Acierto del motor frente a la estilista (restricciones o puntuación):",pct(rows),"· difíciles:",pct(rows.filter(r=>r.hard)));
