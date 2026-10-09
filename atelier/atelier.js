@@ -1211,7 +1211,7 @@ function inspoScore(it,g){
  const ci=colorInfo(it.color,it.pattern),cg=colorInfo(g.color,g.pattern),same=(a,b)=>a&&b&&norm(a)===norm(b);
  let s=same(it.color,g.color)?3:ci.fam&&ci.fam===cg.fam&&ci.fam!=="neutro"?1.5:ci.word&&ci.word===cg.word?2:0;
  if(it.garmentType&&(same(it.garmentType,g.type)||norm(textOf(g)).includes(norm(it.garmentType))))s+=2;
- if((it.pattern||"plain")===(g.pattern||"plain"))s+=1;
+ if(it.pattern&&it.pattern===(g.pattern||"plain"))s+=1; // solo si el análisis dio el estampado (revisión de Codex, #151)
  for(const [k,w] of [["formality",1],["sleeve",.5],["length",.5],["style",.5]])if(it[k]&&g[k]&&it[k]===g[k])s+=w;
  return s;
 }
