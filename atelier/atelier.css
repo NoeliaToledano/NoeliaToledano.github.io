@@ -312,3 +312,9 @@ p.notice-card{display:block}
 [data-look] .look-chip-name{font-size:11px;line-height:1.2}
 .look-tile .tile-tools{flex-wrap:wrap;min-width:0}
 .look-tile .tile-tools .chip-button{flex:1 1 auto;min-width:0;white-space:nowrap;padding-inline:8px}
+
+/* Collage de siete piezas: más altura en pantallas estrechas para que las cuatro
+   tarjetas inferiores no se compriman, conservando la imagen completa. */
+@media(max-width:700px){
+ .look-mixed-board[data-count="7"]{aspect-ratio:3/5}
+}
