@@ -138,6 +138,14 @@ try{
  // En Hoy, lo planificado para hoy ocupa «Tu look de hoy»
  await page.locator('[data-view="today"]').click();
  await page.locator(".daily-look .badge-ok").waitFor();
+ // Weather refresh must not collapse the panel or lose the user's location in Hoy.
+ await page.locator(".today-unified-options > summary").click();
+ await page.waitForFunction(()=>ui.todayOptionsOpen===true);
+ await page.evaluate(()=>render());
+ assert.equal(await page.locator(".today-unified-options").evaluate(el=>el.open),true,
+  "More options stays expanded after a weather-triggered render");
+ assert.equal(await page.locator("#stopWeather").count(),0,
+  "The unnecessary reset-to-25-degrees button is removed");
  await page.locator('[data-view="shopping"]').click();
  await page.locator('[data-shop-tab="wish"]').click();
  await page.locator('[name="wishName"]').fill("Abrigo de prueba");
