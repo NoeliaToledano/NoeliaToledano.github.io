@@ -1188,12 +1188,12 @@ function intentionalMix(a,b){
  return "";
 }
 const EVIDENCE_FIELDS=g=>["color",...(["Arriba","Vestidos","Capas"].includes(g.category)?["sleeve","thickness"]:[]),...(BIG.includes(g.category)?["warmth"]:[]),"formality"];
-let relCache={sig:"",ev:new Map(),ctx:new Map(),learn:new Map(),fast:new Map(),feat:new Map()};
+let relCache={sig:"",ev:new Map(),learn:new Map(),fast:new Map(),feat:new Map()};
 function relSig(){const d=appState.data||{};return (d.garments||[]).length+"|"+(d.garments||[]).reduce((m,g)=>String(g.updatedAt||"")>m?String(g.updatedAt||""):m,"")+"|"+JSON.stringify(d.feedback||{})+"|"+(d.looks||[]).map(l=>l.id+":"+(l.favorite?"f":"")+(l.inspired?"i":"")+(l.dislikeReason||"")+":"+(l.garmentIds||[]).join(".")).join(",") /* lo que enseña relaciones: favorito, inspiración, motivo y prendas (revisión de Codex, #164) */+"|"+(d.preferences?.workDress||"")}
 /* Una vez por cálculo (rankOutfits, ficha): si el armario, el feedback o el código de vestir cambian, se rehace la caché */
 function ensureRelations(){
  const sig=relSig();if(relCache.sig===sig)return;
- relCache={sig,ev:new Map(),ctx:new Map(),learn:new Map(),fast:new Map(),feat:new Map()};const fb=appState.data.feedback||{};
+ relCache={sig,ev:new Map(),learn:new Map(),fast:new Map(),feat:new Map()};const fb=appState.data.feedback||{};
  for(const l of myLooks()){const v=fb[l.id]==="down"?(l.dislikeReason==="hoy"||l.dislikeReason==="color"?0:-1):fb[l.id]==="up"||l.favorite||l.inspired?1:0;if(!v)continue;const ids=l.garmentIds||[];
   for(let i=0;i<ids.length;i++)for(let j=i+1;j<ids.length;j++){const k=[ids[i],ids[j]].sort().join("|");relCache.learn.set(k,(relCache.learn.get(k)||0)+v)}}
 }
@@ -1210,18 +1210,17 @@ function relFeat(g){
 }
 function pairEvidence(a,b){
  if(!a||!b||a.id===b.id||!relatedCats(a,b))return null;
- const key=a.id&&b.id?(a.id<b.id?a.id+"|"+b.id:b.id+"|"+a.id):"";if(key&&relCache.ev.has(key))return relCache.ev.get(key);
+ let ma=relCache.ev.get(a);if(ma?.has(b))return ma.get(b); /* por objeto: una copia de la prenda con otros datos no reutiliza la relación antigua */
  const pc=pairColor(a,b),fa=relFeat(a),fb=relFeat(b);
  const mix=fa.urban&&b.category!=="Zapatos"&&fb.fl>=2||fb.urban&&a.category!=="Zapatos"&&fa.fl>=2?"zapatillas con prenda arreglada":fa.structured&&fb.denim||fb.structured&&fa.denim?"americana con vaquero":"";
  const ev={ids:[a.id,b.id],color:pc.s,colorKind:pc.k||"",small:!BIG.includes(a.category)||!BIG.includes(b.category),style:styleAffinity(fa.ss,fb.ss),formalGap:Math.abs(fa.fl-fb.fl),
   register:REGISTER_OF((fa.fl+fb.fl)/2),seasonClash:!!(a.season&&b.season&&a.season!=="all"&&b.season!=="all"&&a.season!==b.season),
   thermalClash:fa.heavy&&fb.light||fb.heavy&&fa.light,occasions:fa.occ.filter(o=>fb.occ.includes(o)),mix,declared:fa.declared.concat(fb.declared),uncertain:fa.missing.concat(fb.missing)};
- if(key)relCache.ev.set(key,ev);return ev;
+ if(!ma)relCache.ev.set(a,ma=new Map());ma.set(b,ev);let mb=relCache.ev.get(b);if(!mb)relCache.ev.set(b,mb=new Map());mb.set(a,ev);return ev;
 }
 function contextualizePair(ev,ctx){
  if(!ev)return null;
- const pk=ev.ids[0]<ev.ids[1]?ev.ids[0]+"|"+ev.ids[1]:ev.ids[1]+"|"+ev.ids[0],k=pk+"|"+(ctx?.occasion||"")+"|"+(ctx?.likes?.has("pattern")?"p":"");
- if(relCache.ctx.has(k))return relCache.ctx.get(k);
+ const pk=ev.ids[0]<ev.ids[1]?ev.ids[0]+"|"+ev.ids[1]:ev.ids[1]+"|"+ev.ids[0];
  const color=ev.colorKind==="two-patterns"&&ctx?.likes?.has("pattern")?.75:ev.colorKind==="opposite"&&ev.small?.75:ev.color;
  const style=ev.mix?Math.max(ev.style,.85):ev.style,formal=ev.mix?Math.max(1-ev.formalGap/3,.75):1-ev.formalGap/3; // mezcla intencionada: no resta
  /* la ficha manda: si a una le falta la formalidad pero está marcada para esta ocasión (y ambas valen), su estilo no resta */
@@ -1231,7 +1230,7 @@ function contextualizePair(ev,ctx){
  if(!ev.occasions.length)s*=.8;else if(ctx?.occasion&&!ev.occasions.includes(ctx.occasion))s*=.85;
  const n=relCache.learn.get(pk)||0;s+=Math.max(-.3,Math.min(.3,.1*n)); // lo aprendido del perfil
  const r={s:Math.max(0,Math.min(1,Math.round(s*100)/100)),register:ev.register,contexts:ev.occasions,mix:ev.mix,uncertain:ev.uncertain};
- relCache.ctx.set(k,r);return r;
+ return r; /* la caché vive en relationOf, por objeto */
 }
 /* acceso rápido por objeto (sin construir claves de texto): el motor pregunta cientos de miles de veces por las mismas parejas */
 function relationOf(a,b,ctx){
