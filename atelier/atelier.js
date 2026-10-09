@@ -1662,9 +1662,13 @@ function insufficientColdLayer(g,temp){
 function smartFallbackShoes(g){
  if(g.category!=="Zapatos")return false;
  const text=[g.name,g.type,g.subtype].filter(Boolean).join(" ").toLowerCase();
- return /mocas[ií]n|loafer|bailarina|flat|sal[oó]n|oxford|blucher|bot[ií]n|ankle boot/.test(text)&&
-  !/chancl|sandal|zueco|clog|deportiv|sneaker/.test(text);
+ return /mocas[ií]n|loafer|bailarina|flat|sal[oó]n|oxford|blucher|bot[ií]n|ankle boot|tac[oó]n|tacones|pumps?\b|heels?\b/.test(text)&&
+  !/chancl|sandal|zueco|clog|deportiv|sneaker|purpurina|glitter|strass|rhinestone|lentejuel|sequin/.test(text);
 }
+/* Botas y botines con calor (≥ 26 °C): solo si no hay otro calzado (evaluación Polyvore: botines a 28 °C con vestido sin mangas) */
+const closedBoot=g=>g.category==="Zapatos"&&/\bbot(a|as|ines?|[ií]n)\b|\bboots?\b/i.test(textOf(g))&&!/sandal|peep.?toe|open.?toe/i.test(textOf(g));
+const bootInHeat=(g,temp)=>temp>=26&&closedBoot(g);
+const isPatterned=g=>colorInfo(g.color,g.pattern).fam==="estampado";
 function vividColorRepeat(gs){
  const count=new Map();
  for(const g of gs){
@@ -1676,7 +1680,7 @@ function vividColorRepeat(gs){
 }
 function completeOutfitGreedy(base,pool,ctx,used=new Map(),firstPick=null){
  const l=[...base],rule=layerRule(ctx.temp),home=ctx.occasion==="home",beach=ctx.occasion==="beach";
- const fits=x=>!l.includes(x)&&!(l.some(g=>isBackpack(g)&&(isOutdoor(g)||formalLevel(g)<2))&&formalLevel(x)>=2)&&!heavyKnitInHeat(x,ctx.temp)&&!insufficientColdLayer(x,ctx.temp)&&weatherCompatible(x,l,ctx)&&l.every(p=>!related(x,p)||stylesOk(x,p))&&l.every(p=>pairColor(x,p).s>=.45||!BIG.includes(p.category)||!BIG.includes(x.category));
+ const fits=x=>!l.includes(x)&&!(l.some(g=>isBackpack(g)&&(isOutdoor(g)||formalLevel(g)<2))&&formalLevel(x)>=2)&&!heavyKnitInHeat(x,ctx.temp)&&!insufficientColdLayer(x,ctx.temp)&&weatherCompatible(x,l,ctx)&&l.every(p=>!related(x,p)||stylesOk(x,p))&&l.every(p=>pairColor(x,p).s>=.45||!BIG.includes(p.category)||!BIG.includes(x.category))&&!(isPatterned(x)&&!BIG.includes(x.category)&&l.some(isPatterned));
  const pref=x=>(x.favorite?.5:0)+1/(1+(ctx.worn.get(x.id)||0))+(ctx.forgotten.has(x.id)?.5:0)-(ctx.avoid.has(x.id)?2:0)-(used.get(x.id)||0)*1.5+
   l.reduce((t,p)=>t+pairColor(x,p).s,0)/Math.max(1,l.length);
  const plan=[ctx.extras.shoes&&!home&&!beach?"Zapatos":beach&&ctx.extras.shoes?"Zapatos":null,!home&&rule.max>=0?"Capas":null,ctx.extras.bag&&!home?"Bolsos":null,!home?"Accesorios":null];
@@ -1690,8 +1694,13 @@ function completeOutfitGreedy(base,pool,ctx,used=new Map(),firstPick=null){
    c.sort((a,b)=>(Number(formalLevel(b)>=2)-Number(formalLevel(a)>=2))*2+pref(b)-pref(a));
   }
   else if(cat==="Zapatos"&&ctx.occasion==="work"){ // Q2 (#108): deportivas solo si no hay otro calzado (por tipo o nombre, no solo por estilo)
-   const other=c.filter(x=>!isSneaker(x));if(other.length)c=other;c.sort((a,b)=>pref(b)-pref(a))}
+   const ok=x=>!isSneaker(x)&&!bootInHeat(x,ctx.temp);
+   // Sin calzado de trabajo adecuado: salones o tacones lisos del armario antes que deportivas; botines con calor, lo último
+   if(!c.some(ok))c=[...c,...(ctx.allShoes||[]).filter(x=>!c.includes(x)&&smartFallbackShoes(x)&&ok(x)).filter(fits)];
+   const tier=x=>ok(x)?0:isSneaker(x)&&!bootInHeat(x,ctx.temp)?1:2;
+   c.sort((a,b)=>tier(a)-tier(b)||pref(b)-pref(a))}
   else c.sort((a,b)=>pref(b)-pref(a));
+  if(cat==="Zapatos"&&c.some(x=>!bootInHeat(x,ctx.temp)))c=c.filter(x=>!bootInHeat(x,ctx.temp));
   if(cat==="Bolsos"&&l.some(p=>formalLevel(p)>=2))c=c.filter(x=>!isBackpack(x)||formalLevel(x)>=2&&!isOutdoor(x)); // Q3 (#108): mochila de vestir sí
   if(cat==="Zapatos"&&beach)c=c.filter(x=>/sandal|chancl|alpargat|zueco/i.test([x.type,x.name,x.subtype].filter(Boolean).join(" ")));
   // P3/P4 (#99): un gorro o sombrero solo con motivo (frío o sol de verano en diario/playa); otros complementos, si suman
