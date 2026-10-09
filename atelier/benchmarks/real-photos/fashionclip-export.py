@@ -133,6 +133,13 @@ def main():
     target = Path(args.output)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(exported, ensure_ascii=False), encoding="utf-8")
+    # Sidecar provenance, kept separate to preserve embeddings-to-pairs.mjs input contract.
+    provenance = {"model": args.model, "items": len(exported), "ids": list(exported),
+                  "dimensions": len(next(iter(exported.values()))["vector"]),
+                  "source": "local authorized images",
+                  "scorer": "cosine diagnostic baseline, not trained outfit compatibility"}
+    target.with_suffix(target.suffix + ".provenance.json").write_text(
+        json.dumps(provenance, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"Exported {len(exported)} real image vectors from {args.model} -> {target}")
 
 
