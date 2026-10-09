@@ -561,10 +561,12 @@ console.log("PASS: S6 long-offline devices don't resurrect deletions");
   const bad=scoreOutfit([tee,shorts,boots],ctx),good=scoreOutfit([tee,shorts,sandals],ctx);
   const work=engineContext({occasion:"work",temp:20,date:"2026-04-15",extras:{shoes:true,bag:false}});
   const hood=scoreOutfit([G("t2","Arriba","Sudadera"),G("b2","Abajo","Pantalón",{formality:"smartcasual"}),G("z3","Zapatos","Mocasines")],work);
-  return {bad:bad.score,good:good.score,badWarn:bad.warnings.join("|"),goodWarn:good.warnings.join("|"),hoodWarn:hood.warnings.join("|"),issues:lookIssues([tee,shorts,sandals],ctx).length};`);
+  appState.data=normalizeData({garments:[G("s1","Arriba","Sudadera",{favorite:true}),G("s2","Arriba","Blusa",{formality:"smartcasual"}),G("s3","Arriba","Camisa",{formality:"smartcasual"}),G("s4","Abajo","Pantalón",{formality:"smartcasual"}),G("s5","Zapatos","Mocasines")]});
+  const swap=swapOptions({garmentIds:["s3","s4","s5"],occasion:"work"},"s3").map(o=>o.g.id).join();
+  return {swap,bad:bad.score,good:good.score,badWarn:bad.warnings.join("|"),goodWarn:good.warnings.join("|"),hoodWarn:hood.warnings.join("|"),issues:lookIssues([tee,shorts,sandals],ctx).length};`);
   const r=probe(document,sessionStorage,{randomUUID:()=>"t"});
   assert.ok(r.good>r.bad,"28 °C: sandalias puntúan más que botas ("+r.good+" vs "+r.bad+")");assert.match(r.badWarn,/Botas: botas con 28/);
-  assert.equal(r.issues,0);assert.doesNotMatch(r.goodWarn,/botas/i);assert.match(r.hoodWarn,/Sudadera: no es para «trabajo»/);
+  assert.equal(r.issues,0);assert.doesNotMatch(r.goodWarn,/botas/i);assert.match(r.hoodWarn,/Sudadera: no es para «trabajo»/);assert.equal(r.swap.split(",")[0],"s2","Cambiar prenda en un look de trabajo: blusa antes que sudadera favorita");
   console.log("PASS: Look score sees the generation constraints (occasion, heat, boots…) and warns");
 }
 

@@ -1410,7 +1410,7 @@ function swapOptions(l,oldId,max=6){
  if(!old)return [];
  // Motor común: misma categoría, compatible con el resto y puntuado como look completo (fecha del plan si la hay)
  const rest=gs.filter(g=>g.id!==oldId),fb=appState.data.feedback||{},saved=new Map(myLooks().map(x=>[lookSig(x.garmentIds||[]),x]));
- const ctx=engineContext({occasion:null,date:validDay(l.date)?l.date:undefined});
+ const ctx=engineContext({occasion:l.occasion in occasions?l.occasion:null,date:validDay(l.date)?l.date:undefined}); // con la ocasión del look (revisión de Codex, #133)
  const ok=g=>rest.every(r=>(!related(g,r)||stylesOk(g,r))&&(pairColor(g,r).s>=.45||!BIG.includes(g.category)||!BIG.includes(r.category)));
  return myGarments().filter(g=>g.id!==oldId&&g.category===old.category&&!rest.some(r=>r.id===g.id)&&ok(g)).map(g=>{
   const look=[...rest,g],ids=look.map(x=>x.id),ex=saved.get(lookSig(ids)),r=scoreOutfit(look,ctx),why=[...r.reasons];
