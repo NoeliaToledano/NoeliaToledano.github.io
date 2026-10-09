@@ -521,3 +521,36 @@ Una prenda cálida puede resultar poco práctica con lluvia, viento o largas cam
 - Comparar precisión en casos difíciles, cobertura de preferencias, diversidad de top-3, tasa de looks funcionalmente inválidos, latencia y coste.
 
 **Prioridad inmediata:** cerrar el circuito humano de validación + prototipo offline Type-Aware. No tomar “usar todo” como introducir cinco modelos competidores en producción.
+
+
+## 41. Datos empíricos obtenidos: repositorio Atelier y bancos públicos (2026-10-09)
+
+### Inventario del banco Atelier, leído directamente de main
+
+- **34** pares A/B con `better` y motivo; **33** contienen un voto `noelia`. Se registran **27 acuerdos exactos** con la etiqueta original y **6 desacuerdos/empates**: p03, p04, p06, p18, p26, p30. El caso sin voto no debe computar como error. 27/33 = **81,8 % de acuerdo con las etiquetas de un solo juez**, no precisión del motor.
+- **86** prendas reales etiquetadas para el banco Polyvore: 20 Arriba, 14 Abajo, 14 Zapatos, 10 Capas, 10 Vestidos, 10 Accesorios, 8 Bolsos.
+- Patrones declarados: **68** plain, 5 checks, 5 graphic, 3 animal, 3 stripes, 2 floral. Fuerte desbalance: las combinaciones con varios patrones son menos representadas, así que extrapolar el rendimiento será poco fiable.
+- Clases de par: **8** formalidad, **8** estampados, **6** temperatura, **5** ocasión, **3** complementos, **2** color, **2** coherencia. Este pequeño conjunto es una evaluación cualitativa dirigida, **no una muestra representativa** del espacio de estilos.
+- Desacuerdos destacados: p03 (estampados), p04 (botas con calor), p06 (leopardo en trabajo), p18 (color, empate), p26 (bustier en trabajo, empate), p30 (deportivas doradas en trabajo, empate). No modificar etiquetas ni aprender de estos 33 votos sin separar desarrollo/test.
+- Fuentes: [pairs-polyvore.json](../../atelier/benchmarks/real-photos/pairs-polyvore.json), [labels-polyvore.json](../../atelier/benchmarks/real-photos/labels-polyvore.json). Estos conteos pueden variar con cambios posteriores; actualizar con script, no a mano.
+
+### Fuentes de datos adicionales verificadas
+
+| Fuente | Tamaño y datos disponibles | Acceso/uso relevante |
+| --- | --- | --- |
+| [Maryland Polyvore](https://github.com/xthan/polyvore-dataset) | **21.889** outfits: 17.316 train, 1.497 valid, 3.076 test; listas de prendas y metadatos | Útil para baseline de outfits y recuperación de atributos. Las URLs originales de Polyvore dejaron de funcionar; verificar fotografías y licencia por separado |
+| [Polyvore Outfits — mvasil](https://huggingface.co/datasets/mvasil/polyvore-outfits) | Particiones disjoint/nondisjoint, JSON/Parquet, etiquetas de compatibilidad y FITB | **Gated:** exige aceptación de condiciones y afiliación/institución investigadora. Aunque la ficha muestra CC BY 4.0, los autores **no poseen el copyright de las fotografías**. No descargar ni redistribuir imágenes sin autorización |
+| [Polyvore Outfits — procesamiento](https://github.com/open-mmlab/mmfashion/blob/master/docs/dataset/FASHION_COMPATIBILITY_DATASET.md) | Especificación de splits, compatibilidad positiva/negativa, preguntas fill-in-the-blank, textos y categorías | Usar definición de tareas y formatos; no confundir ejemplos negativos generados con valoraciones humanas |
+| [DeepFashion2](https://github.com/switchablenorms/DeepFashion2) | **491.000** imágenes; **801.000** prendas; **13** categorías; máscaras, landmarks y boxes | Especialmente útil para reconocimiento/segmentación de prendas, **no como verdad de armonía de outfits**; comprobar derechos y descarga |
+| [IQON3000](https://www.sciencedirect.com/science/article/pii/S0167923625000569) | Según fuente de 2025: **308.747** conjuntos, **3.568** usuarios, **672.335** prendas | Datos de preferencias de usuario; accesibilidad/licencia y tratamiento de datos deben verificarse antes de incorporación |
+| [lzcn/outfit-datasets](https://github.com/lzcn/outfit-datasets) | Herramientas y datos preprocesados para Polyvore-U e IQON3000 con imágenes y vectores ResNet-34 | Puede ahorrar extracción masiva de características; revisar derechos de imágenes y distribución de vectores |
+
+**Nota de procedencia:** las cifras anteriores proceden de fichas de datasets, publicaciones y archivos realmente consultados. Ningún dataset externo ha sido descargado, incorporado o entrenado dentro de Atelier por este trabajo. Gated/research-only no significa libre para una PWA pública.
+
+### Plan de adquisición reproducible
+
+1. Conservar **metadatos públicos y documentación** con URL, versión, campos, licencia y fecha de revisión en un manifiesto.
+2. Usar primero los **86 ítems propios existentes** para medir cobertura de categorías, robustez a campos ausentes y comparaciones humanas; no hace falta descargar imágenes nuevas para ese primer paso.
+3. Para Polyvore, buscar aprobación de acceso y permisos sobre imágenes antes de copiar datasets; si se usan datos externos, guardarlos fuera del bundle PWA y registrar procedencia por muestra.
+4. Extraer un pequeño conjunto **disjoint** de desarrollo y una reserva de test que no guíe el diseño de reglas.
+5. Estudiar DeepFashion2 únicamente para mejorar la lectura de fotografías; estudiar IQON para personalización; Polyvore para compatibilidad. No mezclar tareas ni métricas.
