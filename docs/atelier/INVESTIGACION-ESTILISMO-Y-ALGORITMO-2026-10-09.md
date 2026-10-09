@@ -286,3 +286,73 @@ Añadir a los pares A/B una etiqueta opcional de **intención estética**: `mini
 Crear dos particiones: desarrollo para experimentar y test reservado para decisiones finales. La calidad observada solo en desarrollo es hipótesis, no resultado. Primero comprobar si estas señales aportan información adicional sobre los atributos que ya puntúa `scoreOutfit`; si no aportan, no añadirlas. Evitar penalizar dos veces el mismo problema como "color" y "armonía global".
 
 **Criterio de producto:** un buen asistente debe poder explicar y preservar intenciones deliberadas («quiero ir oversize», «quiero destacar», «quiero estrenar estas botas») incluso si contradicen la recomendación más convencional.
+
+
+## 25. Quinta ronda: teoría convertida en señales útiles y coste de cada una
+
+**Fuentes verificadas:** Utah State University Extension explica equilibrio, proporción, énfasis, ritmo y armonía, remarcando que la apreciación de armonía es subjetiva: https://extension.usu.edu/research/principles-of-design . La guía práctica de GetWardrobe organiza la composición en color, proporción/líneas y estilo/contexto: https://help.getwardrobe.com/latest/items/outfit-principles/ . Esto apoya *dimensiones de evaluación*, pero **no valida coeficientes ni reglas como la de tres colores o la de tercios**.
+
+Propuesta: evaluar cada señal según **datos necesarios, confianza, coste y riesgo**:
+
+| Señal | Mínimo de datos | Fuente/operación | Fiabilidad esperada | Riesgo |
+|---|---|---|---|---|
+| Formalidad por ocasión | ocasión + estilo y tipo de prenda | ficha del armario | media-alta si editada por usuaria | excepciones culturales/profesionales |
+| Balance cromático | paleta de prendas, no solo color dominante | análisis visual precalculado | variable en estampados | fotos con luz diferente; contraste de tamaño |
+| Proporción/volumen | fit, largo, categoría, estructura | ficha + heurística | media | caída sobre cuerpo desconocida |
+| Texturas y acabados | tejido y brillo | metadatos explícitos/foto | baja-media | satén/lana no identificables por foto con seguridad |
+| Foco/acento | color, patrón, superficie, brillo | heurística explicable | exploratoria | estética maximalista intencional |
+| Compatibilidad térmica | tipo, grosor, manga, temperatura | estimación de clo ya existente | aproximada | viento, humedad, actividad, aislamiento real |
+| Experiencia personalizada | favorito/rechazo/uso/preferencia explícita | estado local por perfil | alta para explícitos | sesgo de repetición y arranque frío |
+| Coherencia global | conjunto entero + ocasión + estilo | agregador contextual/ML | **por medir** | doble penalización y overfitting |
+
+**No convertir una señal exploratoria (por ejemplo, “un solo foco”) en restricción dura.** Mejor registrar su contribución y medir valor predictivo en parejas difíciles.
+
+## 26. Fórmulas de outfit: plantilla, compatibilidad y personalización son tareas distintas
+
+*Personalized fashion outfit generation with user coordination preference learning* separa preferencia por plantilla, preferencia por prenda y compatibilidad total, con varios pasos para producir outfits completos: https://www.sciencedirect.com/science/article/abs/pii/S0306457323001711 .
+
+Para Atelier:
+1. **Plantilla contextual**: decidir si la persona quiere vestido, top+pantalón, falda, capas, calzado, bolso y accesorios opcionales. También permitir preferencias temporales (“hoy pantalón”).
+2. **Prendas candidatas**: priorizar piezas de armario real, talla/estado/disponibilidad cuando se conozcan, y proteger la prenda ancla si la persona inicia desde «Combinar prenda».
+3. **Compatibilidad global**: valorar el conjunto *completo* y no solo suma de parejas.
+4. **Reranking personal/diverso**: evitar cinco looks casi idénticos y alternar propuestas seguras/creativas sin sacrificar contexto.
+5. **Feedback**: diferenciar no me gusta el look, no me gusta esta prenda, no quiero esto hoy y ya lo he usado.
+
+La idea de un perfil construido **durante la interacción**, incluso sin preferencias anteriores, aparece en *Interactive Garment Recommendation with User in the Loop* (ACM TOMM, 2024): https://doi.org/10.1145/3702327 . No hace falta adoptar su arquitectura exacta: basta con experimentar con preferencias explícitas temporales.
+
+## 27. Cómo conservar diversidad sin perder precisión
+
+La literatura general de sistemas de recomendación investiga diversificación mediante reranking: https://doi.org/10.1145/3700604 . Ese estudio trabaja con otras categorías de producto, por lo que su efecto en moda sería una **hipótesis por comprobar**, no una evidencia directa.
+
+Reranking ligero propuesto sobre un top-N válido:
+- primero eliminar duplicados por ID de prenda y combinaciones equivalentes;
+- escoger look 1 por compatibilidad/personalización;
+- elegir siguientes maximizando calidad con un término de *novedad marginal* (categorías, prendas protagonistas, silueta, paleta);
+- diversidad no debe forzar un look incorrecto por clima u ocasión;
+- permitir preferencia «conservadora» frente a «quiero experimentar»;
+- medir tasa de aceptación, variedad de prendas y descenso de compatibilidad por aumentar diversidad.
+
+Una alternativa estándar para comparar es **Maximal Marginal Relevance (MMR)**, usando similitud interpretable (solapamiento de prendas/atributos), antes de usar un LLM costoso para reordenar.
+
+## 28. Qué NO debemos aprender automáticamente
+
+*Towards private stylists via personalized compatibility learning* introduce atributos físicos en un sistema de compatibilidad: https://www.sciencedirect.com/science/article/pii/S0957417423001331 . Es una línea de investigación, **no un requisito de Atelier**. Para nuestro producto es preferible no deducir cuerpo, color de piel, edad o medidas desde fotografías.
+
+Solo utilizar preferencias de ajuste, comodidad y estilo **declaradas voluntariamente** por el perfil. No establecer “estiliza tu figura” como objetivo universal: una persona puede preferir siluetas voluminosas, rectas, fluidas o dramáticas sin buscar una apariencia corporal normativa.
+
+## 29. Matriz de decisiones para un prototipo verificable
+
+| Situación | Decisión razonable del motor | Prueba de control |
+|---|---|---|
+| Dos conjuntos igualmente válidos; uno favorito personal | preferir favorito sin impedir descubrimiento | personalización vs diversidad |
+| Misma base, zapatillas técnicas vs mocasín | depende de actividad/código de vestimenta | oficina creativa vs entrevista formal |
+| Dos estampados grandes | permitir si intención maximalista y hay cohesión | A/B con estilo declarado |
+| Solo se conoce color dominante | no fingir paleta detallada de estampado | confianza en atributos faltantes |
+| Abrigo visualmente bonito pero insuficiente a 5 °C | advertencia térmica y alternativa | seguridad funcional antes de estética |
+| Cinco recomendaciones con mismo pantalón | reranking por novedad marginal | cobertura prendas y calidad |
+| Usuario fija una falda como pieza principal | no sustituirla sin permiso | preservación de ancla |
+| Un dislike casual hoy | no convertir en preferencia permanente | sesión vs historial |
+| Rechazo por motivos de comodidad | evitar esa combinación cuando contexto coincida | preferencias explícitas |
+| Falta información de caída/tejido | confianza baja en explicación | evitar “te sentará perfecto” |
+
+**Plan de validación:** comparar un baseline (motor actual), un reranker MMR y un scoring contextual simple en los casos fáciles y difíciles del banco A/B; mantener fuera del entrenamiento la parte ciega. Registrar intervalos de incertidumbre y desacuerdos de jueces. No afirmar rendimiento superior hasta evaluarlo.
