@@ -758,17 +758,14 @@ function render(){
 }
 
 /* ===================== 6. Armario, prendas y looks ===================== */
-function collage(images,extra=0){
- if(!images.length)return "";
- return '<div class="look-collage n'+Math.min(images.length,4)+'">'+images.slice(0,4).map((src,i)=>'<div class="look-thumb" style="background-image:url('+src+')">'+(i===3&&extra>0?'<span>+'+extra+'</span>':'')+'</div>').join("")+'</div>';
-}
-/* Look como composición sobre blanco (estilo «flat lay»): cada prenda en su sitio según su categoría.
-   Las fotos con fondo blanco se funden con «multiply»; si alguna aún tiene fondo, se usa un mosaico. */
+/* Look como composición sobre blanco («flat lay»); las fotos con fondo mixto
+   conservan la prenda completa en una cuadrícula editorial. */
 const BOARD_SLOTS={Capas:{x:0,y:3,w:50,h:60,z:1},Arriba:{x:24,y:1,w:52,h:46,z:3},Vestidos:{x:20,y:1,w:60,h:76,z:3},Abajo:{x:27,y:36,w:46,h:58,z:2},Zapatos:{x:1,y:70,w:38,h:28,z:5},Bolsos:{x:64,y:50,w:35,h:34,z:4},Accesorios:{x:68,y:3,w:31,h:26,z:4}};
 function outfitBoard(pieces){
- const items=pieces.filter(g=>validImage(g.image)).slice(0,7);
+ const categoryOrder={Capas:0,Arriba:1,Vestidos:2,Abajo:3,Zapatos:4,Bolsos:5,Accesorios:6};
+ const items=pieces.filter(g=>validImage(g.image)).slice(0,7).sort((a,b)=>(categoryOrder[a.category]??7)-(categoryOrder[b.category]??7));
  if(!items.length)return "";
- if(!items.every(g=>g.bgWhite))return '<div class="look-mixed-board" role="group" aria-label="Prendas del conjunto">'+items.map(g=>'<div class="look-mixed-item"><img src="'+photoUrl(g)+'" alt="'+fx(g.name||g.category||"Prenda")+'" loading="lazy"></div>').join("")+'</div>';
+ if(!items.every(g=>g.bgWhite))return '<div class="look-mixed-board'+(items.length===2?' look-mixed-board-two':'')+'" role="group" aria-label="Prendas del conjunto">'+items.map(g=>'<div class="look-mixed-item"><img src="'+photoUrl(g)+'" alt="'+fx(g.name||g.category||"Prenda")+'" loading="lazy"></div>').join("")+'</div>';
  if(items.length===1)return '<div class="board"><img src="'+photoUrl(items[0])+'" alt="'+fx(items[0].name||"Prenda del conjunto")+'" loading="lazy" style="left:8%;top:5%;width:84%;height:90%"></div>';
  const layer=items.some(g=>g.category==="Capas"),count={};
  return '<div class="board">'+items.map(g=>{
@@ -785,7 +782,7 @@ function thumbs(list,max=12){
 function garmentCard(g){const image=photoUrl(g);return `<article class="card" data-garment="${esc(g.id)}"><div class="card-img"${image?` style="background-image:url(${image})"`:""}></div><div class="card-body"><div class="card-title">${esc(g.name||"Sin nombre")}</div><div class="card-meta">${esc([g.category,g.color].filter(Boolean).join(" · "))}</div></div></article>`}
 function lookCard(l){
  const gs=(l.garmentIds||[]).map(id=>myGarments().find(g=>g.id===id)).filter(Boolean);
- return '<article class="card" data-look="'+esc(l.id)+'">'+outfitBoard(gs)+'<div class="card-body"><div class="card-title">'+esc(l.name)+'</div><div class="look-items">'+gs.map(g=>'<span class="look-chip">'+(validImage(g.image)?'<img class="look-chip-photo" src="'+photoUrl(g)+'" alt="" loading="lazy">':'<span class="look-chip-placeholder" aria-hidden="true">◇</span>')+'<span class="look-chip-name">'+esc(g.name||g.category||"Prenda")+'</span></span>').join("")+'</div></div></article>';
+ return '<article class="card" data-look="'+esc(l.id)+'"><div aria-hidden="true">'+outfitBoard(gs)+'</div><div class="card-body"><div class="card-title">'+esc(l.name)+'</div><div class="look-items">'+gs.map(g=>'<span class="look-chip">'+(validImage(g.image)?'<img class="look-chip-photo" src="'+photoUrl(g)+'" alt="" loading="lazy">':'<span class="look-chip-placeholder" aria-hidden="true">◇</span>')+'<span class="look-chip-name">'+esc(g.name||g.category||"Prenda")+'</span></span>').join("")+'</div></div></article>';
 }
 function safetyBanner(){
  const p=appState.data.preferences,msgs=[];
