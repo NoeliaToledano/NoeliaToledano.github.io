@@ -6,8 +6,10 @@
 import { chromium } from "playwright";
 import fs from "node:fs";import path from "node:path";
 const HERE=new URL(".",import.meta.url).pathname,DS=process.argv[2],OUT=process.argv[3]||"look-eval";fs.mkdirSync(OUT,{recursive:true});
-const L=JSON.parse(fs.readFileSync(HERE+"labels.json"));for(const g of L)g.image="data:image/jpeg;base64,"+fs.readFileSync(path.join(DS,g.file)).toString("base64");
-const W=JSON.parse(fs.readFileSync(HERE+"wardrobes.json"));
+// Banco alternativo: node eval.mjs <carpeta de fotos> <salida> labels-polyvore.json wardrobes-polyvore.json
+const LABELS=process.argv[4]||"labels.json",WARDROBES=process.argv[5]||"wardrobes.json";
+const L=JSON.parse(fs.readFileSync(HERE+LABELS));for(const g of L)g.image="data:image/jpeg;base64,"+fs.readFileSync(path.join(DS,g.file)).toString("base64");
+const W=JSON.parse(fs.readFileSync(HERE+WARDROBES));
 const SC=[["2026-01-15",8,"daily"],["2026-01-15",8,"work"],["2026-04-15",17,"daily"],["2026-04-15",17,"work"],["2026-04-15",17,"party"],["2026-07-15",28,"daily"],["2026-07-15",28,"work"],["2026-07-15",28,"party"],["2026-07-15",28,"beach"]];
 const b=await chromium.launch({channel:"chrome"});const p=await b.newPage({viewport:{width:1200,height:900}});
 await p.route("https://atelier-ai-backend-pi.vercel.app/**",r=>r.fulfill({status:503,headers:{"access-control-allow-origin":"*","content-type":"application/json"},body:"{}"}));
@@ -58,12 +60,21 @@ const G=new Map(L.map(g=>[g.id,g])),NEUTRAL=new Set(["Negro","Blanco","Gris","Be
 const daily=new Map(report.filter(r=>r.occ==="daily").map(r=>[r.wn+"|"+r.temp+"|"+r.i,r.ids.slice().sort().join()]));
 const pat={
  "3+ piezas del mismo color vivo":r=>{const c={};for(const g of gsOf(r))if(!NEUTRAL.has(g.color))c[g.color]=(c[g.color]||0)+1;return Math.max(0,...Object.values(c))>=3},
- "con gorra/gorro/boina/sombrero":r=>gsOf(r).some(g=>g.category==="Accesorios"),
+ "con gorra/gorro/boina/sombrero":r=>gsOf(r).some(g=>/gorr|boina|sombrero/i.test(g.type||"")),
  "jersey a 24 °C o más":r=>r.temp>=24&&gsOf(r).some(g=>g.type==="Jersey"),
  "gorra/gorro en trabajo o fiesta":r=>["work","party"].includes(r.occ)&&gsOf(r).some(g=>["Gorra","Gorro"].includes(g.type)),
  "gorro de lana a 15 °C o más":r=>r.temp>=15&&gsOf(r).some(g=>g.type==="Gorro"),
  "trabajo idéntico a diario":r=>r.occ==="work"&&daily.get(r.wn+"|"+r.temp+"|"+r.i)===r.ids.slice().sort().join(),
  "playa con jersey o capa":r=>r.occ==="beach"&&gsOf(r).some(g=>g.type==="Jersey"||g.category==="Capas")
 };
+Object.assign(pat,{
+ "fiesta sin tacones ni calzado elegante":r=>r.occ==="party"&&!gsOf(r).some(g=>g.category==="Zapatos"&&["party","smart"].includes(g.style)),
+ "deportivas en fiesta":r=>r.occ==="party"&&gsOf(r).some(g=>g.type==="Deportivas"),
+ "tacones en playa":r=>r.occ==="beach"&&gsOf(r).some(g=>g.type==="Tacones"),
+ "bolso de fiesta fuera de fiesta":r=>r.occ!=="party"&&gsOf(r).some(g=>g.type==="Bolso de fiesta"),
+ "mochila en trabajo o fiesta":r=>["work","party"].includes(r.occ)&&gsOf(r).some(g=>g.type==="Mochila"),
+ "con bolso":r=>gsOf(r).some(g=>g.category==="Bolsos"),
+ "abrigo de pelo/estampado con estampado":r=>gsOf(r).filter(g=>g.pattern&&g.pattern!=="plain").length>=2
+});
 for(const [k,f] of Object.entries(pat))console.log(k+":",report.filter(f).length);const by={};for(const r of bad)for(const i of r.issues)by[i]=(by[i]||0)+1;console.log(by);
 await b.close();
