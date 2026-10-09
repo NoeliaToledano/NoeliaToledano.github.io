@@ -386,3 +386,8 @@ p.notice-card{display:block}
 .look-secondary-actions .tile-tools{padding:0 0 8px;justify-content:flex-start;gap:8px}
 .look-secondary-actions .chip-button{background:transparent;border-color:var(--line);min-width:0;white-space:normal}
 .look-secondary-actions .chip-button.on{background:var(--bg)}
+
+/* La valoración inmediata alimenta Tus gustos: accesible sin desplegar. */
+.look-tile .look-votes{display:flex;justify-content:flex-end;gap:5px;padding:0 10px 8px}
+.look-tile .look-votes .chip-button{min-width:36px;min-height:36px;padding:5px;background:transparent;border-color:transparent}
+.look-tile .look-votes .chip-button.on{background:var(--bg);border-color:var(--line)}
