@@ -301,3 +301,15 @@ p.notice-card{display:block}
 .look-mixed-board[data-count="7"]>.look-mixed-item:nth-child(6){grid-area:7/7/13/10}
 .look-mixed-board[data-count="7"]>.look-mixed-item:nth-child(7){grid-area:7/10/13/13}
 @media(max-width:360px){.look-mixed-board{gap:4px;padding:9px}.look-mixed-item{border-radius:8px}}
+
+/* Siete piezas: cuatro fichas inferiores en dos filas amplias, no cuatro columnas diminutas. */
+.look-mixed-board[data-count="7"]>.look-mixed-item:nth-child(4){grid-area:7/1/10/7}
+.look-mixed-board[data-count="7"]>.look-mixed-item:nth-child(5){grid-area:7/7/10/13}
+.look-mixed-board[data-count="7"]>.look-mixed-item:nth-child(6){grid-area:10/1/13/7}
+.look-mixed-board[data-count="7"]>.look-mixed-item:nth-child(7){grid-area:10/7/13/13}
+/* Los chips son etiquetas auxiliares, no deben competir visualmente con el collage. */
+[data-look] .look-items{gap:5px}
+[data-look] .look-chip{min-height:29px;padding:2px 6px 2px 2px;gap:4px}
+[data-look] .look-chip-photo,[data-look] .look-chip-placeholder{width:23px;height:23px}
+[data-look] .look-chip-name{font-size:11px;line-height:1.2}
+[data-look] button{white-space:normal;overflow-wrap:anywhere;max-width:100%}
