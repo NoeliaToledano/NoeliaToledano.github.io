@@ -527,6 +527,27 @@ console.log("PASS: S6 long-offline devices don't resurrect deletions");
   console.log("PASS: Outdoor backpack not with dresses; party bag at parties; dressy coat before puffer at work");
 }
 
+// Abrigo del look (clo, ISO 9920): suma de prendas frente a la temperatura; penaliza quedarse corto o pasarse
+{
+  const probe=new Function("document","sessionStorage","crypto",src+`
+  const G=(id,category,type,extra={})=>({id,name:type,category,type,color:"Negro",style:"casual",season:"all",updatedAt:"x",...extra});
+  const tee=G("t1","Arriba","Camiseta",{sleeve:"corta"}),blouse=G("t2","Arriba","Blusa",{sleeve:"larga",thickness:"ligero"}),wool=G("t3","Arriba","Jersey",{sleeve:"larga",thickness:"grueso",fabric:"wool"});
+  const shorts=G("b1","Abajo","Shorts"),pants=G("b2","Abajo","Pantalón"),blazer=G("c1","Capas","Blazer",{thickness:"ligero"}),coat=G("c2","Capas","Abrigo",{name:"Abrigo de lana",fabric:"wool"}),vest=G("c3","Capas","Chaleco");
+  const boots=G("z1","Zapatos","Botas"),sandals=G("z2","Zapatos","Sandalias"),pj=G("h1","Casa","Pijama");
+  appState.profile={id:"noelia"};appState.data=normalizeData({garments:[]});
+  const sc=(gs,temp,occasion="daily")=>scoreOutfit(gs,engineContext({occasion,temp,date:temp<12?"2026-01-15":"2026-07-15",extras:{shoes:true,bag:false}}));
+  const cold=sc([blouse,pants,blazer,boots],8),warm=sc([blouse,pants,coat,boots],8),light=sc([tee,shorts,vest,sandals],17),ok17=sc([tee,pants,blazer,boots],17);
+  const hot=sc([wool,pants,coat,boots],28),summer=sc([tee,shorts,sandals],28),home=sc([pj],6,"home");
+  return {clo:[cloOf(tee),cloOf(wool),cloOf(shorts),cloOf(coat),cloOf(boots)].map(x=>x.toFixed(2)).join(),target:[5,17,28].map(t=>cloTarget(t).toFixed(2)).join(),
+   cold:cold.score,warm:warm.score,coldWarn:cold.warnings.join("|"),light:light.score,ok17:ok17.score,hotWarn:hot.warnings.join("|"),summerWarn:summer.warnings.join("|"),homeWarn:home.warnings.join("|")};`);
+  const r=probe(document,sessionStorage,{randomUUID:()=>"t"});
+  assert.equal(r.clo,"0.14,0.37,0.07,0.51,0.10","clo por prenda aproximado a ISO 9920");assert.equal(r.target,"1.35,0.81,0.32");
+  assert.ok(r.warm>r.cold,"8 °C: con abrigo, mejor que con blazer fino ("+r.warm+" vs "+r.cold+")");assert.match(r.coldWarn,/frío/);
+  assert.ok(r.ok17>r.light,"17 °C: pantalón y chaqueta, mejor que shorts y chaleco");
+  assert.match(r.hotWarn,/demasiado abrigo/);assert.equal(r.summerWarn,"","28 °C: camiseta y shorts, sin aviso");assert.doesNotMatch(r.homeWarn,/pases frío/,"En casa no se mide el abrigo");
+  console.log("PASS: Outfit insulation (clo) vs temperature: penalises too little or too much, not at home");
+}
+
 // Foto de look: el análisis devuelve también formalidad, manga y largo (perfil de prenda), solo con valores conocidos
 {
   process.env.ATELIER_SESSION_SECRET="test-secret";process.env.OPENAI_API_KEY="k";
