@@ -243,3 +243,46 @@ Recomendación para interfaz de evaluación humana:
 - **P4: representación visual aprendida**. Solo si P0-P3 muestran límites cuantificados y la nueva opción supera un baseline simple a coste aceptable.
 
 **Principio final:** primero enseñanza de buenas decisiones y medición de calidad humana; luego, si aporta valor, complejidad neuronal. La prioridad no es maximizar una puntuación interna sino mejorar la experiencia de vestir con prendas ya disponibles.
+
+
+## 21. Cuarta ronda: principios de composición verificables (balance, proporción, énfasis y ritmo)
+
+**Fuente institucional:** Utah State University Extension, *Design Principles for Clothing and Textiles*, explica que balance, proporción/escala, énfasis, ritmo y armonía se aplican al conjunto, no únicamente a prendas individuales. https://extension.usu.edu/research/principles-of-design . También Fashion Institute of Technology ofrece ejemplos de simetría/asimetría, énfasis y ritmo en diseño: https://www.fitnyc.edu/museum/documents/elements-and-principles-of-fashion-design.pdf .
+
+**Traducción operativa, como hipótesis comprobables y NO reglas universales:**
+- **Peso visual:** estimar por superficie visible, contraste con prendas vecinas, saturación, complejidad del estampado y detalle; un accesorio pequeño brillante puede atraer más atención que una chaqueta grande neutra. Sin segmentación real, usar confianza baja en superficie.
+- **Punto focal:** detectar posibles protagonistas (color acento, prenda estampada, silueta singular, acabado metálico). Un outfit puede ser deliberadamente maximalista y tener varios focos: no penalizarlo sin contexto.
+- **Ritmo:** repetición de color, motivo, textura, geometría o detalles (bolso que recupera el tono de un estampado, metal de pendientes y hebilla); repetición no significa obligación de igualar bolso y zapatos.
+- **Proporción:** relación entre largos y volúmenes de piezas, sin implicar juicios sobre el cuerpo o “tipo de figura”. La posición real de la cintura y la caída no se conocen por una fotografía de la prenda aislada.
+- **Equilibrio asimétrico:** los dos lados de un look pueden contrastar y, aun así, verse intencionales; evitar sesgo hacia simetría o combinaciones neutras.
+
+**Tests:** look monocromo texturizado vs uniforme plano; foco rojo pequeño vs varios acentos que compiten; blazer estructurado+palazzo fluido vs dos prendas similares sin contraste; color repetido en bolso en proporción pequeña; punto focal de estampado más zapato neutro; maximalismo intencionado con múltiples estampados y paleta cohesiva.
+
+## 22. Aprendizaje interactivo, desde cero y por sesión
+
+**Referencia nueva:** *Interactive Garment Recommendation with User in the Loop* (ACM TOMM, 2024) investiga construir preferencias sobre la marcha a partir de reacciones del usuario sin historial previo. https://doi.org/10.1145/3702327 .
+
+**Referencia complementaria:** *Leveraging meta-path and co-attention to model consumer preference stability in fashion recommendations* (Decision Support Systems, 2025) diferencia compatibilidad general de preferencias estables y explora señales implícitas. https://www.sciencedirect.com/science/article/pii/S0167923625000569 .
+
+**Propuesta para Atelier:** representar tres escalas de gustos, con controles explícitos:
+1. **Preferencia de esta sesión:** «hoy quiero algo colorido», «no quiero tacones», «voy a caminar mucho»; prioridad elevada pero temporal.
+2. **Preferencia persistente del perfil:** guardar/salvar look, likes/dislikes repetidos, estilos habituales; actualización lenta, sin transformar un solo rechazo en prohibición.
+3. **Exploración suave:** enseñar alguna alternativa diferente bien justificada; no encerrarse en una única fórmula por historial.
+
+Guardar la **razón del rechazo**, cuando el usuario quiera darla, es más informativo que un dislike sin contexto. Ejemplo: «no me gusta este color», «no tengo ganas de llevar falda hoy», «demasiado formal», «no llevaría ese zapato». No inferir medidas corporales, salud, identidad u otros datos sensibles. Separar rigurosamente perfiles familiares.
+
+## 23. Edición de outfits, compatibilidad por atributos y minimización de cambios
+
+*PFNet: Attribute-aware personalized fashion editing with explainable fashion compatibility analysis* (Information Processing & Management, 2024) examina edición de atributos y explicaciones de compatibilidad. Su problema no es idéntico al de Atelier, que sustituye prendas reales, pero sugiere separar **qué atributo está fallando** de **qué pieza debemos cambiar**. https://www.sciencedirect.com/science/article/pii/S0306457323002777
+
+**Experimento operativo:** dada una base de look seleccionada por la usuaria, identificar el atributo menos compatible con intención+ocasión y probar sustituciones de una prenda a la vez. Devolver **máximo tres** cambios de distinta naturaleza: una solución conservadora, una creativa y una cómoda, siempre desde el armario existente. Nunca reemplazar automáticamente la pieza que la usuaria ha marcado como favorita o protagonista sin pedirlo.
+
+**Métrica:** preferencia humana por el look antes/después, respeto a la pieza ancla, número de sustituciones, diversidad de soluciones y tiempo de interacción; ninguna cifra de mejora sin votos o comparaciones reales.
+
+## 24. Ejecución recomendada para el experimento
+
+Añadir a los pares A/B una etiqueta opcional de **intención estética**: `minimalista`, `clásica`, `romántica`, `urbana`, `maximalista`, `relajada` o `sin especificar`. No adjudicar estética por género, edad ni cuerpo. Anotar **motivo** del juez por dimensión: `color`, `proporción`, `punto_focal`, `ritmo`, `textura`, `ocasión`, `comodidad`.
+
+Crear dos particiones: desarrollo para experimentar y test reservado para decisiones finales. La calidad observada solo en desarrollo es hipótesis, no resultado. Primero comprobar si estas señales aportan información adicional sobre los atributos que ya puntúa `scoreOutfit`; si no aportan, no añadirlas. Evitar penalizar dos veces el mismo problema como "color" y "armonía global".
+
+**Criterio de producto:** un buen asistente debe poder explicar y preservar intenciones deliberadas («quiero ir oversize», «quiero destacar», «quiero estrenar estas botas») incluso si contradicen la recomendación más convencional.
