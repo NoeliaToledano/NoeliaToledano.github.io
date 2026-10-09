@@ -771,7 +771,7 @@ function outfitBoard(pieces){
  const categoryOrder={Capas:0,Arriba:1,Vestidos:2,Abajo:3,Zapatos:4,Bolsos:5,Accesorios:6};
  const items=pieces.filter(g=>validImage(g.image)).slice(0,7).sort((a,b)=>(categoryOrder[a.category]??7)-(categoryOrder[b.category]??7));
  if(!items.length)return "";
- if(!items.every(g=>g.bgWhite))return '<div class="look-mixed-board'+(items.length===2?' look-mixed-board-two':'')+'" role="group" aria-label="Prendas del conjunto">'+items.map(g=>'<div class="look-mixed-item"><img src="'+photoUrl(g)+'" alt="'+fx(g.name||g.category||"Prenda")+'" loading="lazy"></div>').join("")+'</div>';
+ if(!items.every(g=>g.bgWhite))return '<div class="look-mixed-board" data-count="'+items.length+'" role="group" aria-label="Prendas del conjunto">'+items.map(g=>'<div class="look-mixed-item"><img src="'+photoUrl(g)+'" alt="'+fx(g.name||g.category||"Prenda")+'" loading="lazy"></div>').join("")+'</div>';
  if(items.length===1)return '<div class="board"><img src="'+photoUrl(items[0])+'" alt="'+fx(items[0].name||"Prenda del conjunto")+'" loading="lazy" style="left:8%;top:5%;width:84%;height:90%"></div>';
  const layer=items.some(g=>g.category==="Capas"),count={};
  return '<div class="board">'+items.map(g=>{
