@@ -1541,7 +1541,7 @@ function occasionFits(g,occ){
   if(occ==="work"&&["smartcasual","formal"].includes(g.formality))return true;
   if(occ!=="work"&&g.formality)return formal>=2&&g.formality!=="sport";
   if(g.formality&&!["casual"].includes(g.formality))return false;
-  if(WORK_NO.test(textOf(g))||g.category==="Abajo"&&g.length==="cropped")return false; // P1/P8 (#99)
+  if(WORK_NO.test(textOf(g))||g.category==="Abajo"&&g.length==="cropped"||occ==="work"&&isBackpack(g))return false; // P1/P8 (#99); mochila informal, no (revisión de Codex, #112)
  }
  if(occ==="party"&&g.formality&&formal<2)return false;
  if(!["daily","sport","beach"].includes(occ)&&isOutdoor(g)&&g.category!=="Zapatos")return false; // Q3 (#108): mochila de montaña, ropa técnica
@@ -1685,9 +1685,9 @@ function completeOutfitGreedy(base,pool,ctx,used=new Map(),firstPick=null){
   let c=(ctx.byCat?.get(cat)||pool.filter(x=>x.category===cat)).filter(fits);
   if(cat==="Capas"){c=c.filter(x=>warmthOf(x)<=rule.max&&!insufficientColdLayer(x,ctx.temp));if(rule.prefer==="warm")c.sort((a,b)=>warmthOf(b)-warmthOf(a)||pref(b)-pref(a));else c.sort((a,b)=>pref(b)-pref(a))}
   else if(cat==="Zapatos"&&["party","event","formal"].includes(ctx.occasion)){
-   const formal=c.filter(x=>["party","smart"].includes(x.style));
+   const formal=c.filter(x=>formalLevel(x)>=2); // por formalidad de la ficha, no solo por estilo (revisión de Codex, #112)
    if(!formal.length)c=(ctx.allShoes||[]).filter(smartFallbackShoes).filter(fits);
-   c.sort((a,b)=>(Number(["party","smart"].includes(b.style))-Number(["party","smart"].includes(a.style)))*2+pref(b)-pref(a));
+   c.sort((a,b)=>(Number(formalLevel(b)>=2)-Number(formalLevel(a)>=2))*2+pref(b)-pref(a));
   }
   else if(cat==="Zapatos"&&ctx.occasion==="work"){ // Q2 (#108): deportivas solo si no hay otro calzado (por tipo o nombre, no solo por estilo)
    const other=c.filter(x=>!isSneaker(x));if(other.length)c=other;c.sort((a,b)=>pref(b)-pref(a))}
