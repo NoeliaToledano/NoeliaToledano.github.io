@@ -1289,7 +1289,7 @@ function renderToday(root){
  const info=p.autoWeather&&p.weatherDay===dayISO()?"Tiempo de hoy en tu zona: media de "+p.temperature+" °C.":p.autoWeather?"Actualizando el tiempo de hoy…":"";
  stylistShell(root,"Hoy",capFirst(new Intl.DateTimeFormat("es-ES",{weekday:"long",day:"numeric",month:"long"}).format(new Date())),
   dailyLookHtml()+plannedTodayHtml()+
-  '<details class="feature-card more-ideas"><summary><strong>Más ideas con IA</strong> <span class="muted">· ocasión, temperatura y preferencias</span></summary>'+
+  '<details class="today-unified-options"><summary>Más opciones</summary><div class="today-options-content"><section class="today-ia-section"><h2>Ideas con IA</h2>'+
   '<div class="filter-grid"><label class="field"><span>Ocasión</span><select id="prefOccasion">'+optionList(Object.entries(occasions),p.occasion)+'</select></label>'+
   '<label class="field"><span>Temporada</span><select id="prefSeason">'+optionList(Object.entries(seasons),p.season)+'</select></label></div>'+
   '<label class="field"><span>Temperatura exterior (°C; por defecto '+DEFAULT_TEMPERATURE+')</span><input id="prefTemperature" type="number" min="-30" max="55" step="1" placeholder="Si lo dejas vacío, uso '+DEFAULT_TEMPERATURE+' °C" value="'+fx(currentTemperature())+'"></label>'+
@@ -1298,11 +1298,11 @@ function renderToday(root){
   extrasTogglesHtml()+
   '<label class="switch-line"><input id="prefAvoid" type="checkbox"'+(p.avoidRepeats?' checked':'')+'> Evitar repetir combinaciones recientes</label>'+
   '<button class="primary wide" id="suggestSmart">✦ Generar looks con mi ropa</button>'+
-  '<p class="helper">Se envían solo los nombres y atributos de tus prendas, nunca las fotos. Sugerencias con IA hoy: '+u.looks+' de '+AI_LIMITS.looks+'.</p></details>'+
-  '<details class="today-extra-tools"><summary>Más herramientas</summary><div class="today-extra-body">'+
+  '<p class="helper">Se envían solo los nombres y atributos de tus prendas, nunca las fotos. Sugerencias con IA hoy: '+u.looks+' de '+AI_LIMITS.looks+'.</p></section>'+
+  '<section class="today-extra-tools"><h2>Herramientas</h2><div class="today-extra-body">'+
   '<div class="actions"><button class="secondary" id="createManual">Crear look manual</button><button class="secondary" id="openCalendar">Calendario de uso</button></div>'+
   (candidates.length?'<div class="section-head"><h2>Prendas olvidadas</h2></div><div class="insight-list">'+candidates.map(g=>'<button class="list-line link-line" data-rescue="'+fx(g.id)+'"><strong>'+fx(g.name)+'</strong><span class="muted">'+fx(plural(wornCount(g.id),"uso","usos"))+' · ver looks ›</span></button>').join("")+'</div>':'')+
-  '</div></details>');
+  '</div></section></div></details>');
  $("#prefOccasion")?.addEventListener("change",e=>{const d=p.dailyLook;if(d&&!d.touched)d.date=null;setPref("occasion",e.target.value,true)});
  bindExtrasToggles(root,()=>{const d=p.dailyLook;if(d&&!d.touched)d.date=null;render()});
  bindDailyLook(root);
@@ -1958,7 +1958,7 @@ function evaluateCandidate(c){
 function buyCheckHtml(){
  const c=buyCheck;
  let html='<div class="feature-card" id="buyCheck"><h2>¿Lo compro?</h2><p class="muted">Haz una foto a la prenda en la tienda o sube una captura. Te digo con qué combina de tu armario y si se parece a algo que ya tienes.</p>'+
-  '<div class="photo-buttons"><button type="button" class="primary" data-photo-pick="buyCamera">📷 Hacer foto</button><button type="button" class="secondary" data-photo-pick="buyImage">🖼️ Galería</button></div>'+
+  '<div class="photo-buttons buy-photo-actions"><button type="button" class="primary" data-photo-pick="buyCamera">Hacer foto</button><button type="button" class="secondary" data-photo-pick="buyImage">Elegir de galería</button></div><p class="photo-guidance">Para fotos de prendas extendidas, usa un fondo liso que contraste con su color y deja espacio alrededor.</p>'+
   '<input id="buyCamera" class="file-hidden" type="file" tabindex="-1" accept="image/*" capture="environment" aria-label="Hacer foto con la cámara"><input id="buyImage" class="file-hidden" type="file" tabindex="-1" accept="image/*" aria-label="Elegir foto de la galería">';
  if(!c)return html+'</div>';
  if(c.loading)return html+'<p class="muted">Preparando la foto…</p></div>';
