@@ -168,6 +168,7 @@ console.log("PASS: Styling engine (20/100/500 prendas): capas según tiempo, var
   out.mix=intentionalMix(by("b"),by("j"));out.mixS=relationOf(by("b"),by("j"),ctx).s;
   out.mixLook=rankOutfits({max:1,occasion:"daily",temp:16,date:"2026-04-15"})[0].ids;
   out.combina=relationsFor(by("j")).map(x=>x.g.id+":"+x.r.register);
+  out.combinaOcc=["daily","work","party"].map(o=>relationsFor(by("j"),.6,o).every(x=>x.r.contexts.includes(o)&&occasionFits(x.g,o)&&occasionFits(by("j"),o)));
   // 3) Sin calzado coherente: aviso, no un calzado malo
   appState.data=normalizeData({garments:[G("t","Arriba","Blusa","Azul",{style:"party",formality:"party"}),G("p","Abajo","Falda","Azul",{style:"party",formality:"party"}),
    G("z","Zapatos","Chanclas","Naranja",{style:"sport",formality:"sport",pattern:"graphic"})]});
@@ -195,6 +196,7 @@ console.log("PASS: Styling engine (20/100/500 prendas): capas según tiempo, var
   assert.ok(r.third.every(ids=>!(ids.includes("c")&&ids.includes("p"))),"La tercera pieza se mide con todas: sin americana de cuadros con pantalón de rayas");
   assert.ok(r.third.every(ids=>!ids.includes("a")),"Un complemento que no aporta no se añade por obligación");
   assert.equal(r.mix,"americana con vaquero");assert.ok(r.mixS>=.75&&r.mixLook.includes("b"),"Mezcla intencionada: americana con vaquero ("+r.mixS+")");
+  assert.deepEqual(r.combinaOcc,[true,true,true],"«Combina con» por ocasión: solo parejas que valen las dos para esa ocasión");
   assert.ok(r.combina.length>=3&&r.combina.some(x=>x.startsWith("b:arreglado")),"«Combina con»: relaciones con registro ("+r.combina+")");
   assert.ok(!r.partyIds.includes("z")&&r.partyWarn.some(w=>/calzado/.test(w)),"Sin calzado coherente: aviso en lugar de chanclas en una fiesta");
   assert.deepEqual(r.two,["t","j"],"Camiseta y vaquero es un look válido sin añadir nada");
