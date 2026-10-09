@@ -176,6 +176,19 @@ console.log("PASS: Styling engine (20/100/500 prendas): capas según tiempo, var
   appState.data=normalizeData({garments:[G("t","Arriba","Camiseta","Blanco"),G("j","Abajo","Vaqueros","Vaquero"),G("a","Accesorios","Pañuelo","Verde",{pattern:"graphic"})]});
   appState.data.preferences.extras={shoes:false,bag:false};
   out.two=rankOutfits({max:1,occasion:"daily",temp:24,date:"2026-07-15"})[0]?.ids;
+  // 5) Edición sincronizada con fecha anterior al máximo: la relación se recalcula (revisión de ChatGPT, #164)
+  appState.data=normalizeData({garments:[G("A","Arriba","Blusa","Blanco",{updatedAt:"2026-10-09T10:00:00Z"}),G("B","Abajo","Pantalón","Negro",{updatedAt:"2026-10-01T10:00:00Z"}),
+   G("C","Arriba","Camisa","Azul",{updatedAt:"2026-10-02T10:00:00Z",pattern:"stripes"})]});
+  ensureRelations();const before=pairEvidence(by("B"),by("C")).colorKind;
+  by("B").pattern="checks";ensureRelations();out.remote=[before,pairEvidence(by("B"),by("C")).colorKind];
+  // 6) Mono (categoría Vestidos): núcleo de una sola pieza, sin parte de abajo
+  appState.data=normalizeData({garments:[G("m","Vestidos","Mono largo","Negro",{style:"smart"}),G("t","Arriba","Camiseta","Blanco"),G("j","Abajo","Vaqueros","Vaquero"),G("z","Zapatos","Sandalias","Negro")]});
+  appState.data.preferences.extras={shoes:true,bag:false};
+  out.mono=rankOutfits({max:3,occasion:"daily",temp:26,date:"2026-07-15"}).map(l=>l.ids).filter(ids=>ids.includes("m"));out.monoNucleus=nucleusOf([by("m"),by("z")]).map(g=>g.id);
+  // 7) Bolso activado en Ajustes, pero el único choca con el look: mejor sin bolso
+  appState.data=normalizeData({garments:[G("t","Arriba","Blusa","Azul",{style:"party",formality:"party"}),G("p","Abajo","Falda","Azul",{style:"party",formality:"party"}),
+   G("z","Zapatos","Tacones","Negro",{style:"party",formality:"party"}),G("b","Bolsos","Mochila","Naranja",{style:"sport",formality:"sport",pattern:"graphic"})]});
+  out.badBag=rankOutfits({max:1,occasion:"party",temp:22,date:"2026-07-15",extras:{shoes:true,bag:true}})[0].ids;
   return out;`);
   const r=probe(document,sessionStorage,{randomUUID:()=>"t"});
   assert.ok(r.ct>=.6&&r.cp<.6,"La americana de cuadros combina con la camisa ("+r.ct+") pero no con el pantalón de rayas ("+r.cp+")");
@@ -185,6 +198,9 @@ console.log("PASS: Styling engine (20/100/500 prendas): capas según tiempo, var
   assert.ok(r.combina.length>=3&&r.combina.some(x=>x.startsWith("b:arreglado")),"«Combina con»: relaciones con registro ("+r.combina+")");
   assert.ok(!r.partyIds.includes("z")&&r.partyWarn.some(w=>/calzado/.test(w)),"Sin calzado coherente: aviso en lugar de chanclas en una fiesta");
   assert.deepEqual(r.two,["t","j"],"Camiseta y vaquero es un look válido sin añadir nada");
+  assert.deepEqual(r.remote,["",  "two-patterns"].map(x=>x),"Una edición con fecha anterior al máximo recalcula la relación ("+r.remote+")");
+  assert.ok(r.mono.length&&r.mono.every(ids=>!ids.includes("j")&&!ids.includes("t"))&&r.monoNucleus.join()==="m","El mono es núcleo de una sola pieza ("+JSON.stringify(r.mono)+")");
+  assert.ok(!r.badBag.includes("b"),"Bolso que choca: mejor sin bolso ("+r.badBag+")");
   console.log("PASS: Stylist brain: weakest link, third piece vs all, intentional mix, no filler pieces, honest shoe warning");
 }
 

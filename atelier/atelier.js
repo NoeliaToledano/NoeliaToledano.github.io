@@ -998,7 +998,7 @@ function renderGarmentPairs(g){
  const groups=new Map();for(const x of rel){if(!groups.has(x.r.register))groups.set(x.r.register,[]);groups.get(x.r.register).push(x)}
  const catRank=x=>BIG.includes(x.category)?0:x.category==="Zapatos"?1:2; /* primero ropa, luego calzado y complementos */
  const order=["informal","arreglado","de fiesta","deportivo"],occ=xs=>{const c=new Map();for(const x of xs)for(const o of x.r.contexts)c.set(o,(c.get(o)||0)+1);return [...c].sort((a,b)=>b[1]-a[1]).slice(0,3).map(([o])=>(occasions[o]||o).toLowerCase()).join(", ")};
- box.innerHTML='<h3>Combina con</h3>'+(rel.length?[...groups].sort((a,b)=>order.indexOf(a[0])-order.indexOf(b[0])).map(([reg,xs])=>'<div class="pair-group"><p class="muted"><strong>'+fx(reg[0].toUpperCase()+reg.slice(1))+'</strong> · '+xs.length+(xs.length===1?' prenda':' prendas')+(occ(xs)?' · '+fx(occ(xs)):'')+'</p>'+thumbs(xs.slice().sort((a,b)=>catRank(a.g)-catRank(b.g)||b.r.s-a.r.s).map(x=>x.g),10)+'</div>').join("")
+ box.innerHTML='<h3>Combina con</h3><p class="muted pair-note">En general, sin contar el tiempo ni la ocasión de hoy: eso lo decide el estilista al proponer looks.</p>'+(rel.length?[...groups].sort((a,b)=>order.indexOf(a[0])-order.indexOf(b[0])).map(([reg,xs])=>'<div class="pair-group"><p class="muted"><strong>'+fx(reg[0].toUpperCase()+reg.slice(1))+'</strong> · '+xs.length+(xs.length===1?' prenda':' prendas')+(occ(xs)?' · '+fx(occ(xs)):'')+'</p>'+thumbs(xs.slice().sort((a,b)=>catRank(a.g)-catRank(b.g)||b.r.s-a.r.s).map(x=>x.g),10)+'</div>').join("")
   :'<p class="muted">Todavía no hay prendas en tu armario que combinen bien con esta.</p>')+(missing.length?'<p class="muted pair-note">Para afinar, completa en la ficha: '+fx(missing.join(", "))+'.</p>':'');
  $$("[data-thumb]",box).forEach(b=>b.addEventListener("click",()=>openGarment(b.dataset.thumb)));
 }
@@ -1189,7 +1189,10 @@ function intentionalMix(a,b){
 }
 const EVIDENCE_FIELDS=g=>["color",...(["Arriba","Vestidos","Capas"].includes(g.category)?["sleeve","thickness"]:[]),...(BIG.includes(g.category)?["warmth"]:[]),"formality"];
 let relCache={sig:"",ev:new Map(),learn:new Map(),fast:new Map(),feat:new Map()};
-function relSig(){const d=appState.data||{};return (d.garments||[]).length+"|"+(d.garments||[]).reduce((m,g)=>String(g.updatedAt||"")>m?String(g.updatedAt||""):m,"")+"|"+JSON.stringify(d.feedback||{})+"|"+(d.looks||[]).map(l=>l.id+":"+(l.favorite?"f":"")+(l.inspired?"i":"")+(l.dislikeReason||"")+":"+(l.garmentIds||[]).join(".")).join(",") /* lo que enseña relaciones: favorito, inspiración, motivo y prendas (revisión de Codex, #164) */+"|"+(d.preferences?.workDress||"")}
+/* Huella por prenda de los datos que usan las relaciones (no basta el updatedAt máximo: una edición sincronizada puede traer una fecha anterior; revisión de ChatGPT, #164) */
+const REL_FIELDS=["id","name","category","type","subtype","color","secondaryColor","pattern","fabric","fit","length","sleeve","neckline","thickness","warmth","formality","occasions","season","style","details","archived"];
+const relPrint=g=>REL_FIELDS.map(k=>{const v=g[k];return v==null?"":Array.isArray(v)?v.join("+"):String(v)}).join("\u0001");
+function relSig(){const d=appState.data||{};return (d.garments||[]).map(relPrint).join("\u0002")+"|"+JSON.stringify(d.feedback||{})+"|"+(d.looks||[]).map(l=>l.id+":"+(l.favorite?"f":"")+(l.inspired?"i":"")+(l.dislikeReason||"")+":"+(l.garmentIds||[]).join(".")).join(",") /* lo que enseña relaciones: favorito, inspiración, motivo y prendas (revisión de Codex, #164) */+"|"+(d.preferences?.workDress||"")}
 /* Una vez por cálculo (rankOutfits, ficha): si el armario, el feedback o el código de vestir cambian, se rehace la caché */
 function ensureRelations(){
  const sig=relSig();if(relCache.sig===sig)return;
