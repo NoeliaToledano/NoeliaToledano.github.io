@@ -447,7 +447,7 @@ console.log("PASS: S6 long-offline devices don't resurrect deletions");
   const mini=G("b1","Abajo","Falda",{length:"cropped"}),midi=G("b2","Abajo","Falda",{length:"midi"});
   const jeans=[G("j1","Abajo","Vaqueros",{name:"Vaqueros acid wash skinny"}),G("j2","Abajo","Vaqueros",{name:"Vaqueros rotos"}),G("j3","Abajo","Vaqueros",{name:"Vaqueros rectos oscuros"}),G("j4","Abajo","Vaqueros",{name:"Vaqueros rotos",formality:"smartcasual"}),G("j6","Abajo","Vaqueros",{name:"Vaquero roto"}),G("j7","Abajo","Vaqueros",{name:"Vaqueros lavados al ácido"}),G("j8","Abajo","Vaqueros",{name:"Vaqueros de lavado ácido"}),G("j5","Vestidos","Vestido",{name:"Vestido largo rotita",formality:"party"})];
   return {
-   jeansWork:jeans.slice(0,4).map(j=>fit(j,"work")).join(),jeansDaily:fit(jeans[1],"daily"),rotita:fit(jeans.find(j=>j.id==="j5"),"party"),spanish:jeans.filter(j=>["j6","j7","j8"].includes(j.id)).map(j=>fit(j,"work")).join(),
+   jeansWork:jeans.slice(0,4).map(j=>fit(j,"work")).join(),jeansDaily:fit(jeans[1],"daily"),rotita:fit(jeans.find(j=>j.id==="j5"),"party"),spanish:jeans.filter(j=>["j6","j7","j8"].includes(j.id)).map(j=>fit(j,"work")).join(),tops:[G("w1","Arriba","Sudadera"),G("w2","Arriba","Top",{name:"Top bustier"}),G("w3","Arriba","Sudadera",{formality:"smartcasual"}),G("w4","Arriba","Blusa")].map(t=>fit(t,"work")).join(),hoodieDaily:fit(G("w5","Arriba","Sudadera"),"daily"),
    casualPackWork:fit(casualPack,"work"),partyShoes,
    packs:[fit(dressyPack,"work"),fit(hikePack,"work"),fit(plainPack,"work"),fit(userPack,"work"),fit(hikePack,"daily")].join(),
    shoes:[fit(heelSandal,"work"),fit(heelSandal,"party"),fit(flipflop,"work")].join(),
@@ -458,6 +458,7 @@ console.log("PASS: S6 long-offline devices don't resurrect deletions");
   assert.equal(r.casualPackWork,false,"Mochila informal: no al trabajo");
   assert.equal(r.jeansWork,"false,false,true,true","Vaqueros rotos o acid wash: no al trabajo, salvo que la ficha diga arreglados; rectos oscuros, sí");
   assert.equal(r.spanish,"false,false,false","Español: «vaquero roto» y «lavado al ácido» tampoco");
+  assert.equal(r.tops,"false,false,true,true","Trabajo: ni sudadera ni bustier, salvo que la ficha diga arreglada");assert.equal(r.hoodieDaily,true);
   assert.equal(r.jeansDaily,true);assert.equal(r.rotita,true,"«rotita» (marca) no se confunde con «rotos»");assert.equal(r.partyShoes,true,"Fiesta: sandalias de tacón con formalidad formal aunque su estilo sea informal");
   assert.equal(r.shoes,"true,true,false","Sandalias de tacón (formalidad formal) sí en trabajo y fiesta; chanclas no");
   assert.equal(r.heat,"false,true,true,true","Jersey de lana grueso no con 27 °C; camisa de lino de manga larga sí");
