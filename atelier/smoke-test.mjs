@@ -77,9 +77,11 @@ try{
    document.body.append(host);
    const card=host.querySelector(".look-tile");
    const fraction=card.getBoundingClientRect().width/host.getBoundingClientRect().width;
-   host.remove();return fraction;
+   const flow=getComputedStyle(host).gridAutoFlow;
+   host.remove();return {fraction,flow};
   });
-  assert.ok(ratio>.8,"Un look de 5 prendas se estrecha a "+width+" px: "+ratio);
+  assert.ok(ratio.fraction>.8,"Un look de 5 prendas se estrecha a "+width+" px: "+ratio.fraction);
+  assert.ok(!/dense/.test(ratio.flow),"El orden visual debe coincidir con el orden de teclado a "+width+" px");
  }
  await page.setViewportSize({width:390,height:844});
  await page.locator(".daily-look").waitFor(); // «Tu look de hoy» nada más entrar
