@@ -457,3 +457,6 @@ p.notice-card{display:block}
 
 /* Inspiración: tu versión del look bajo las prendas reconocidas */
 .inspo-result{display:grid;gap:6px;margin:12px 0}
+
+/* Garment contextual compatibility controls */
+.garment-pairs select{width:100%;max-width:100%;min-width:0;margin:5px 0 8px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface,#fff);color:var(--ink)}
