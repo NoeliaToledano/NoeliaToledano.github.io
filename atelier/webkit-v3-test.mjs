@@ -32,11 +32,11 @@ await page.addInitScript(()=>{
  };
 });
 const png=Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/pVYAAAAASUVORK5CYII=","base64");
-async function addGarment(name){
+async function addGarment(name,category="Arriba"){
  await page.locator("#addGarment").click();
  await page.locator("#autoAnalyze").uncheck();
  await page.locator("#garmentName").fill(name);
- await page.locator("#garmentCategory").selectOption("Arriba");
+ await page.locator("#garmentCategory").selectOption(category);
  await page.locator("#garmentImage").setInputFiles({name:"prenda.png",mimeType:"image/png",buffer:png});
  await page.locator("#garmentPreview").waitFor({state:"visible"});
  await page.locator('#garmentForm button[type="submit"]').click();
@@ -53,7 +53,7 @@ try{
  await page.reload({waitUntil:"networkidle"});
  await page.locator('[data-view="wardrobe"]').click();
  await page.getByText("Camiseta WebKit",{exact:true}).first().waitFor();
- await addGarment("Chaqueta WebKit");
+ await addGarment("Pantalón WebKit","Abajo"); // un look necesita arriba y abajo
  await page.locator('[data-view="stylist"]').click();
  await page.locator("#openLooks").click();
  await page.locator("#aiLooks").click();

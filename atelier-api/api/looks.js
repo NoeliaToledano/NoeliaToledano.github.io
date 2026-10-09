@@ -32,7 +32,7 @@ export default async function handler(req,res){
   const prompt=[
     "Eres estilista. Crea "+need+" looks usando SOLO los ids de items (campos: n=nombre, c=categoría). No inventes ids.",
     "Contexto: ocasión="+(body.occasion||"libre")+"; temporada="+(body.season||"cualquiera")+"; tiempo="+(body.weather||"25 °C")+".",
-    "Reglas: looks completos (calzado y, si combinan, capa, bolso o complemento), variados y coherentes; no mezcles dos estampados ni formalidades muy distintas; evita avoid si hay alternativas.",
+    "Reglas: cada look lleva c=Arriba y c=Abajo, o c=Vestidos; completos (calzado y, si combinan, capa, bolso o complemento), variados y coherentes; no mezcles dos estampados ni formalidades muy distintas; evita avoid si hay alternativas.",
     liked.length?"Le gustaron (inspírate, no repitas): "+JSON.stringify(liked):"",
     disliked.length?"No le gustaron (evita parecidos): "+JSON.stringify(disliked):"",
     "avoid="+JSON.stringify((Array.isArray(body.avoid)?body.avoid:[]).map(String).filter(id=>ids.has(id)).slice(0,12)),

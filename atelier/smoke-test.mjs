@@ -17,7 +17,7 @@ await page.route("https://atelier-ai-backend-pi.vercel.app/**",async route=>{
  if(url.endsWith("/api/analyze"))return route.fulfill({status:200,headers,body:JSON.stringify({garment:{name:"Camisa reconocida por IA",type:"top",color:"Azul",fabric:"cotton",pattern:"stripes",fit:"regular",sleeve:"larga",subtype:"camisa",confidence:"media",details:"botones frontales",occasions:["daily","work"]}})});
  if(url.endsWith("/api/looks")&&forceUnauthorized){forceUnauthorized=false;return route.fulfill({status:401,headers,body:JSON.stringify({error:"Sesión caducada"})})}
  if(url.endsWith("/api/looks")&&forceServerError){forceServerError=false;return route.fulfill({status:503,headers,body:JSON.stringify({error:"Servicio no disponible"})})}
- if(url.endsWith("/api/looks")){const items=JSON.parse(req.postData()||"{}").items||[];return route.fulfill({status:200,headers,body:JSON.stringify({looks:[{ids:items.slice(0,2).map(x=>x.i),why:"Look de prueba IA"}]})})}
+ if(url.endsWith("/api/looks")){const items=JSON.parse(req.postData()||"{}").items||[];const top=items.find(x=>x.c==="Arriba"),bottom=items.find(x=>x.c==="Abajo"),ids=top&&bottom?[top.i,bottom.i]:items.slice(0,2).map(x=>x.i);return route.fulfill({status:200,headers,body:JSON.stringify({looks:[{ids,why:"Look de prueba IA"}]})})}
  return route.fulfill({status:500,headers,body:JSON.stringify({error:"Mock AI unavailable"})});
 });
 let currentProfile="noelia";
@@ -60,6 +60,11 @@ try{
  await page.locator("#newLook").click();
  await page.locator("#lookName").fill("Look auditado");
  await page.locator('#lookGarments input[type="checkbox"]').first().check();
+ // Regla obligatoria: solo la parte de arriba no es un look
+ await page.locator("#lookForm button[type=submit]").click();
+ await page.getByText("Un look necesita parte de arriba y de abajo, o un vestido o mono").first().waitFor();
+ await page.evaluate(()=>{myGarments().push({id:"bottomAudit",name:"Pantalón auditado",category:"Abajo",color:"Negro",updatedAt:new Date().toISOString()});const box=$("#lookGarments");box.insertAdjacentHTML("beforeend",'<label><input type="checkbox" value="bottomAudit"> Pantalón auditado</label>')});
+ await page.locator('#lookGarments input[value="bottomAudit"]').check();
  await page.locator("#lookForm button[type=submit]").click();
  await page.getByText("Look auditado").waitFor();
  await page.locator('[data-view="wardrobe"]').click();

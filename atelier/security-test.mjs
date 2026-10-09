@@ -277,3 +277,19 @@ console.log("PASS: S6 long-offline devices don't resurrect deletions");
   assert.equal(r.none.white,false);
   console.log("PASS: White background by default (doubtful cutouts too; broken ones keep the background)");
 }
+
+// Regla obligatoria (Noelia, 09/10): todo look lleva arriba y abajo, o vestido/mono
+{
+  const probe=new Function("document","sessionStorage","crypto",src+`
+  const G=c=>({category:c});
+  return {cases:[["Arriba","Abajo"],["Vestidos"],["Arriba","Zapatos"],["Abajo","Capas","Zapatos"],["Casa"],["Baño"],[]].map(a=>lookComplete(a.map(G))).join(),
+   engine:(()=>{appState.profile={id:"noelia"};appState.data=normalizeData({garments:[
+     ...["Arriba","Arriba","Abajo","Abajo","Vestidos","Zapatos","Zapatos","Capas","Bolsos"].map((c,i)=>({id:"g"+i,name:c+i,category:c,color:["Negro","Blanco","Beige","Azul"][i%4],style:"casual",season:"all",updatedAt:"x"}))]});
+     const all=[...rankOutfits({max:6}),...["g5","g7","g8"].flatMap(id=>rankOutfits({required:id,max:4,occasion:null}))];
+     return all.length>0&&all.every(r=>lookComplete(r.garments));})()};`);
+  const r=probe(document,sessionStorage,{randomUUID:()=>"t"});
+  assert.equal(r.cases,"true,true,false,false,true,true,false");
+  assert.ok(r.engine,"El motor (Hoy, Mi semana, Combinar prenda) solo propone looks completos, también partiendo de zapatos, capa o bolso");
+  const ai=fs.readFileSync(new URL("../atelier-api/api/looks.js",import.meta.url),"utf8");assert.ok(ai.includes("c=Arriba y c=Abajo, o c=Vestidos"));
+  console.log("PASS: Looks always have top+bottom or a dress/jumpsuit");
+}
