@@ -42,4 +42,6 @@ try{execFileSync(process.execPath,[new URL("./benchmarks/styling-formulas.test.m
 catch(e){fail("Styling formulas regression: "+String(e.stderr||e.message));}
 try{execFileSync(process.execPath,[new URL("./benchmarks/compatibility-graph.test.mjs",import.meta.url).pathname],{stdio:"pipe"});}
 catch(e){fail("Wardrobe compatibility graph regression: "+String(e.stderr||e.message));}
+try{execFileSync(process.execPath,[new URL("./benchmarks/combination-hypergraph.test.mjs",import.meta.url).pathname],{stdio:"pipe"});}
+catch(e){fail("Outfit hypergraph regression: "+String(e.stderr||e.message));}
 console.log("Atelier release gate OK (app y backend)");
