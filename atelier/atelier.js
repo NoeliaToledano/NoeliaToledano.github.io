@@ -1293,10 +1293,10 @@ function renderToday(root){
   '<details class="today-unified-options"><summary>Más opciones</summary><div class="today-options-content"><section class="today-ia-section"><h2>Ideas con IA</h2>'+
   '<div class="filter-grid"><label class="field"><span>Ocasión</span><select id="prefOccasion">'+optionList(Object.entries(occasions),p.occasion)+'</select></label>'+
   '<label class="field"><span>Temporada</span><select id="prefSeason">'+optionList(Object.entries(seasons),p.season)+'</select></label></div>'+
-  '<div class="today-weather"><div class="today-weather-heading"><strong>Temperatura para tu look</strong><span class="muted">'+(p.autoWeather&&p.weatherDay===dayISO()?'Según el tiempo de hoy':'Ajustada manualmente')+'</span></div>'+
+  '<div class="today-weather"><div class="today-weather-heading"><strong>Temperatura para tu look</strong><span class="muted">'+(p.autoWeather&&p.weatherDay===dayISO()?'Según el tiempo de hoy':p.autoWeather?'Actualizando tiempo de hoy':'Ajustada manualmente')+'</span></div>'+
   '<div class="today-weather-controls"><label class="field" for="prefTemperature"><span>Grados Celsius</span><span class="today-temperature-input"><input id="prefTemperature" type="number" min="-30" max="55" step="1" inputmode="numeric" value="'+fx(currentTemperature())+'"><span>°C</span></span></label>'+
   '<button type="button" class="secondary" id="useWeather">Usar tiempo de hoy</button></div>'+
-  (p.autoWeather?'<button type="button" class="link-button today-weather-reset" id="stopWeather">Volver a temperatura manual</button>':'')+
+  (p.autoWeather?'<button type="button" class="link-button today-weather-reset" id="stopWeather">Restablecer a '+DEFAULT_TEMPERATURE+' °C</button>':'')+
   (info?'<p class="helper" role="status">'+fx(info)+'</p>':'')+'</div>'+
   '<label class="switch-line"><input id="prefAvoid" type="checkbox"'+(p.avoidRepeats?' checked':'')+'> Evitar repetir combinaciones recientes</label>'+
   '<button class="primary wide" id="suggestSmart">✦ Generar looks con mi ropa</button>'+
