@@ -1294,8 +1294,6 @@ function renderToday(root){
   '<label class="field"><span>Temporada</span><select id="prefSeason">'+optionList(Object.entries(seasons),p.season)+'</select></label></div>'+
   '<label class="field"><span>Temperatura exterior (°C; por defecto '+DEFAULT_TEMPERATURE+')</span><input id="prefTemperature" type="number" min="-30" max="55" step="1" placeholder="Si lo dejas vacío, uso '+DEFAULT_TEMPERATURE+' °C" value="'+fx(currentTemperature())+'"></label>'+
   '<div class="weather-line"><button type="button" class="chip-button" id="useWeather">📍 Usar el tiempo de hoy</button>'+(p.autoWeather?'<button type="button" class="chip-button" id="stopWeather">Volver a '+DEFAULT_TEMPERATURE+' °C</button>':'')+'</div>'+(info?'<p class="helper">'+fx(info)+'</p>':'')+
-  '<div class="field"><label for="prefDiversity">Diversidad <abbr title="Cuánto priorizar prendas poco usadas para variar tus looks">ⓘ</abbr>: <strong id="diversityText">'+fx(p.diversity)+'</strong>%</label><input id="prefDiversity" type="range" min="0" max="100" step="5" value="'+fx(p.diversity)+'"></div>'+
-  extrasTogglesHtml()+
   '<label class="switch-line"><input id="prefAvoid" type="checkbox"'+(p.avoidRepeats?' checked':'')+'> Evitar repetir combinaciones recientes</label>'+
   '<button class="primary wide" id="suggestSmart">✦ Generar looks con mi ropa</button>'+
   '<p class="helper">Se envían solo los nombres y atributos de tus prendas, nunca las fotos. Sugerencias con IA hoy: '+u.looks+' de '+AI_LIMITS.looks+'.</p></section>'+
@@ -1308,7 +1306,6 @@ function renderToday(root){
  bindDailyLook(root);
  $("#prefSeason")?.addEventListener("change",e=>setPref("season",e.target.value,false));
  $("#prefTemperature")?.addEventListener("change",e=>{const v=e.target.value,n=Number(v);if(v===""||(Number.isFinite(n)&&n>=-30&&n<=55)){p.autoWeather=false;if(p.dailyLook&&!p.dailyLook.touched)p.dailyLook.date=null;setPref("temperature",v===""?DEFAULT_TEMPERATURE:n,true)}else toast("Introduce entre -30 y 55 °C")});
- $("#prefDiversity")?.addEventListener("input",e=>{$("#diversityText").textContent=e.target.value});$("#prefDiversity")?.addEventListener("change",e=>setPref("diversity",Number(e.target.value),false)); // se guarda al soltar (R4)
  $("#prefAvoid")?.addEventListener("change",e=>setPref("avoidRepeats",e.target.checked,false));
  $("#suggestSmart")?.addEventListener("click",()=>suggestLooks());
  $("#createManual")?.addEventListener("click",()=>openLook());
