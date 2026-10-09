@@ -49,6 +49,42 @@ def read_items(path, root):
     return result
 
 
+def select_items(labels, images_root, ids=None):
+    """Select a small pilot before requiring source files; fail on unknown IDs."""
+    if ids is None:
+        return read_items(labels, images_root)
+    requested = {x.strip() for x in ids.split(",") if x.strip()}
+    if not requested:
+        raise ValueError("--ids must contain at least one item ID")
+    rows = json.loads(Path(labels).read_text(encoding="utf-8"))
+    if not isinstance(rows, list):
+        raise ValueError("labels must be an array")
+    known = {row.get("id") for row in rows if isinstance(row, dict)}
+    missing = requested - known
+    if missing:
+        raise ValueError("unknown --ids: " + ", ".join(sorted(missing)))
+    # Preserve the existing path and duplicate validation, without temp files.
+    root = Path(images_root).resolve()
+    selected = []
+    seen = set()
+    for row in rows:
+        if not isinstance(row, dict) or row.get("id") not in requested:
+            continue
+        key, category, relative = row.get("id"), row.get("category"), row.get("file")
+        if not all(isinstance(x, str) and x for x in (key, category, relative)):
+            raise ValueError("selected item missing id/category/file")
+        if key in seen:
+            raise ValueError("duplicate garment id: " + key)
+        seen.add(key)
+        photo = (root / relative).resolve()
+        if not photo.is_relative_to(root):
+            raise ValueError("image path escapes image root: " + relative)
+        if not photo.is_file():
+            raise FileNotFoundError("local image missing: " + str(photo))
+        selected.append((key, category, photo))
+    return selected
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--labels", required=True)
@@ -60,23 +96,7 @@ def main():
     args = parser.parse_args()
     if args.batch_size <= 0 or args.batch_size > 64:
         parser.error("--batch-size must be between 1 and 64")
-    if args.ids:
-        requested = {x.strip() for x in args.ids.split(",") if x.strip()}
-        if not requested:
-            parser.error("--ids must contain at least one item ID")
-        data = json.loads(Path(args.labels).read_text(encoding="utf-8"))
-        present = {x.get("id") for x in data if isinstance(x, dict)}
-        absent = requested - present
-        if absent:
-            parser.error("unknown --ids: " + ", ".join(sorted(absent)))
-        # Only inspect the requested photos: a pilot need not own all 86 originals.
-        from tempfile import TemporaryDirectory
-        with TemporaryDirectory() as td:
-            selected = Path(td) / "selected.json"
-            selected.write_text(json.dumps([x for x in data if x.get("id") in requested]), encoding="utf-8")
-            items = read_items(selected, args.images_root)
-    else:
-        items = read_items(args.labels, args.images_root)
+    items = select_items(args.labels, args.images_root, args.ids)
     try:
         import torch
         from PIL import Image
