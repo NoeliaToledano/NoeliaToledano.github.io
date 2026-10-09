@@ -391,3 +391,12 @@ p.notice-card{display:block}
 .look-tile .look-votes{display:flex;justify-content:flex-end;gap:5px;padding:0 10px 8px}
 .look-tile .look-votes .chip-button{min-width:36px;min-height:36px;padding:5px;background:transparent;border-color:transparent}
 .look-tile .look-votes .chip-button.on{background:var(--bg);border-color:var(--line)}
+
+/* Hoy: una protagonista visual y herramientas de uso ocasional bajo demanda. */
+.today-extra-tools{margin:18px 0 22px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.today-extra-tools>summary{cursor:pointer;padding:16px 4px;color:var(--muted);font-size:13px;font-weight:600}
+.today-extra-body{padding:0 4px 16px}
+.today-extra-body .section-head{margin:18px 0 10px}
+.today-extra-body .section-head h2{font-size:16px}
+.today-extra-body .actions{margin:6px 0 12px}
+@media(max-width:390px){.today-extra-body .actions{flex-direction:column}.today-extra-body .actions>*{width:100%}}
