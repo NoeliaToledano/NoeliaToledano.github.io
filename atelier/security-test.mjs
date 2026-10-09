@@ -322,3 +322,19 @@ console.log("PASS: S6 long-offline devices don't resurrect deletions");
   assert.equal(r,"fondo,contraste,roto,|fondo,contraste,encuadre,roto");
   console.log("PASS: Failed cutouts report a reason with a photo tip");
 }
+
+// Playa: el look lleva chanclas o sandalias (no zapatillas); en casa, sin calzado
+{
+  const probe=new Function("document","sessionStorage","crypto",src+`
+  appState.profile={id:"noelia"};appState.data=normalizeData({preferences:{occasion:"beach"},garments:[
+   {id:"b1",name:"Bikini azul",category:"Baño",color:"Azul",style:"casual",season:"warm",updatedAt:"x"},
+   {id:"z1",name:"Zapatillas blancas",category:"Zapatos",type:"Deportivas",color:"Blanco",style:"casual",season:"all",updatedAt:"x"},
+   {id:"z2",name:"Chanclas",category:"Zapatos",type:"Chanclas",color:"Blanco",style:"casual",season:"warm",occasions:["beach"],updatedAt:"x"}]});
+  const beach=rankOutfits({max:1,occasion:"beach",temperature:28})[0]?.garments.map(g=>g.id).join()||"";
+  appState.data.preferences.occasion="home";
+  return {beach,homeShoes:lookExtras().shoes};`);
+  const r=probe(document,sessionStorage,{randomUUID:()=>"t"});
+  assert.ok(r.beach.includes("b1")&&r.beach.includes("z2")&&!r.beach.includes("z1"),"Playa: bañador con chanclas, sin zapatillas ("+r.beach+")");
+  assert.equal(r.homeShoes,false);
+  console.log("PASS: Beach looks get sandals/flip-flops; home looks no shoes");
+}

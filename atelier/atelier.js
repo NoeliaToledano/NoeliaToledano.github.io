@@ -1471,7 +1471,8 @@ function renderLooks(root){
 }
 /* Complementos en las propuestas: calzado y bolso se pueden quitar (preferencia por perfil).
    En «Estar en casa» y «Playa y piscina» el calzado no se añade nunca. */
-const NO_SHOES_OCCASIONS=new Set(["home","beach"]);
+// En casa, sin calzado. En la playa sí: el motor solo elige sandalias, chanclas, alpargatas o zuecos (completeOutfitGreedy)
+const NO_SHOES_OCCASIONS=new Set(["home"]);
 function lookExtras(){const occasion=appState.data.preferences.occasion||"daily";return {shoes:!NO_SHOES_OCCASIONS.has(occasion),bag:occasion!=="home"}}
 function extrasTogglesHtml(){return ""}
 function bindExtrasToggles(){}
