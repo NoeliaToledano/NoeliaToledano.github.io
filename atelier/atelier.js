@@ -1580,10 +1580,19 @@ function layerRule(temp){return temp<15?{need:true,max:2,prefer:"warm"}:temp<20?
 /* Puntuación de un look completo → {score 0–100, reasons[], warnings[]} */
 function scoreOutfit(gs,ctx){
  const reasons=[],warnings=[],big=gs.filter(g=>BIG.includes(g.category));
- // Color (25): media de los pares; los opuestos solo penalizan si son dos piezas grandes
- let cs=[],kinds=[];for(let i=0;i<gs.length;i++)for(let j=i+1;j<gs.length;j++){const r=pairColor(gs[i],gs[j]),bothBig=BIG.includes(gs[i].category)&&BIG.includes(gs[j].category);
-  cs.push(r.k==="opposite"&&!bothBig?.75:r.s);if(r.k)kinds.push(r.k+(bothBig?"":"~"))}
- const color=cs.length?cs.reduce((a,b)=>a+b,0)/cs.length:.75,patterns=gs.filter(g=>colorInfo(g.color,g.pattern).fam==="estampado").length;
+ // Color (25): el conjunto principal manda. Bolsos y accesorios no deben
+ // tapar una incompatibilidad evidente entre camiseta, pantalón o vestido.
+ let baseTotal=0,baseN=0,extrasTotal=0,extrasWeight=0,kinds=[];
+ for(let i=0;i<gs.length;i++)for(let j=i+1;j<gs.length;j++){
+  const r=pairColor(gs[i],gs[j]),aBig=BIG.includes(gs[i].category),bBig=BIG.includes(gs[j].category),bothBig=aBig&&bBig;
+  if(bothBig){baseTotal+=r.s;baseN++}
+  else {const weight=aBig||bBig?1:.35;extrasTotal+=r.s*weight;extrasWeight+=weight}
+  if(r.k)kinds.push(r.k+(bothBig?"":"~"));
+ }
+ const baseColor=baseN?baseTotal/baseN:.75,accessoryColor=extrasWeight?extrasTotal/extrasWeight:baseColor;
+ // Una buena relación entre complementos puede acompañar la base, nunca maquillar
+ // el choque entre dos prendas principales. Solo puede restar hasta un 15 %.
+ const color=baseN?Math.min(baseColor,.85*baseColor+.15*accessoryColor):accessoryColor,patterns=gs.filter(g=>colorInfo(g.color,g.pattern).fam==="estampado").length;
  const tonal=kinds.find(k=>k.startsWith("tonal:")&&!k.endsWith("~"));
  if(tonal)reasons.push("Tono sobre tono en "+tonal.slice(6).replace(/~$/,"")+"s");
  else if(kinds.includes("opposite~"))reasons.push("Un toque de color en contraste");
