@@ -450,3 +450,6 @@ p.notice-card{display:block}
  .grid>.look-tile:has(.look-mixed-board[data-count="6"]) .look-mixed-board,
  .grid>.look-tile:has(.look-mixed-board[data-count="7"]) .look-mixed-board{max-height:520px}
 }
+
+/* Motivo del 👎 (opcional): una fila de chips bajo los votos */
+.dislike-why{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:0 10px 10px;font-size:12px;color:var(--muted)}

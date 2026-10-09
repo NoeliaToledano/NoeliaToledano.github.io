@@ -619,6 +619,26 @@ console.log("PASS: S6 long-offline devices don't resurrect deletions");
   console.log("PASS: Work dress code per profile (arreglado, formal, informal)");
 }
 
+// Motivo del 👎 (#136 §22): «hoy» no enseña; «colores» solo los colores; «muy arreglado/informal» inclina la formalidad
+{
+  const probe=new Function("document","sessionStorage","crypto",src+`
+  const G=(id,category,type,extra={})=>({id,name:type,category,type,color:"Negro",style:"casual",season:"all",updatedAt:"x",...extra});
+  const gs=[G("r1","Arriba","Camiseta",{color:"Rojo"}),G("r2","Abajo","Pantalón",{color:"Rojo"}),G("b1","Arriba","Camiseta",{color:"Azul"}),G("b2","Abajo","Pantalón",{color:"Azul"}),G("n1","Arriba","Blusa",{color:"Blanco",style:"smart",formality:"smartcasual"}),G("n2","Abajo","Pantalón",{color:"Negro",style:"smart",formality:"smartcasual"})];
+  const L=(id,ids,extra={})=>({id,garmentIds:ids,updatedAt:"x",...extra});
+  const looks=[L("l1",["r1","r2"],{dislikeReason:"color"}),L("l2",["r1","r2"],{dislikeReason:"color"}),L("l3",["r1","b2"],{dislikeReason:"hoy"}),L("l4",["b1","b2"]),L("l5",["b1","r2"]),L("l6",["n1","n2"]),L("l7",["b1","n2"])];
+  appState.profile={id:"noelia"};appState.data=normalizeData({garments:gs,looks,feedback:{l1:"down",l2:"down",l3:"down",l4:"up",l5:"up",l6:"up",l7:"up"}});
+  const t=tasteProfile(),dis=t.dislikes.map(x=>x.k),hoyIgnored=myLooks().filter(l=>l.dislikeReason==="hoy").length===1;
+  const noBias=formalityBias();
+  appState.data.looks.push(...["a","b","c"].map(k=>L("f"+k,["n1","n2"],{dislikeReason:"formal"})));Object.assign(appState.data.feedback,{fa:"down",fb:"down",fc:"down"});
+  const c=engineContext({occasion:"daily",temp:20,date:"2026-04-15",extras:{shoes:false,bag:false}});
+  return {dis:dis.join(),styleDisliked:dis.some(k=>k.startsWith("style:")),noBias,bias:c.formalBias,casualVsSmart:scoreOutfit([gs[2],gs[3]],c).score-scoreOutfit([gs[4],gs[5]],c).score,
+   casualVsSmart0:(()=>{c.formalBias=0;return scoreOutfit([gs[2],gs[3]],c).score-scoreOutfit([gs[4],gs[5]],c).score})()};`);
+  const r=probe(document,sessionStorage,{randomUUID:()=>"t"});
+  assert.match(r.dis,/fam:rojo|mono/,"👎 «Colores» enseña colores ("+r.dis+")");assert.equal(r.styleDisliked,false,"👎 «Colores» no enseña estilo");
+  assert.equal(r.noBias,0);assert.ok(r.bias>0,"Tres 👎 «Muy arreglado»: sesgo hacia lo informal");assert.ok(r.casualVsSmart>r.casualVsSmart0,"Con ese sesgo, el look informal gana terreno");
+  console.log("PASS: Dislike reasons: 'hoy' ignored, 'colores' only colours, 'muy arreglado/informal' shifts formality");
+}
+
 // Foto de look: el análisis devuelve también formalidad, manga y largo (perfil de prenda), solo con valores conocidos
 {
   process.env.ATELIER_SESSION_SECRET="test-secret";process.env.OPENAI_API_KEY="k";
