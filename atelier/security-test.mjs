@@ -508,17 +508,20 @@ console.log("PASS: S6 long-offline devices don't resurrect deletions");
   appState.data=normalizeData({garments:[G("v2","Vestidos","Vestido de fiesta",{formality:"party",style:"party"}),G("z2","Zapatos","Tacones",{formality:"party",style:"party"}),
    G("b1","Bolsos","Bolso de hombro",{formality:"smartcasual",style:"smart",favorite:true}),G("b2","Bolsos","Bolso de fiesta",{formality:"party",style:"party"})]});
   const partyBag=rankOutfits({max:1,occasion:"party",date:"2026-04-15",temp:18})[0]?.ids.filter(i=>i[0]==="b").join();
+  appState.data.garments=appState.data.garments.filter(g=>g.id!=="b2");appState.data.garments.push(G("b3","Bolsos","Bolso",{name:"Cartera",occasions:["party"]}));
+  const occBag=rankOutfits({max:1,occasion:"party",date:"2026-04-15",temp:18})[0]?.ids.filter(i=>i[0]==="b").join();
   appState.data=normalizeData({garments:[G("t2","Arriba","Camisa",{style:"smart",formality:"smartcasual"}),G("p2","Abajo","Pantalón",{style:"smart",formality:"smartcasual"}),G("z3","Zapatos","Mocasines"),
    G("c1","Capas","Abrigo",{name:"Plumífero acolchado",warmth:"alto",favorite:true}),G("c2","Capas","Abrigo",{name:"Abrigo de paño",warmth:"alto",formality:"smartcasual"}),G("c3","Capas","Abrigo",{name:"Parka",warmth:"alto"})]});
   const coat=o=>rankOutfits({max:1,date:"2026-01-15",temp:6,...o})[0]?.ids.filter(i=>i[0]==="c").join();
   const workCoat=coat({occasion:"work"});
   appState.data.garments=appState.data.garments.filter(g=>g.id!=="c2");
   const onlyPuffer=coat({occasion:"work"});
-  return {packWithDress,reqPack,partyBag,workCoat,onlyPuffer};`);
+  return {packWithDress,reqPack,partyBag,occBag,workCoat,onlyPuffer};`);
   const r=probe(document,sessionStorage,{randomUUID:()=>"t"});
   assert.equal(r.packWithDress,false,"Mochila de montaña: no con vestido");
   assert.equal(r.reqPack,false,"Combinar la mochila de montaña: con pantalón, no con el vestido");
   assert.equal(r.partyBag,"b2","Fiesta: bolso de fiesta antes que el de diario, aunque este sea favorito");
+  assert.equal(r.occBag,"b3","Fiesta: bolso marcado para fiesta en la ficha, aunque no tenga formalidad");
   assert.equal(r.workCoat,"c2","Trabajo con frío: abrigo de paño antes que plumífero o parka");
   assert.ok(["c1","c3"].includes(r.onlyPuffer),"Si solo hay plumífero o parka, abriga igual");
   console.log("PASS: Outdoor backpack not with dresses; party bag at parties; dressy coat before puffer at work");
