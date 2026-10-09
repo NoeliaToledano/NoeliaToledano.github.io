@@ -41,14 +41,14 @@ export default async function handler(req, res) {
 
     const prompt = outfit ? [
       "Foto de una persona con un look. Lista cada prenda o complemento visible (máx. 7), sin ropa interior ni calcetines.",
-      'Responde SOLO JSON: {"items":[{"type":"top|bottom|dress|outerwear|shoes|bag|accessory","garmentType":"Camiseta, Vaqueros, Vestido midi…","name":"nombre corto","color":"Negro|Blanco|Gris|Beige|Marrón|Azul|Vaquero|Verde|Rojo|Rosa|Morado|Amarillo|Plateado|Dorado|Multicolor","style":"casual|smart|party|sport","season":"all|warm|cold","box":[x,y,ancho,alto]}]}',
+      'Responde SOLO JSON: {"items":[{"type":"top|bottom|dress|outerwear|shoes|bag|accessory","garmentType":"Camiseta, Vaqueros, Vestido midi…","name":"nombre corto","color":"Negro|Blanco|Gris|Beige|Marrón|Azul|Vaquero|Verde|Rojo|Rosa|Morado|Amarillo|Plateado|Dorado|Multicolor","style":"casual|smart|party|sport","formality":"casual|smartcasual|formal|party|sport","sleeve":"sin mangas|corta|tres cuartos|larga|no aplica","length":"na|cropped|regular|midi|long","season":"all|warm|cold","box":[x,y,ancho,alto]}]}',
       "box: recuadro de esa prenda en % de la imagen (0-100), ajustado a la prenda. Un mono o enterizo es dress."
     ].join("\n") : [
       "Cataloga la prenda de la foto. No inventes marca ni detalles no visibles; usa null si dudas.",
       "Responde SOLO JSON en español con estas claves y valores:",
       'name: nombre corto; type: top|bottom|dress|outerwear|shoes|bag|accessory|homewear|underwear|swimwear; color: Negro|Blanco|Gris|Beige|Marrón|Azul|Vaquero|Verde|Rojo|Rosa|Morado|Amarillo|Plateado|Dorado|Multicolor; style: casual|smart|party|sport; season: all|warm|cold; fabric: unknown|cotton|denim|linen|wool|knit|leather|satin|silk|synthetic|mixed; pattern: plain|stripes|checks|floral|animal|dots|graphic|other; length: na|cropped|regular|midi|long; formality: casual|smartcasual|formal|party|sport; occasions: lista de daily|work|sport|beach|home|event|party|formal; notes: máx 10 palabras o ""',
       'Añade garmentType con el tipo exacto seleccionado de esta lista (null si no se distingue): Arriba=Camiseta|Camisa|Blusa|Top|Crop top|Jersey|Sudadera|Polo|Body|Camiseta técnica; Abajo=Vaqueros|Pantalón|Leggings|Mallas deportivas|Shorts|Falda|Pantalón deportivo; Vestidos=Vestido corto|Vestido midi|Vestido largo|Mono corto|Mono largo|Enterizo|Peto; Capas=Blazer|Chaqueta|Cazadora|Abrigo|Gabardina|Chaleco|Cárdigan; Zapatos=Deportivas|Zapatos|Botas|Botines|Sandalias|Tacones|Mocasines|Bailarinas|Alpargatas|Zuecos|Zapatillas de casa; Bolsos=Bolso de mano|Bolso de hombro|Bandolera|Mochila|Bolso de fiesta; Accesorios=Cinturón|Gafas de sol|Gafas|Pañuelo|Bufanda|Guantes|Gorro|Sombrero|Collar|Pendientes|Pulsera|Anillo|Joyería|Reloj|Corbata|Pajarita|Diadema|Pinza de pelo|Coletero|Accesorio de pelo; Casa=Pijama|Camisón|Bata|Conjunto de estar en casa; Baño=Bañador|Bikini|Top de bikini|Braguita de bikini|Trikini|Short de baño|Pareos|Salida de baño. garmentType debe corresponder con type (categoría general).',
-      'Usa solo ocasiones generales: sport incluye gimnasio, yoga, pilates, running y senderismo; beach incluye playa y piscina; home incluye dormir. Pijamas y batas: home; bañadores: beach. No uses travel ni holiday.',
+      'formality también en bolsos, calzado y complementos (mochila de piel: smartcasual; de montaña: sport; sandalia de tacón: formal). Usa solo ocasiones generales: sport incluye gimnasio, yoga, pilates, running y senderismo; beach incluye playa y piscina; home incluye dormir. Pijamas y batas: home; bañadores: beach. No uses travel ni holiday.',
       'Para pijama, camisón o bata usa type homewear y categoría Casa. Para ropa interior íntima, calcetines y medias usa type underwear porque Atelier no las admite. Crop top es top/Arriba, no underwear. Para Baño usa type swimwear; el estilo sport puede aplicarse a cualquier categoría y no cambia la categoría. Un body se clasifica como top/Arriba y garmentType Body; un mono o enterizo (prenda de una pieza con perneras) como dress/Vestidos y garmentType Mono corto, Mono largo o Enterizo. No confundirlos con vestidos.',
       'Si son visibles, añade también subtype (tipo específico), secondaryColor, fit (oversize|holgado|regular|entallado|ajustado|recto), sleeve (sin mangas|corta|tres cuartos|larga|no aplica), neckline (redondo|pico|camisero|alto|barco|palabra de honor|no aplica), thickness (ligero|medio|grueso), warmth (bajo|medio|alto), details (máx. 8 palabras) y confidence (alta|media|baja). Omite lo que no se pueda reconocer con fiabilidad; no adivines la composición ni la marca.'
     ].join("\n");
@@ -90,12 +90,14 @@ export default async function handler(req, res) {
     if (start < 0 || end <= start) throw new Error("Respuesta JSON no válida.");
     const parsed = JSON.parse(cleaned.slice(start, end + 1));
     if (outfit) {
+      const pick = (x, k, allowed) => allowed.includes(x[k]) ? { [k]: x[k] } : {}; // solo valores conocidos (perfil de prenda)
       const TYPES = new Set(["top", "bottom", "dress", "outerwear", "shoes", "bag", "accessory"]);
       const num = v => Math.max(0, Math.min(100, Number(v) || 0));
       const items = (Array.isArray(parsed.items) ? parsed.items : []).filter(x => x && TYPES.has(x.type)).slice(0, 7).map(x => {
         const b = Array.isArray(x.box) ? x.box.map(num) : [0, 0, 100, 100];
         return { type: x.type, garmentType: String(x.garmentType || "").slice(0, 40), name: String(x.name || "").slice(0, 60), color: String(x.color || "").slice(0, 30),
-          style: String(x.style || "").slice(0, 10), season: String(x.season || "").slice(0, 5), box: [b[0], b[1], Math.max(4, Math.min(100 - b[0], b[2])), Math.max(4, Math.min(100 - b[1], b[3]))] };
+          style: String(x.style || "").slice(0, 10), season: String(x.season || "").slice(0, 5),
+          ...pick(x, "formality", ["casual", "smartcasual", "formal", "party", "sport"]), ...pick(x, "sleeve", ["sin mangas", "corta", "tres cuartos", "larga", "no aplica"]), ...pick(x, "length", ["na", "cropped", "regular", "midi", "long"]), box: [b[0], b[1], Math.max(4, Math.min(100 - b[0], b[2])), Math.max(4, Math.min(100 - b[1], b[3]))] };
       });
       return res.status(200).json({ items });
     }

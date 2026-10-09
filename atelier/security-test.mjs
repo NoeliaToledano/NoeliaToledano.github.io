@@ -459,3 +459,17 @@ console.log("PASS: S6 long-offline devices don't resurrect deletions");
   assert.equal(r.cold,"false,true,true","Minifalda no con 10 °C; falda midi sí");
   console.log("PASS: Garment profile: formality, sleeve, thickness, fabric, length and occasions drive the rules");
 }
+
+// Foto de look: el análisis devuelve también formalidad, manga y largo (perfil de prenda), solo con valores conocidos
+{
+  process.env.ATELIER_SESSION_SECRET="test-secret";process.env.OPENAI_API_KEY="k";
+  const auth=await import("../atelier-api/_lib/auth.js"),analyze=(await import("../atelier-api/api/analyze.js?perfil")).default;
+  const realFetch=globalThis.fetch;
+  globalThis.fetch=async()=>({ok:true,json:async()=>({output_text:JSON.stringify({items:[{type:"bag",name:"Mochila",formality:"smartcasual",sleeve:"x",length:"raro",box:[1,1,10,10]},{type:"top",name:"Top",sleeve:"sin mangas",formality:"inventada",box:[1,1,10,10]}]})})});
+  const res={code:0,body:null,setHeader(){},status(c){this.code=c;return this},json(b){this.body=b;return this},end(){return this}};
+  await analyze({method:"POST",headers:{authorization:"Bearer "+auth.issueSession("noelia"),origin:"https://noeliatoledano.github.io"},body:{image:"data:image/jpeg;base64,AAAA",mode:"outfit"}},res);
+  globalThis.fetch=realFetch;
+  assert.equal(res.body.items[0].formality,"smartcasual");assert.equal(res.body.items[0].sleeve,undefined);assert.equal(res.body.items[0].length,undefined);
+  assert.equal(res.body.items[1].sleeve,"sin mangas");assert.equal(res.body.items[1].formality,undefined);
+  console.log("PASS: Outfit photo items carry formality, sleeve and length (validated)");
+}
