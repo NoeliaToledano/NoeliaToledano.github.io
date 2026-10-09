@@ -190,8 +190,19 @@ console.log("PASS: Styling engine (20/100/500 prendas): capas según tiempo, var
   appState.data=normalizeData({garments:[G("t","Arriba","Blusa","Azul",{style:"party",formality:"party"}),G("p","Abajo","Falda","Azul",{style:"party",formality:"party"}),
    G("z","Zapatos","Tacones","Negro",{style:"party",formality:"party"}),G("b","Bolsos","Mochila","Naranja",{style:"sport",formality:"sport",pattern:"graphic"})]});
   out.badBag=rankOutfits({max:1,occasion:"party",temp:22,date:"2026-07-15",extras:{shoes:true,bag:true}})[0].ids;
+  // 8) Con 17 °C la capa es opcional: unos tacones que «permiten» añadir la americana no ganan a unas deportivas que combinan mejor con la sudadera
+  appState.data=normalizeData({garments:[G("s","Arriba","Sudadera","Gris",{formality:"casual"}),G("j","Abajo","Vaqueros","Vaquero",{formality:"casual"}),G("d","Zapatos","Deportivas","Negro",{occasions:["daily"]}),
+   G("h","Zapatos","Tacones","Beige",{style:"party",formality:"party",occasions:["party","event","work"]}),G("b","Capas","Blazer","Beige",{style:"smart",formality:"smartcasual",warmth:"bajo"})]});
+  out.optLayer=rankOutfits({max:1,occasion:"daily",temp:17,date:"2026-04-15"})[0].ids;
+  // 9) Con 15 °C la capa no es obligatoria, pero si sin ella hay aviso de frío, cuenta: se elige el calzado que la admite (revisión de Codex, #168)
+  appState.data=normalizeData({garments:[G("tp","Arriba","Top","Negro",{style:"party",formality:"party",sleeve:"sin mangas",thickness:"ligero"}),G("fd","Abajo","Falda","Negro",{style:"party",formality:"party",length:"cropped",thickness:"ligero"}),
+   G("dp","Zapatos","Deportivas","Naranja",{style:"sport",formality:"sport",pattern:"graphic",favorite:true,occasions:["daily","party"]}),G("tc","Zapatos","Tacones","Negro",{style:"party",formality:"party"}),
+   G("cz","Capas","Chaqueta de cuero","Negro",{style:"party",formality:"party",warmth:"medio",pattern:"checks"})]});
+  const cl=rankOutfits({max:1,occasion:"party",temp:15,date:"2026-04-15"})[0];out.coolLayer={ids:cl.ids,warnings:cl.warnings};
   return out;`);
   const r=probe(document,sessionStorage,{randomUUID:()=>"t"});
+  assert.ok(r.coolLayer.ids.includes("cz")&&!r.coolLayer.warnings.some(w=>/frío/.test(w)),"15 °C con aviso de frío sin capa: la capa se mantiene ("+JSON.stringify(r.coolLayer)+")");
+  assert.ok(r.optLayer.includes("d")&&!r.optLayer.includes("h"),"Capa opcional: no se eligen tacones solo para poder añadirla ("+r.optLayer+")");
   assert.ok(r.ct>=.6&&r.cp<.6,"La americana de cuadros combina con la camisa ("+r.ct+") pero no con el pantalón de rayas ("+r.cp+")");
   assert.ok(r.third.every(ids=>!(ids.includes("c")&&ids.includes("p"))),"La tercera pieza se mide con todas: sin americana de cuadros con pantalón de rayas");
   assert.ok(r.third.every(ids=>!ids.includes("a")),"Un complemento que no aporta no se añade por obligación");
@@ -204,6 +215,17 @@ console.log("PASS: Styling engine (20/100/500 prendas): capas según tiempo, var
   assert.ok(r.mono.length&&r.mono.every(ids=>!ids.includes("j")&&!ids.includes("t"))&&r.monoNucleus.join()==="m","El mono es núcleo de una sola pieza ("+JSON.stringify(r.mono)+")");
   assert.ok(!r.badBag.includes("b"),"Bolso que choca: mejor sin bolso ("+r.badBag+")");
   console.log("PASS: Stylist brain: weakest link, third piece vs all, intentional mix, no filler pieces, honest shoe warning");
+}
+
+// Frío de verdad (cata n.º 3, banco Polyvore «P-mitad», trabajo a 8 °C): si el abrigo no combina con una base, gana la base que lo admite
+{
+  const L=JSON.parse(fs.readFileSync(new URL("./benchmarks/real-photos/labels-polyvore.json",import.meta.url))),W=JSON.parse(fs.readFileSync(new URL("./benchmarks/real-photos/wardrobes-polyvore.json",import.meta.url)));
+  const probe=new Function("document","sessionStorage","crypto","GS",src+`
+  appState.profile={id:"noelia"};appState.data=normalizeData({garments:GS});
+  const l=rankOutfits({max:1,occasion:"work",temp:8,date:"2026-01-15"})[0];return {cats:l.garments.map(g=>g.category+":"+g.type),warnings:l.warnings,clo:outfitClo(l.garments),target:cloTarget(8)};`);
+  const set=new Set(W["P-mitad"]),r=probe(document,sessionStorage,{randomUUID:()=>"t"},L.filter(g=>set.has(g.id)).map(g=>({...g,image:"",updatedAt:"x"})));
+  assert.ok(!r.warnings.some(w=>/frío/.test(w))&&r.cats.includes("Capas:Abrigo"),"Trabajo a 8 °C: abrigo y sin aviso de frío ("+r.cats+" · "+r.warnings+")");
+  console.log("PASS: Real cold: the look that admits the coat beats a short blazer at 8 °C");
 }
 
 // Estilos flexibles (#52): deportivas + vaqueros + americana sí; mallas + sudadera en informal; nada de gimnasio en boda ni con vestido de fiesta

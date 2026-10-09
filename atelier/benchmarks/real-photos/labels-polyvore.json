@@ -608,15 +608,17 @@
 {
 "id": "pv-204666648_5",
 "category": "Bolsos",
-"type": "Bolso de mano",
-"style": "smart",
+"type": "Mochila",
+"style": "casual",
 "season": "all",
 "pattern": "graphic",
 "color": "Gris",
-"name": "Bolso de mano stylish zippers digital camouf",
+"name": "Mochila stylish zippers digital camouf",
 "file": "img/pv-204666648_5.jpg",
 "source": "Marqo/polyvore item_ID 204666648_5 · Handbags · stylish zippers digital camouflage pattern design satchel wo",
-"formality": "smartcasual"
+"formality": "casual",
+"subtype": "mochila de camuflaje",
+"labeledBy": "Claude, corregido 10/10/2026: es una mochila de camuflaje"
 },
 {
 "id": "pv-212677928_5",
