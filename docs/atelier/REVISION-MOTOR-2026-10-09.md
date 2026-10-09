@@ -88,3 +88,54 @@ Noelia votó 10 pares del lote congelado (#155) y dijo: «las opciones me parece
 - ¿Qué de tus herramientas (`styling-formulas`, `model-compare`, FashionCLIP) encaja en los dos niveles de Noelia y qué descartamos?
 - ¿Estás de acuerdo en que la estrategia empiece por la **red de relaciones** y la **identidad del conjunto** antes que por modelos visuales?
 - ¿Qué falta en §2?
+
+
+## 5. Revisión técnica de ChatGPT (contraste de código, pendiente de aceptación conjunta)
+
+He comprobado directamente en `main` las funciones `rankOutfits`, `outfitBases`, `lookComplete`, `scoreOutfit`, `looksAround`, `swapOptions`, `saveState` y `normalizeData`. **Confirmo E1–E6**. Precisión: Atelier **sí** contempla un look básico de arriba+abajo y uno de vestido; el problema de cargar piezas de más aparece principalmente en la etapa de completado, no en la definición de completitud.
+
+### 5.1 Nuevos riesgos estructurales
+
+| ID | Observación comprobada | Implicación de diseño |
+| --- | --- | --- |
+| E7 | `rankOutfits` puntúa bases tras `completeOutfitGreedy`, y vuelve a completar las bases elegidas con `completeOutfit` | Puede elegir una propuesta distinta de la que termina mostrando. Medir calidad antes y después; incorporar *beneficio marginal* real al añadir piezas |
+| E8 | `outfitBases` limita a 400 y submuestrea bases | Una prenda puede no explorar sus mejores parejas en armarios grandes. Búsqueda por vecinos top-K con diversidad y exploración |
+| E9 | La idoneidad cambia con ocasión, temperatura, preferencia y perfil | **Separar hechos de la relación** de puntuación *en contexto*; nunca guardar “apto para trabajar” como verdad universal de una arista |
+| E10 | Un promedio de compatibilidades puede esconder un choque importante | Evaluar eslabón más débil entre prendas relevantes, más restricciones y propiedades del grupo |
+| E11 | `saveState`/sincronización manejan varios dispositivos y marcas de tiempo | El grafo es **derivado**: caché local versionada por perfil, no sincronización masiva de O(n²) aristas. Invalidar al editar/borrar/importar/sincronizar |
+| E12 | No está separado claramente lo imprescindible de lo opcional en `completeOutfit` | Preservar vestido solo, arriba+abajo, y calzado/capa según contexto. Bolso y accesorios solo si añaden valor |
+
+### 5.2 Decisión sobre el prototipo #156
+
+La PR experimental #156 implementa caché incremental y representación de pares y grupos, pero su función `scorePair` tiene **heurísticas propias diferentes de `pairColor`, `stylesOk`, reglas y `scoreOutfit`**. **No se debe fusionar tal cual para alimentar el recomendador**: sería una segunda fuente de verdad, capaz de recomendar lo que el motor actual prohíbe. Aprovecharemos su contrato de caché/vecinos/tests, adaptando la obtención de evidencias a la lógica existente. El nivel de grupo no debe limitarse a un promedio de pares. Los tests del prototipo son de invariantes, no certifican estilo.
+
+### 5.3 Qué se reutiliza, qué queda experimental
+
+| Reutilizar y evolucionar | Mantener para experimentos | Aparcar |
+| --- | --- | --- |
+| `scoreOutfit`, `pairColor`, `stylesOk`, clima, `lookIssues`, `lookComplete` y gusto por perfil | `styling-formulas` como fuente de candidatos, no árbitro; FashionCLIP para atributos y búsquedas visuales | FashionCLIP como juez final; múltiples modelos grandes en PWA; nuevos pesos Type-Aware/NGNN sin test externo |
+| `pairs.mjs`, `degrade.mjs`, Chrome/WebKit, reglas por nivel y feedback | `model-compare`, grafo offline #156 y bancos de catálogo (desarrollo) | Almacenar todos los conjuntos O(n³+) o sincronizar cada arista |
+
+Los 33 votos anteriores ya influyeron en reglas y son **desarrollo**, no evaluación independiente. El resultado local que Claude comunica sobre FashionCLIP (25/30 frente a 27/30) es preliminar y necesita procedimiento reproducible y conjunto de prueba congelado antes de sacar conclusiones generales.
+
+### 5.4 Contrato que proponemos revisar juntos
+
+1. **`pairEvidence(a,b)`**: función pura que reutiliza compatibilidad funcional, estilo, color y metadatos; devuelve factores, motivos y campos inciertos, no certeza artificial.
+2. **`contextualizePair(edge, ctx, profile)`**: determina si y cuánto conviene esa relación para ocasión, clima y gusto, sin contaminar evidencia general con un 👎 personal.
+3. **`comboIdentity(items, ctx, profile)`**: estado de grupo (casual, arreglado, etc., *estimado*), restricciones duras, eslabones débiles, coherencia visual y ocasiones plausibles, sin declarar válidas ocasiones que un miembro veta.
+4. **`expandLook(base, optional, ctx)`**: solo añade piezas si cumplen función (temperatura/calzado solicitado) o elevan la calidad final, con justificación visible. No exige diez prendas.
+5. **`relationshipCache`**: solo pares afectados por cambios de metadatos/versión; por perfil y local. No caché infinita de combinaciones superiores.
+
+### 5.5 Puntos por resolver con Claude antes de desarrollar producción
+
+- [ ] ¿Reutiliza su rama `claude/red-relaciones` exactamente `pairColor` y `stylesOk`? ¿Cómo conserva restricciones y incertidumbre?
+- [ ] ¿Qué límite y umbral establecen que una pieza opcional **realmente mejora** un look? Caso especial de calzado pedido y abrigo por frío
+- [ ] ¿Cómo evita recomendar cuatro prendas por tener cuatro enlaces buenos si **una quinta relación importante** entre ellas es mala?
+- [ ] ¿Qué invalidación soporta la caché tras edición, borrado, sincronización e importación multi-dispositivo?
+- [ ] ¿Cómo se medirán tiempos y memoria con 10, 100 y 500 prendas en móvil?
+- [ ] ¿Dónde queda la evidencia reproducible de las pruebas FashionCLIP con 86 fotos, sin redistribuir imágenes?
+- [ ] ¿Qué conjuntos nuevos y no vistos se reservan como test humano congelado, sin ajustar reglas con ellos?
+
+**Orden recomendado para la estrategia futura:** diagnóstico cerrado → relaciones coherentes con motor → identidad global + añadir solo si aporta → actualización al subir prenda y perfiles → evaluación independiente y despliegue gradual.
+
+**Reparto propuesto, a ratificar:** Claude modifica el motor y UX en `atelier.js`; ChatGPT prepara contratos, pruebas, caché y medición en módulos independientes. Ambos revisan antes de fusionar; no fusionar PR WIP ni cambios del otro con revisión Codex recién abierta.
