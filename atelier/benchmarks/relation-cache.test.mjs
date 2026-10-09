@@ -32,9 +32,10 @@ assert.equal(other.stats().edges,0,"Profiles must not share derived relationship
 assert.throws(()=>cache.reconcile([a,a]),/Duplicate/);
 const sameType={id:"x",category:"Arriba",color:"Gris"};
 cache.reconcile([a,c,sameType]);
+const beforeNull=cache.stats().calculated;
 assert.equal(cache.evidence("a","x"),null);
 assert.equal(cache.evidence("a","x"),null);
-assert.equal(cache.stats().calculated,4,"Null evidence should also be cached");
+assert.equal(cache.stats().calculated,beforeNull+1,"Null evidence should also be cached once");
 const v2=createRelationCache({profileId:"noelia",engineVersion:"v2",pairEvidence:evaluate});
 v2.reconcile([a,b]);assert.equal(v2.stats().edges,0,"New engine versions do not reuse prior cache");
 assert.throws(()=>createRelationCache({profileId:"",engineVersion:"v1",pairEvidence:evaluate}));
