@@ -1669,6 +1669,8 @@ function smartFallbackShoes(g){
 const closedBoot=g=>g.category==="Zapatos"&&/\bbot(a|as|ines?|[ií]n)\b|\bboots?\b/i.test(textOf(g))&&!/sandal|peep.?toe|open.?toe/i.test(textOf(g));
 const bootInHeat=(g,temp)=>temp>=26&&closedBoot(g);
 const isPatterned=g=>colorInfo(g.color,g.pattern).fam==="estampado";
+/* Calzado de reserva de todo el armario: si la ficha indica ocasiones, mandan (revisión de Codex, #117) */
+const fallbackOccOk=(g,occ)=>!(Array.isArray(g.occasions)&&g.occasions.length)||occasionFits(g,occ);
 function vividColorRepeat(gs){
  const count=new Map();
  for(const g of gs){
@@ -1690,13 +1692,13 @@ function completeOutfitGreedy(base,pool,ctx,used=new Map(),firstPick=null){
   if(cat==="Capas"){c=c.filter(x=>warmthOf(x)<=rule.max&&!insufficientColdLayer(x,ctx.temp));if(rule.prefer==="warm")c.sort((a,b)=>warmthOf(b)-warmthOf(a)||pref(b)-pref(a));else c.sort((a,b)=>pref(b)-pref(a))}
   else if(cat==="Zapatos"&&["party","event","formal"].includes(ctx.occasion)){
    const formal=c.filter(x=>formalLevel(x)>=2); // por formalidad de la ficha, no solo por estilo (revisión de Codex, #112)
-   if(!formal.length)c=(ctx.allShoes||[]).filter(smartFallbackShoes).filter(fits);
+   if(!formal.length)c=(ctx.allShoes||[]).filter(x=>smartFallbackShoes(x)&&fallbackOccOk(x,ctx.occasion)).filter(fits);
    c.sort((a,b)=>(Number(formalLevel(b)>=2)-Number(formalLevel(a)>=2))*2+pref(b)-pref(a));
   }
   else if(cat==="Zapatos"&&ctx.occasion==="work"){ // Q2 (#108): deportivas solo si no hay otro calzado (por tipo o nombre, no solo por estilo)
    const ok=x=>!isSneaker(x)&&!bootInHeat(x,ctx.temp);
    // Sin calzado de trabajo adecuado: salones o tacones lisos del armario antes que deportivas; botines con calor, lo último
-   if(!c.some(ok))c=[...c,...(ctx.allShoes||[]).filter(x=>!c.includes(x)&&smartFallbackShoes(x)&&ok(x)).filter(fits)];
+   if(!c.some(ok))c=[...c,...(ctx.allShoes||[]).filter(x=>!c.includes(x)&&smartFallbackShoes(x)&&ok(x)&&fallbackOccOk(x,ctx.occasion)).filter(fits)];
    const tier=x=>ok(x)?0:isSneaker(x)&&!bootInHeat(x,ctx.temp)?1:2;
    c.sort((a,b)=>tier(a)-tier(b)||pref(b)-pref(a))}
   else c.sort((a,b)=>pref(b)-pref(a));
@@ -1743,6 +1745,8 @@ function rankOutfits(o={}){
   if(req)bases=bases.filter(b=>b.every(p=>!related(req,p)||stylesOk(req,p))&&(!isBackpack(req)||!isOutdoor(req)&&formalLevel(req)>=2||b.every(p=>formalLevel(p)<2))).map(b=>[...b,req]); // mochila elegida: sin prendas smart ni party (revisión de Codex, #111)
  }
  bases=bases.filter(b=>b.length&&!b.some(g=>heavyKnitInHeat(g,ctx.temp)||!thermalOk(g,ctx.temp))&&b.every((x,i)=>b.every((y,j)=>i===j||!related(x,y)||stylesOk(x,y))));
+ // Bolso o complemento estampado elegido: bases lisas si las hay (revisión de Codex, #117)
+ if(req&&isPatterned(req)&&!BIG.includes(req.category)){const plain=bases.filter(b=>!b.some(p=>p!==req&&isPatterned(p)));if(plain.length)bases=plain}
  // Puntuación y selección variada: valor = puntuación − solapamiento con las ya elegidas (prendas principales pesan más)
  // R2: las bases se completan con la versión rápida; la búsqueda de calzado alternativo (completeOutfit) solo para las elegidas
  ctx.byCat=new Map();for(const g of pool){if(!ctx.byCat.has(g.category))ctx.byCat.set(g.category,[]);ctx.byCat.get(g.category).push(g)}
