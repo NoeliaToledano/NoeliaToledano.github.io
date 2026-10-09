@@ -273,3 +273,6 @@ p.notice-card{display:block}
 .look-mixed-board:has(> :only-child){grid-template-columns:1fr}
 .look-mixed-item{min-width:0;min-height:0;display:grid;place-items:center;background:#fff;border:1px solid #ece8e1;border-radius:14px;overflow:hidden;box-shadow:0 2px 12px rgba(34,28,20,.035)}
 .look-mixed-item img{display:block;width:100%;height:100%;min-height:0;object-fit:contain;padding:5%;box-sizing:border-box}
+
+/* Con dos prendas, composición vertical: mayor protagonismo para cada pieza. */
+.look-mixed-board.look-mixed-board-two{grid-template-columns:minmax(0,1fr);grid-template-rows:repeat(2,minmax(0,1fr))}
