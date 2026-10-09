@@ -440,3 +440,14 @@ p.notice-card{display:block}
 .today-weather-reset{margin-top:12px;font-size:12px}
 .today-weather .helper{margin:10px 0 0}
 @media(max-width:390px){.today-weather{padding:12px}.today-weather-controls>.field{flex-basis:105px}}
+
+/* Mis looks · composición editorial: los conjuntos de 5–7 prendas necesitan
+   más ancho en móvil para que cada pieza sea reconocible sin hacer zoom. */
+@media(max-width:699px){
+ .grid>.look-tile:has(.look-mixed-board[data-count="5"]),
+ .grid>.look-tile:has(.look-mixed-board[data-count="6"]),
+ .grid>.look-tile:has(.look-mixed-board[data-count="7"]){grid-column:1/-1}
+ .grid>.look-tile:has(.look-mixed-board[data-count="5"]) .look-mixed-board,
+ .grid>.look-tile:has(.look-mixed-board[data-count="6"]) .look-mixed-board,
+ .grid>.look-tile:has(.look-mixed-board[data-count="7"]) .look-mixed-board{max-height:520px}
+}
