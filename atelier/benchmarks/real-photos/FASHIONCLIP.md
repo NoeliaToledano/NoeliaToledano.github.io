@@ -36,3 +36,7 @@ Las salidas son vectores generados por **FashionCLIP real**, pero el siguiente p
 ## Piloto reducido
 
 Para empezar con solo fotografías autorizadas de dos looks, pasa sus IDs separados por comas usando `--ids ID1,ID2,...`. Solo se exige que existan los archivos de las prendas seleccionadas. **No se pueden pasar los vectores parciales al banco completo de 34 pares**: prepara un fichero de pares reducido cuyos conjuntos A y B tengan todas las prendas representadas. Declara esa cobertura en el informe. Este modo permite un ensayo técnico sin necesitar las 86 fotos originales.
+
+## Trazabilidad
+
+Cada ejecución genera, además de `embeddings.json`, un `embeddings.json.provenance.json` con identificador del modelo, dimensiones, IDs analizados y carácter diagnóstico del coseno. Conserva ambos ficheros juntos con la versión exacta del entorno Python/Transformers; evita comparar inferencias de pesos o versiones desconocidas. Estos metadatos no sustituyen comprobar licencia ni consentimiento para las imágenes.
