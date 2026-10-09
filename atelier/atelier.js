@@ -1583,9 +1583,11 @@ function saveAlmost(gsLook,offIds,why,occasion){
  for(const id of off){
   if(w.has("prenda"))fb["g:"+id]="no";
   if((w.has("ocasion")||w.has("sobra"))&&occasion)fb["o:"+id+"|"+occasion]="no";
-  if(w.has("pega")||w.has("color")||!w.size)for(const g of gsLook)if(!off.has(g.id)&&relatedCats(g,{category:myGarments().find(x=>x.id===id)?.category}))fb["p:"+pairKey(id,g.id)]="no";
+  if(w.has("pega")||w.has("color")||!w.size)for(const g of gsLook)if(g.id!==id&&relatedCats(g,{category:myGarments().find(x=>x.id===id)?.category}))fb["p:"+pairKey(id,g.id)]="no"; /* también entre dos prendas marcadas (revisión de Codex, #169) */
  }
 }
+/* ¿Guardaría algo? Una sola prenda con «no pega» no tiene pareja que aprender */
+const almostLearns=(gsLook,offIds,why)=>{const w=new Set(why);return offIds.length>0&&(w.has("prenda")||w.has("ocasion")||w.has("sobra")||gsLook.length>1)};
 const COLOR_TRAIT=/^(mono|neutral|color|multicolor|fam:)/;
 /* Sesgo de formalidad aprendido de los 👎 con motivo: >0 prefiere más informal, <0 más arreglado (−1…1) */
 function formalityBias(){const fb=appState.data.feedback||{},ls=myLooks().filter(l=>fb[l.id]==="down"&&(l.dislikeReason==="formal"||l.dislikeReason==="informal")) /* solo 👎 vigentes (revisión de Codex, #143) */,f=ls.filter(l=>l.dislikeReason==="formal").length;return ls.length?(f-(ls.length-f))/Math.max(3,ls.length):0}
@@ -2089,6 +2091,8 @@ function rankOutfits(o={}){
  const byOcc=pool.filter(g=>occasionFits(g,ctx.occasion)&&!ctx.offOcc.has(g.id)||g.id===o.required); /* «no es para esta ocasión» o «sobra», dicho en «Casi» */
  const warn=[];if(ctx.occasion)pool=byOcc;
  const req=o.required?myGarments().find(g=>g.id===o.required):null;
+ /* mochila de montaña obligatoria: solo looks de deporte; en «Combinar prenda» (sin ocasión) se prueban primero (revisión de Codex, #169) */
+ if(req&&outdoorPack(req)&&ctx.occasion!=="sport"){if(ctx.occasion)return [];if(!o.sportTried){const r=rankOutfits({...o,occasion:"sport",sportTried:true});if(r.length)return r}}
  const tops=pool.filter(g=>g.category==="Arriba"),bottoms=pool.filter(g=>g.category==="Abajo");
  let bases=[];
  if(req&&req.category==="Arriba")bases=bottoms.filter(b=>stylesOk(req,b)).map(b=>[req,b]);
@@ -2322,7 +2326,7 @@ function openAlmost(ids,occasion,onDone){
   $$("[data-almost-piece]",el).forEach(b=>b.addEventListener("click",()=>{const id=b.dataset.almostPiece;off.has(id)?off.delete(id):off.add(id);redraw()}));
   $$("[data-almost-why]",el).forEach(b=>b.addEventListener("click",()=>{const k=b.dataset.almostWhy;why.has(k)?why.delete(k):why.add(k);redraw()}));
   $$("[data-close-sheet]",el).forEach(b=>b.addEventListener("click",close));
-  $("#almostSave",el)?.addEventListener("click",async()=>{const ok=await mutate(()=>saveAlmost(gs,[...off],[...why],occasion),"Gracias: lo tendré en cuenta en tus propuestas");if(ok){close();onDone?.()}});
+  $("#almostSave",el)?.addEventListener("click",async()=>{if(!almostLearns(gs,[...off],[...why]))return toast("Con una sola prenda, elige «No me gusta la prenda», «No es para esta ocasión» o «Sobra»");const ok=await mutate(()=>saveAlmost(gs,[...off],[...why],occasion),"Gracias: lo tendré en cuenta en tus propuestas");if(ok){close();onDone?.()}});
  };
  const redraw=()=>{$(".sheet",el).innerHTML=body();bind()};bind();
 }
