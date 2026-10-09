@@ -310,3 +310,15 @@ console.log("PASS: S6 long-offline devices don't resurrect deletions");
   assert.deepEqual(res.body.items[2].box,[0,0,100,100],"Sin recuadro: la foto entera");
   console.log("PASS: Outfit photo analysis returns validated garments with boxes");
 }
+
+// Motivo de un recorte fallido, para la guía de fotos
+{
+  const probe=new Function("document","sessionStorage","crypto",src+`
+  return (async()=>{isCatalogPhoto=async()=>false;retouchOnly=async()=>"data:image/jpeg;base64,R";
+   const run=async(w,reason)=>{whiteBackground=async(src,info)=>{if(info&&reason)info.reason=reason;return w};return (await enhancePhotoHere("data:image/jpeg;base64,X")).reason};
+   return [await run(null,"fondo"),await run(null,"contraste"),await run({image:"W",doubtful:true,broken:true}),await run({image:"W",doubtful:false})].join()+"|"+Object.keys(PHOTO_TIPS).join();
+  })();`);
+  const r=await probe(document,sessionStorage,{randomUUID:()=>"t"});
+  assert.equal(r,"fondo,contraste,roto,|fondo,contraste,encuadre,roto");
+  console.log("PASS: Failed cutouts report a reason with a photo tip");
+}
