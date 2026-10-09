@@ -145,7 +145,6 @@ try{
    {id:"req-bottom-b",name:"Pantalón B",category:"Abajo",color:"Beige",style:"casual"},
    {id:"req-bottom-c",name:"Pantalón C",category:"Abajo",color:"Azul",style:"casual"}
   ];
-  const old=myGarments;
   // rankOutfits resuelve la prenda obligatoria desde el armario del perfil.
   const original=appState.data.garments;
   try{
