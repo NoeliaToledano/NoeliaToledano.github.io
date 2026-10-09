@@ -1055,6 +1055,7 @@ async function saveLook(e){
  e.preventDefault();
  const id=$("#lookId").value||uid(),garmentIds=$$("#lookGarments input:checked").map(x=>x.value);
  if(!garmentIds.length)return toast("Selecciona al menos una prenda");
+ if(!lookComplete(garmentIds.map(id=>myGarments().find(g=>g.id===id))))return toast(BASE_MSG);
  const previous=myLooks().find(x=>x.id===id);
  const l={id,name:$("#lookName").value.trim()||"Mi look",garmentIds,occasion:$("#lookOccasion").value,favorite:$("#lookFavorite").checked,ai:previous?.ai||false,updatedAt:new Date().toISOString()};
  const i=myLooks().findIndex(x=>x.id===id);if(i>=0)myLooks()[i]=l;else myLooks().unshift(l);
@@ -1122,6 +1123,13 @@ function isDuplicate(a,b){
  if(!ca.fam||!cb.fam)return false;
  const base=w=>w.replace(/a$/,"o"),sameColor=ca.fam==="neutro"?base(ca.word)===base(cb.word):ca.fam==="estampado"?ca.word===cb.word&&norm(a.color)===norm(b.color):ca.fam===cb.fam;
  return sameColor&&(!a.style||!b.style||a.style===b.style);
+}
+/* Un look está completo si tiene parte de arriba y de abajo, o una pieza entera (vestido o mono, categoría
+   Vestidos). Para casa y playa también valen un conjunto de casa o de baño. Regla obligatoria (Noelia, 09/10). */
+const BASE_MSG="Un look necesita parte de arriba y de abajo, o un vestido o mono";
+function lookComplete(gs){
+ const c=new Set(gs.filter(Boolean).map(g=>g.category));
+ return c.has("Vestidos")||c.has("Casa")||c.has("Baño")||c.has("Arriba")&&c.has("Abajo");
 }
 function outfitBases(gs){
  const tops=gs.filter(g=>g.category==="Arriba"),bottoms=gs.filter(g=>g.category==="Abajo"),bases=gs.filter(g=>g.category==="Vestidos").map(d=>[d]),combos=[];
@@ -1207,7 +1215,7 @@ async function suggestLooks(){
   const seen=new Set(myLooks().map(l=>lookSig(l.garmentIds||[]))),props=[];
   for(const [i,l] of suggestions.entries()){
    const ids=[...new Set(Array.isArray(l.ids)?l.ids:[])].filter(id=>allowed.has(id)).slice(0,6),signature=lookSig(ids);
-   if(ids.length<2||seen.has(signature))continue;
+   if(ids.length<2||seen.has(signature)||!lookComplete(ids.map(id=>myGarments().find(g=>g.id===id))))continue;
    seen.add(signature);props.push({name:String(l.why||"Look sugerido "+(i+1)).slice(0,80),ids});
   }
   if(!props.length)return toast("Estas combinaciones ya están guardadas. Cambia la ocasión o la diversidad.");
@@ -1320,7 +1328,7 @@ function renderLooks(root){
   (looks.length?'<div class="grid">'+looks.map(l=>'<div class="look-tile">'+lookCard(l)+
    '<div class="tile-tools"><button class="chip-button" data-look-fav="'+fx(l.id)+'" aria-label="'+(l.favorite?'Quitar de favoritos':'Añadir a favoritos')+'" aria-pressed="'+!!l.favorite+'">'+(l.favorite?'♥':'♡')+'</button><button class="chip-button" data-look-wear="'+fx(l.id)+'">✓ Llevado</button><button class="chip-button" data-look-swap="'+fx(l.id)+'">↻ Cambiar prenda</button></div>'+
    '<div class="tile-tools"><button class="chip-button'+(fb[l.id]==="up"?' on':'')+'" data-feedback="'+fx(l.id)+'" data-vote="up" aria-label="Me gusta" aria-pressed="'+(fb[l.id]==="up")+'">👍</button><button class="chip-button'+(fb[l.id]==="down"?' on':'')+'" data-feedback="'+fx(l.id)+'" data-vote="down" aria-label="No me gusta" aria-pressed="'+(fb[l.id]==="down")+'">👎</button></div>'+
-   '<div class="tile-hints">'+(l.ai?"IA":"Manual")+'</div></div>').join("")+'</div>':'<div class="empty">Todavía no tienes looks para este filtro.</div>'));
+   '<div class="tile-hints">'+(l.ai?"IA":"Manual")+(lookComplete((l.garmentIds||[]).map(id=>myGarments().find(g=>g.id===id)))?'':' · <span title="'+BASE_MSG+'">Incompleto: falta arriba, abajo o vestido</span>')+'</div></div>').join("")+'</div>':'<div class="empty">Todavía no tienes looks para este filtro.</div>'));
  $("#newLook")?.addEventListener("click",()=>openLook());$("#aiLooks")?.addEventListener("click",()=>suggestLooks());
  $$("[data-look-filter]",root).forEach(b=>b.addEventListener("click",()=>{ui.lookFilter=b.dataset.lookFilter;render()}));
  $$("[data-look]",root).forEach(b=>b.addEventListener("click",()=>openLook(b.dataset.look)));
@@ -1578,7 +1586,7 @@ function showSheet(id,html,onClose){
 }
 const miniLook=(gs,extra="")=>'<div class="mini-look"><div class="mini-look-img">'+outfitBoard(gs)+'</div><div class="mini-look-body"><span class="muted">'+fx(gs.map(g=>g.name).join(" · "))+'</span>'+extra+'</div></div>';
 function openPlanPicker(date){
- const props=dayProposals(date),saved=myLooks().filter(l=>(l.garmentIds||[]).some(id=>myGarments().some(g=>g.id===id))).slice(0,30);
+ const props=dayProposals(date),saved=myLooks().filter(l=>lookComplete((l.garmentIds||[]).map(id=>myGarments().find(g=>g.id===id)))).slice(0,30);
  const {el,close}=showSheet("planSheet",'<div class="section-head"><h2 id="planSheetTitle">'+fx(capFirst(weekdayName(date))+" "+fmtDay(date))+'</h2><button type="button" class="secondary" data-close-sheet>Cerrar</button></div>'+
   '<h3>Propuestas para ese día</h3>'+extrasTogglesHtml()+(props.length?'<div class="plan-options">'+props.map((l,i)=>miniLook(l,'<button type="button" class="primary" data-plan-prop="'+i+'">Usar este look</button>')).join("")+'</div>':'<p class="muted">Añade prendas de arriba y de abajo (o vestidos) para recibir propuestas.</p>')+
   '<h3>Tus looks guardados</h3>'+(saved.length?'<div class="plan-options">'+saved.map((l,i)=>miniLook((l.garmentIds||[]).map(id=>myGarments().find(g=>g.id===id)).filter(Boolean),'<strong>'+fx(l.name)+'</strong><button type="button" class="secondary" data-plan-saved="'+i+'">Usar este look</button>')).join("")+'</div>':'<p class="muted">Todavía no tienes looks guardados.</p>'));
@@ -1904,7 +1912,7 @@ async function buyLooks(){
  try{
   const out=await api("/api/looks",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({items,need:3,occasion:p.occasion||"daily",season:c.season||"all",weather:currentTemperature()+" °C",avoid:[]})});
   const allowed=new Set(items.map(x=>x.i));
-  c.looks=(Array.isArray(out.looks)?out.looks:[]).map(l=>({why:String(l.why||"Look sugerido").slice(0,80),ids:[...new Set(Array.isArray(l.ids)?l.ids:[])].filter(id=>allowed.has(id)).slice(0,6)})).filter(l=>l.ids.includes("__nueva__")&&l.ids.length>=2);
+  c.looks=(Array.isArray(out.looks)?out.looks:[]).map(l=>({why:String(l.why||"Look sugerido").slice(0,80),ids:[...new Set(Array.isArray(l.ids)?l.ids:[])].filter(id=>allowed.has(id)).slice(0,6)})).filter(l=>l.ids.includes("__nueva__")&&l.ids.length>=2&&lookComplete(l.ids.map(id=>id==="__nueva__"?{category:c.category}:myGarments().find(g=>g.id===id))));
  }catch(e){console.error("BUY_LOOKS",e);if(e.message!=="AI_QUOTA")toast(e.message==="SESSION_EXPIRED"?"La sesión ha caducado":"No se pudieron generar looks");if(btn){btn.disabled=false;btn.textContent="✦ Ver looks con la IA"}return}
  if(buyCheck===c)render();
 }
