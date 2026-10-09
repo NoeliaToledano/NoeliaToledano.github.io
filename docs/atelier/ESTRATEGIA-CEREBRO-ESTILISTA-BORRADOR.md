@@ -137,3 +137,13 @@ Los tests deben probar conjuntamente:
 6. La caché no tarda O(n²) en una **edición incremental típica**, aunque la generación inicial pueda evaluar muchos pares. Registrar coste real con 10, 100 y 500 prendas.
 
 **Estado:** coincidencia explícita de diseño en #159; no implica que los umbrales ni la implementación estén aprobados o validados. Acordar pruebas y revisión cruzada antes de fusionar PR de producto.
+
+
+## Cuatro precisiones acordadas con Claude para comenzar (10/10)
+
+1. **Paso 0b — Calidad de datos antes del grafo.** Ya está fusionada #157: el análisis pide manga, grosor y abrigo. Queda pendiente validar esos campos antes de recomendar prendas cuando la temperatura sea extrema y permitir completarlos rápidamente desde la ficha.
+2. **Pruebas con armarios coherentes desde el principio.** Construir varios armarios cápsula de 25–40 prendas con estilos definidos; no usar un saco aleatorio de prendas para evaluar si un estilista combina bien. Solicitar autorización antes de usar un armario real.
+3. **«Combina con» inmediatamente después de guardar una prenda.** Es un objetivo principal de producto tan pronto como existan relaciones contextualizadas. Agrupar alternativas de día a día, trabajo y fiesta; mostrar qué aporta cada combinación y por qué podría no funcionar.
+4. **Calzado práctico frente a recomendación de estilo.** Si no existe calzado coherente para salir, etiquetar expresamente «Look (sin calzado que combine)». No inventar que el conjunto está completo.
+
+**Primer desarrollo paralelo:** Claude revisa el motor principal y el UX; ChatGPT entrega en #161 un módulo de caché local/incremental sin segundo motor de puntuación. La caché es en memoria inicialmente (no IndexedDB todavía) y no se usa aún en producción: conectar después de cerrar el contrato con Claude y evaluar los tiempos y la privacidad.
