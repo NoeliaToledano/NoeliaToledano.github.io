@@ -56,6 +56,12 @@ try{
  assert.equal(await page.evaluate(()=>ui.stylistTab),"week");
  await page.locator('[data-view="wardrobe"]').click();
  await page.getByText("Prenda auditada").waitFor();
+ // Desbloqueo: una camiseta sola no basta; con un pantalón aparece Estilista.
+ await page.locator('[data-view="stylist"]').click();
+ await page.getByText("Tu estilista estará listo pronto").waitFor();
+ await page.locator("[data-outfit-photo]").first().waitFor();
+ await page.evaluate(()=>myGarments().push({id:"bottomAudit",name:"Pantalón auditado",category:"Abajo",color:"Negro",updatedAt:new Date().toISOString()}));
+ await page.locator('[data-view="wardrobe"]').click();
  await page.locator('[data-view="stylist"]').click(); await page.locator("#openLooks").click();
  await page.locator("#newLook").click();
  await page.locator("#lookName").fill("Look auditado");
@@ -63,7 +69,7 @@ try{
  // Regla obligatoria: solo la parte de arriba no es un look
  await page.locator("#lookForm button[type=submit]").click();
  await page.getByText("Un look necesita parte de arriba y de abajo, o un vestido o mono").first().waitFor();
- await page.evaluate(()=>{myGarments().push({id:"bottomAudit",name:"Pantalón auditado",category:"Abajo",color:"Negro",updatedAt:new Date().toISOString()});const box=$("#lookGarments");box.insertAdjacentHTML("beforeend",'<label><input type="checkbox" value="bottomAudit"> Pantalón auditado</label>')});
+ // La parte de abajo ya está en el armario; permanece desmarcada para probar la validación.
  await page.locator('#lookGarments input[value="bottomAudit"]').check();
  await page.locator("#lookForm button[type=submit]").click();
  await page.getByText("Look auditado").waitFor();

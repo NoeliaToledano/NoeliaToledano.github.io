@@ -332,3 +332,10 @@ p.notice-card{display:block}
 .outfit-item-body{display:grid;gap:4px;min-width:0}
 .outfit-item-body select{width:100%;min-height:44px}
 .badge-draft{justify-self:start;font-size:11px;padding:2px 8px;border-radius:999px;background:#f6efe2;color:#6b5a3e;border:1px solid #eadfca}
+
+/* Estado vacío de Estilista: dos acciones de entrada, sin filtros ni ruido. */
+.stylist-locked{max-width:450px;margin:clamp(28px,8vh,70px) auto 36px;text-align:center;padding:16px 18px 30px}
+.stylist-locked h2{font-family:Georgia,serif;font-size:clamp(25px,6vw,32px);font-weight:500;line-height:1.16;margin:0 0 16px}
+.stylist-locked p{max-width:360px;margin:0 auto 24px;color:var(--muted);line-height:1.55}
+.stylist-locked .primary,.stylist-locked .secondary{display:block;width:100%;max-width:300px;min-height:46px;margin:0 auto 10px}
+.stylist-locked .link-button{display:block;margin:16px auto 0}
