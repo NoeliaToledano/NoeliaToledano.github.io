@@ -293,3 +293,20 @@ console.log("PASS: S6 long-offline devices don't resurrect deletions");
   const ai=fs.readFileSync(new URL("../atelier-api/api/looks.js",import.meta.url),"utf8");assert.ok(ai.includes("c=Arriba y c=Abajo, o c=Vestidos"));
   console.log("PASS: Looks always have top+bottom or a dress/jumpsuit");
 }
+
+// «Guardar el look que llevo»: /api/analyze con mode "outfit" devuelve prendas validadas (tipos y recuadros acotados)
+{
+  process.env.ATELIER_SESSION_SECRET="test-secret";process.env.OPENAI_API_KEY="k";
+  const auth=await import("../atelier-api/_lib/auth.js"),analyze=(await import("../atelier-api/api/analyze.js")).default;
+  const realFetch=globalThis.fetch;let prompt="";
+  globalThis.fetch=async(url,o)=>{const b=JSON.parse(o.body);prompt=b.input[0].content[0].text;return {ok:true,json:async()=>({output_text:JSON.stringify({items:[
+    {type:"top",name:"Camiseta",color:"Blanco",box:[30,20,40,30]},{type:"underwear",name:"x",box:[0,0,10,10]},{type:"shoes",name:"Zapatos",box:[90,95,50,50]},{type:"bag",name:"Bolso"}]})})}};
+  const res={code:0,body:null,h:{},setHeader(k,v){this.h[k]=v},status(c){this.code=c;return this},json(b){this.body=b;return this},end(){return this}};
+  await analyze({method:"POST",headers:{authorization:"Bearer "+auth.issueSession("noelia"),origin:"https://noeliatoledano.github.io"},body:{image:"data:image/jpeg;base64,AAAA",mode:"outfit"}},res);
+  globalThis.fetch=realFetch;
+  assert.equal(res.code,200);assert.ok(prompt.includes("box"),"Prompt de looks");
+  assert.deepEqual(res.body.items.map(x=>x.type),["top","shoes","bag"],"Sin ropa interior");
+  assert.deepEqual(res.body.items[1].box,[90,95,10,5],"Recuadro dentro de la imagen");
+  assert.deepEqual(res.body.items[2].box,[0,0,100,100],"Sin recuadro: la foto entera");
+  console.log("PASS: Outfit photo analysis returns validated garments with boxes");
+}
