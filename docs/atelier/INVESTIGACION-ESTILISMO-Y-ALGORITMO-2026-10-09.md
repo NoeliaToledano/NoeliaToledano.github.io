@@ -445,3 +445,47 @@ Cada motivo generado por Atelier debería indicar su tipo internamente. Una norm
 | Color inferido incorrectamente | resultados estables o advertencia | falso veto por tono inventado |
 
 **Decisión pendiente:** no cambiar pesos del motor hasta disponer de baseline reproducible y del test independiente de Claude. Evaluar estética y aprovechamiento del armario por separado; los dos objetivos pueden entrar en conflicto.
+
+
+## 35. Séptima ronda: planificación semanal y cápsulas
+
+Kwon (1987), *Daily Clothing Selection: Interrelationships Among Motivating Factors*, distingue factores cambiantes (tiempo, actividades, practicidad, estado de ánimo) de preferencias estables. https://doi.org/10.1177/0887302X8700500204
+
+Nagao, Takahashi y Tanaka (2008), *Mirror Appliance*, ya combinaba un armario digital, clima, eventos y comportamiento previo en recomendaciones cotidianas. https://www.researchgate.net/publication/290583790_Mirror_appliance_Recommendation_of_clothes_coordination_in_daily_life
+
+**Atelier:** «Mi semana» debe optimizar una secuencia de looks, no siete recomendaciones independientes. No asumir que una prenda usada está sucia o no disponible: ello exige una marca explícita de disponibilidad. Repetir pantalones, abrigos o calzado es normal. Es útil poder marcar una prenda reservada para un evento sin cambiar los otros días del calendario.
+
+**Algoritmo candidato:** (1) generar varios conjuntos viables para cada día; (2) realizar selección semanal con programación dinámica o beam search, maximizando la adecuación de todos los días y diversidad moderada; (3) respetar prendas reservadas, condiciones y disponibilidad declaradas, sin introducir reglas rígidas de no repetir. Evaluarlo antes de añadirlo a producción.
+
+## 36. Maletas y cápsulas: selección combinatoria de prendas
+
+BOXREC (2024) estudia elegir una colección de artículos capaces de producir distintos outfits adecuados, sujeto a preferencias y presupuesto: https://arxiv.org/abs/2402.16660 . La revisión Springer de sistemas de recomendación de moda describe la cápsula como selección de un subconjunto que maximiza combinaciones compatibles: https://doi.org/10.1007/s42979-023-01932-9 .
+
+**Hipótesis para «Maletas»:** seleccionar el menor conjunto de prendas que cubra todas las jornadas y actividades del viaje con looks estéticamente válidos, considerando clima variable y prendas imprescindibles. Minimizar número de artículos sin dejar días descubiertos. No maximizar solo combinaciones teóricas de piezas que nadie se pondría.
+
+**Métricas independientes:** cobertura de días y ocasiones, mínimo nivel de calidad por outfit, número de prendas, adaptabilidad a temperatura/lluvia y variedad real. No confundir calidad individual del look con cobertura de toda la maleta.
+
+## 37. Funcionalidad contextual más allá de aislamiento térmico
+
+Un trabajo de IEEE ICPCSN 2026 describe un armario inteligente con clasificación de prendas, clima, calendario e historial de uso: https://ieeexplore.ieee.org/document/11543863 . Sus cifras publicadas corresponden al propio estudio y no se extrapolan a Atelier.
+
+El Met Office (2025) informó que el 34,6 % de encuestados indicó planificar outfits o actividades exteriores entre sus motivos para consultar la previsión: https://www.metoffice.gov.uk/about-us/news-and-media/media-centre/weather-and-climate-news/2025/laundry-and-outfit-planning-among-the-leading-motivations-behind-checking-the-forecast-research-reveals
+
+Una prenda cálida puede resultar poco práctica con lluvia, viento o largas caminatas. Considerar, cuando el usuario lo indique, caminar, tiempo al aire libre, lluvia, dress code y cambios interior/exterior. No deducir protección frente al agua a partir de aislamiento clo ni inferir confort individual exacto.
+
+## 38. Compatibilidad entre conjuntos
+
+*Set representative vector and its asymmetric attention-based transformation for heterogeneous set-to-set matching* (Neurocomputing 2024) estudia compatibilidad de conjuntos y diferencia compatibilidad de similitud: https://doi.org/10.1016/j.neucom.2024.127372 . Inspiración para evaluar a la vez la coherencia de cada outfit y el valor de una colección semanal. No añadir una red de atención pesada sin ganancia cuantificada frente al algoritmo ligero.
+
+## 39. Casos adversariales para nuevos bancos, separados del A/B estético de Claude
+
+- Cinco días de trabajo con reunión formal, caminata y una cena: distintas condiciones por jornada.
+- Semana de lluvia, con solo un calzado impermeable: repetirlo es correcto.
+- Dos pantalones disponibles: prohibir repeticiones causa recomendaciones peores.
+- Maleta de cinco días para climas diferentes más evento especial: exigir cobertura completa.
+- Prenda favorita reservada para una fecha: preservar el plan.
+- Cambio de clima: reoptimizar solo días afectados, si es posible.
+- Pocas prendas válidas: recomendar repetición con explicación en vez de inventar combinaciones.
+- No inferir lavandería o disponibilidad a partir de un registro de uso sin consentimiento.
+
+**Conclusión:** evaluar estética de cada conjunto, cobertura semanal, funcionalidad y eficiencia de una maleta como objetivos separados. Mantener el juego A/B de Claude para evaluar únicamente el estilismo individual, y desarrollar después benchmarks de planificación.
