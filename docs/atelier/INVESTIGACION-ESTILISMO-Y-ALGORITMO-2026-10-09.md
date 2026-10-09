@@ -356,3 +356,42 @@ Solo utilizar preferencias de ajuste, comodidad y estilo **declaradas voluntaria
 | Falta información de caída/tejido | confianza baja en explicación | evitar “te sentará perfecto” |
 
 **Plan de validación:** comparar un baseline (motor actual), un reranker MMR y un scoring contextual simple en los casos fáciles y difíciles del banco A/B; mantener fuera del entrenamiento la parte ciega. Registrar intervalos de incertidumbre y desacuerdos de jueces. No afirmar rendimiento superior hasta evaluarlo.
+
+
+## 25. Quinta ronda (fuentes verificadas): color real frente a color de cámara
+
+La CIE (Commission Internationale de l’Éclairage), en **CIE 015:2018, Colorimetry**, formaliza iluminantes, observadores estándar, condiciones de iluminación/observación, espacios y diferencias de color: https://www.cie.co.at/publications/colorimetry-4th-edition .
+
+**ISO/CIE 23603:2024** estudia evaluación de simuladores de luz diurna para apreciación y medición de colores: https://www.cie.co.at/publications/standard-method-assessing-spectral-quality-daylight-simulators-visual-appraisal-and-1 . La CIE también documenta **metamerismo**: dos tejidos pueden coincidir bajo una iluminación y verse diferentes bajo otra: https://www.cie.co.at/publications/special-metamerism-index-change-observer .
+
+**Consecuencia:** el RGB dominante de una foto doméstica no es un color material fiable. No usar Delta-E entre píxeles de dos fotografías como regla estricta de compatibilidad. Normalizar balance de blancos, segmentar prenda frente a fondo, obtener paleta de varios colores y registrar incertidumbre/iluminación. Pedir corrección humana para casos relevantes (negro vs azul marino, beige vs crema, metal dorado vs plateado). Comparar decisiones bajo fotos distintas de una misma prenda: el ranking debería permanecer estable.
+
+## 26. Recomendación diversa sin sacrificar calidad: MMR
+
+Carbonell y Goldstein (SIGIR 1998) introdujeron **Maximal Marginal Relevance (MMR)** para equilibrar relevancia y novedad en resultados: https://doi.org/10.1145/290941.291025 . No es moda, pero es una técnica de reranking reutilizable.
+
+Experimento Atelier: para elegir un top-3, maximizar una función de utilidad de look (compatibilidad+ocasión+preferencia) menos la similitud con looks **ya seleccionados**; similitud calculada por IDs de prendas, plantilla (vestido vs dos piezas), silueta, paleta y estilo. Se requiere calibración: una penalización demasiado grande favorece looks malos por ser distintos.
+
+```text
+candidate_utility = calibrated_outfit_quality - lambda * max_similarity_with_selected
+```
+
+Sin porcentajes ni pesos definitivos inventados. Reportar diferencia de calidad top-1/top-3, diversidad de plantillas, cobertura de prendas y número de propuestas repetitivas frente a baseline.
+
+## 27. Arranque en frío y preguntas inteligentes
+
+Nguyen et al. (UAI 2024), *Cold-start Recommendation by Personalized Embedding Region Elicitation*, desarrollan una estrategia de dos fases: primero preferencias iniciales y después preguntas adaptativas, evitando un conjunto fijo de ejemplos para todo el mundo: https://proceedings.mlr.press/v244/nguyen24a.html . No es un modelo de moda directamente listo para usar.
+
+Para Atelier, probar **microelecciones opcionales**: dos looks contrastados con la misma ocasión, eligiendo “A/B/ambos/ninguno”; escoger la siguiente pregunta donde más difiera la predicción de gustos y donde cambie la recomendación. No preguntar por preguntar; detenerse cuando el conocimiento adicional no altere resultados. Mantener separadas las preferencias de la sesión y las duraderas.
+
+## 28. Modelo reciente con pocos datos: investigación, no adopción directa
+
+Khalid y Gong, **FABRIC** (Expert Systems with Applications, mayo 2026), proponen recomendación personalizada con escaso historial mediante memorias prototípicas compartidas, de usuario y de arranque en frío: https://www.sciencedirect.com/science/article/pii/S0957417426000758 . El artículo presenta mejoras experimentales, pero no está demostrado que el modelo sea útil en la arquitectura local de Atelier o que sus pesos puedan redistribuirse.
+
+Idea ligera a ensayar: prototipos de looks preferidos/descartados por perfil, asociados a contexto e intención, con actualización lenta y explicable. Evitar almacenar imágenes crudas si bastan atributos calculados y datos ya presentes.
+
+## 29. Qué medir de verdad
+
+La revisión de Deldjoo et al., *A Review of Modern Fashion Recommender Systems* (ACM CSUR 2024), diferencia tareas de generación, recomendación, completado de looks, compatibilidad y evaluación, que no deben mezclarse bajo una sola métrica: https://iris.poliba.it/handle/11589/270980 . La revisión de Selwon y Szymański (ACM CSUR 2024) enfatiza reproducibilidad, explicabilidad y sesgos de los datos: https://doi.org/10.1145/3664614 .
+
+A/B a estudiar: (1) robustez del color ante diferentes iluminaciones; (2) MMR frente a top-3 por score puro; (3) preguntas adaptativas frente a perfiles sin feedback; (4) casos disjoint entre armarios y prendas; (5) consistencia de motivos y sustituciones. Mantener los casos del test reservados, sin ajustar el motor sobre ellos. La diversidad, apariencia fotográfica y novedad no deben considerarse sinónimos de calidad estética.
