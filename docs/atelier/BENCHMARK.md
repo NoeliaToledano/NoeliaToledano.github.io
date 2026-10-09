@@ -32,5 +32,24 @@ Tiempos en ms; tamaños en KB o MB.
 - Medidas en un móvil real.
 - Sincronización (peticiones y bytes) con un backend simulado.
 
+## Tras R1 · fotos con URL `blob:` y copias sin duplicar fotos · mismo entorno
+
+| Prendas | Arranque | Hoy | Otro look | Armario | HTML Armario (KB) | Buscar | Ficha | Motor | Mis looks | HTML Mis looks (KB) | Guardar | Estado (KB) | Fotos (MB) | Memoria (MB) | Errores |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 20 | 209 | 5 | 13 | 3 | 14 | 1 | 1 | 1 | 4 | 8 | 20 | 8 | 1,8 | 27 | 0 |
+| 100 | 281 | 11 | 77 | 11 | 58 | 2 | 1 | 44 | 20 | 36 | 82 | 35 | 8,6 | 53 | 0 |
+| 300 | 524 | 26 | 299 | 31 | 169 | 6 | 1 | 216 | 57 | 107 | 175 | 104 | 25,9 | 164 | 0 |
+| 500 | 948 | 71 | 646 | 58 | 281 | 11 | 1 | 424 | 102 | 177 | 273 | 173 | 43,2 | 95 | 0 |
+
+**Con 500 prendas:**
+- Armario: de 807 a **58 ms**, y su HTML de 44 MB a **281 KB**.
+- Mis looks: de 598 a **102 ms**.
+- Guardar: de 797 a **273 ms**.
+- Arranque: de 1 332 a **948 ms**.
+- Memoria: de 281 a **95 MB**.
+
+**Siguientes:** «Otro look» y el motor (unos 0,4–0,6 s con 500 prendas) con un precálculo por pintado (R2), y el retoque de fotos en un Worker (R3).
+
 ## Historial
+- 9 oct 2026 · R1: fotos con `photoUrl(g)` (URL `blob:`) y `copyData` sin duplicar fotos.
 - 9 oct 2026 · línea base (antes de R1).
