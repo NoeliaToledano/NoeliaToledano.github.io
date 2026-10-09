@@ -65,10 +65,13 @@ def main():
     if not isinstance(images, dict) or not images:
         cli.error("Expected a nonempty embeddings object")
     provenance = Path(args.embeddings + ".provenance.json")
-    if provenance.exists():
-        meta = json.loads(provenance.read_text(encoding="utf-8"))
-        if meta.get("model") != args.model:
-            cli.error("Image embedding model differs from text model; regenerate both using identical weights")
+    if not provenance.is_file():
+        cli.error("Missing image embedding provenance; cannot verify matching model weights")
+    meta = json.loads(provenance.read_text(encoding="utf-8"))
+    if meta.get("model") != args.model:
+        cli.error("Image embedding model differs from text model; regenerate both using identical weights")
+    if meta.get("items") != len(images):
+        cli.error("Image embedding provenance item count does not match supplied data")
     try:
         import torch
         from transformers import CLIPModel, CLIPProcessor
