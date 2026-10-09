@@ -667,12 +667,13 @@ console.log("PASS: S6 long-offline devices don't resurrect deletions");
   const daily=[...new Set(tops("daily"))].join(),warm=[...new Set(rankOutfits({max:3,occasion:"daily",date:"2026-07-15",temp:26}).flatMap(l=>l.ids.filter(i=>i[0]==="t")))].sort().join();
   const issue=lookIssues([G("t1","Arriba","Top","Negro",{sleeve:"sin mangas"}),G("b1","Abajo","Pantalón","Negro")],engineContext({occasion:"daily",temp:8,date:"2026-01-15"})).join("|");
   const party=coldExposed(G("d1","Vestidos","Vestido","Negro",{sleeve:"sin mangas"}),8,"party");
+  const partyTop=coldExposed(G("t9","Arriba","Top","Negro",{sleeve:"sin mangas"}),8,"party"),keyRed=colorKey(G("x1","Arriba","Blusa","Rojo",{pattern:"floral"}))===colorKey(G("x2","Bolsos","Bolso","Rojo"));
   appState.data=normalizeData({garments:[G("a1","Arriba","Blusa","Negro"),G("a2","Abajo","Pantalón","Negro"),G("a3","Capas","Abrigo","Rosa"),G("a4","Zapatos","Mocasines","Negro"),G("bag1","Bolsos","Bolso","Rojo",{favorite:true}),G("bag2","Bolsos","Bolso","Rosa"),G("e1","Accesorios","Pendientes","Beige",{favorite:true})]});
   const look=rankOutfits({max:1,occasion:"daily",date:"2026-01-15",temp:8})[0].ids;
-  return {daily,warm,issue,party,bag:look.filter(i=>i.startsWith("bag")).join(),pal:paletteOf(look.map(id=>myGarments().find(g=>g.id===id))).size};`);
+  return {partyTop,keyRed,daily,warm,issue,party,bag:look.filter(i=>i.startsWith("bag")).join(),pal:paletteOf(look.map(id=>myGarments().find(g=>g.id===id))).size};`);
   const r=probe(document,sessionStorage,{randomUUID:()=>"t"});
   assert.equal(r.daily,"t3","8 °C: solo el jersey de manga larga; ni el top sin mangas ni el «Top» sin dato");assert.match(r.warm,/t1/,"26 °C: el top sin mangas sí");
-  assert.match(r.issue,/sin mangas o corto para 8/);assert.equal(r.party,false,"En fiesta, vestido sin mangas con abrigo, sí");
+  assert.match(r.issue,/sin mangas o corto para 8/);assert.equal(r.party,false,"En fiesta, vestido sin mangas con abrigo, sí");assert.equal(r.partyTop,true,"En fiesta, un top sin mangas suelto a 8 °C, no");assert.equal(r.keyRed,true,"Un estampado cuenta por su color real");
   assert.equal(r.bag,"bag2","Abrigo rosa: bolso rosa que repite color, no rojo aunque sea favorito");assert.ok(r.pal<=3,"Como mucho tres colores ("+r.pal+")");
   console.log("PASS: Cold: no sleeveless/cropped tops below 12 °C, unknown-sleeve 'Top' avoided; three-colour palette for bags and accessories");
 }

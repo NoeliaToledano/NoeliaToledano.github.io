@@ -1098,7 +1098,7 @@ const colorCache=new Map();
 /* Paleta del look (regla de tres colores, #136 §3; Noelia: «las opciones me parecen bastante horribles», 09/10):
    los neutros cuentan cada uno (negro, blanco, beige…), los vivos por familia; los metales (dorado, plateado) no cuentan. */
 const METAL=/dorad|platead|\boro\b|\bplata\b|gold|silver|metal/i;
-const colorKey=g=>{if(METAL.test(g.color||""))return "";const c=colorInfo(g.color,g.pattern);return c.fam==="neutro"?c.word.replace(/a$/,"o"):c.fam==="estampado"?"estampado:"+norm(g.color||g.pattern):c.fam};
+const colorKey=g=>{if(METAL.test(g.color||""))return "";const c=colorInfo(g.color);return c.fam==="neutro"?c.word.replace(/a$/,"o"):c.fam==="estampado"?"multicolor":c.fam}; // un estampado cuenta por su color real (revisión de Codex, #157)
 const paletteOf=gs=>new Set(gs.map(colorKey).filter(Boolean));
 function colorInfo(text,pattern){
  if(pattern&&pattern!=="plain")return {fam:"estampado",word:"estampado-"+pattern};
@@ -1592,7 +1592,8 @@ function thermal(g){
    Regla dura salvo en fiesta, evento o formal (vestido de noche con abrigo). La ficha manda; sin dato, el nombre. */
 const COLD_TOP_TEXT=/tirantes|sin mangas|sleeveless|\btank\b|palabra de honor|strapless|halter|off.?shoulder|hombros al aire|bandeau|bustier|cors[eé]/i;
 function coldExposed(g,temp,occ){
- if(!Number.isFinite(temp)||temp>=12||["party","event","formal"].includes(occ)||!["Arriba","Vestidos"].includes(g.category))return false;
+ if(!Number.isFinite(temp)||temp>=12||!["Arriba","Vestidos"].includes(g.category))return false;
+ if(g.category==="Vestidos"&&["party","event","formal"].includes(occ))return false; // vestido de noche con abrigo, sí; un top suelto, no (revisión de Codex, #157)
  const txt=textOf(g),sleeveless=g.sleeve&&g.sleeve!=="no aplica"?g.sleeve==="sin mangas":COLD_TOP_TEXT.test(txt);
  return sleeveless||g.category==="Arriba"&&(g.length&&g.length!=="na"?g.length==="cropped":/\bcrop/i.test(txt))||/off.?shoulder|hombros al aire/i.test(txt);
 }
@@ -1641,7 +1642,7 @@ function cloOf(g){
  return 0;
 }
 /* Un complemento con un color nuevo cuando el look ya tiene tres colores: mejor otro que repita un color o sea neutro */
-const newColorOverflow=(x,l)=>{const k=colorKey(x),pal=paletteOf(l);return !!k&&!pal.has(k)&&pal.size>=3};
+const newColorOverflow=(x,l,ctx)=>{const k=colorKey(x),pal=paletteOf(l);return !!k&&!pal.has(k)&&pal.size>=(ctx?.likes?.has("multicolor")?4:3)}; // gusto multicolor: hasta cuatro (revisión de Codex, #157)
 /* Abrigo del look completo (suma de prendas + ropa interior, ISO 9920) y lo que pide la temperatura exterior:
    1,35 clo a 5 °C → 0,3 clo a 28 °C (calibrado con looks de calle típicos: abrigo+jersey+pantalón+botas ≈ 1,1–1,2 a 8 °C;
    camisa+vaqueros+chaqueta ≈ 0,85 a 17 °C; camiseta+shorts ≈ 0,2–0,3 a 28 °C) */
@@ -1723,7 +1724,7 @@ function scoreOutfit(gs,ctx){
  // Una buena relación entre complementos puede acompañar la base, nunca maquillar
  // el choque entre dos prendas principales. Solo puede restar hasta un 15 %.
  const color=baseN?Math.min(baseColor,.85*baseColor+.15*accessoryColor):accessoryColor,patterns=gs.filter(g=>colorInfo(g.color,g.pattern).fam==="estampado").length;
- const pal=paletteOf(gs),extraColors=Math.max(0,pal.size-3);let colorAdj=-.1*extraColors;
+ const pal=paletteOf(gs),extraColors=Math.max(0,pal.size-(ctx.likes?.has("multicolor")?4:3));let colorAdj=-.1*extraColors;
  const mainKeys=new Set(big.map(colorKey).filter(k=>k&&!["negro","blanco","gris"].includes(k))),echo=gs.find(g=>!BIG.includes(g.category)&&mainKeys.has(colorKey(g)));
  if(echo&&!extraColors)colorAdj+=.05; // el bolso o el calzado repite un color del look: ritmo
  const tonal=kinds.find(k=>k.startsWith("tonal:")&&!k.endsWith("~"));
@@ -1860,7 +1861,7 @@ function vividColorRepeat(gs){
 }
 function completeOutfitGreedy(base,pool,ctx,used=new Map(),firstPick=null){
  const l=[...base],rule=layerRule(ctx.temp),home=ctx.occasion==="home",beach=ctx.occasion==="beach";
- const fits=x=>!l.includes(x)&&!(l.some(g=>isBackpack(g)&&(isOutdoor(g)||formalLevel(g)<2))&&formalLevel(x)>=2)&&!heavyKnitInHeat(x,ctx.temp)&&!insufficientColdLayer(x,ctx.temp)&&weatherCompatible(x,l,ctx)&&l.every(p=>!related(x,p)||stylesOk(x,p))&&l.every(p=>pairColor(x,p).s>=.45||!BIG.includes(p.category)||!BIG.includes(x.category)||ctx.likes?.has("pattern")&&pairColor(x,p).k==="two-patterns")&&!(isPatterned(x)&&!BIG.includes(x.category)&&l.some(isPatterned))&&!(["Bolsos","Accesorios"].includes(x.category)&&newColorOverflow(x,l));
+ const fits=x=>!l.includes(x)&&!(l.some(g=>isBackpack(g)&&(isOutdoor(g)||formalLevel(g)<2))&&formalLevel(x)>=2)&&!heavyKnitInHeat(x,ctx.temp)&&!insufficientColdLayer(x,ctx.temp)&&weatherCompatible(x,l,ctx)&&l.every(p=>!related(x,p)||stylesOk(x,p))&&l.every(p=>pairColor(x,p).s>=.45||!BIG.includes(p.category)||!BIG.includes(x.category)||ctx.likes?.has("pattern")&&pairColor(x,p).k==="two-patterns")&&!(isPatterned(x)&&!BIG.includes(x.category)&&l.some(isPatterned))&&!(["Bolsos","Accesorios"].includes(x.category)&&newColorOverflow(x,l,ctx));
  const pref=x=>(x.favorite?.5:0)+(["Bolsos","Accesorios","Zapatos"].includes(x.category)&&colorKey(x)&&paletteOf(l).has(colorKey(x))?.6:0)+ /* repetir un color del look: ritmo (regla de tres colores) */1/(1+(ctx.worn.get(x.id)||0))+(ctx.forgotten.has(x.id)?.5:0)-(ctx.avoid.has(x.id)?2:0)-(used.get(x.id)||0)*1.5+
   l.reduce((t,p)=>t+pairColor(x,p).s,0)/Math.max(1,l.length);
  const plan=[ctx.extras.shoes&&!home&&!beach?"Zapatos":beach&&ctx.extras.shoes?"Zapatos":null,!home&&rule.max>=0?"Capas":null,ctx.extras.bag&&!home?"Bolsos":null,!home?"Accesorios":null];
@@ -1882,7 +1883,7 @@ function completeOutfitGreedy(base,pool,ctx,used=new Map(),firstPick=null){
    c.sort((a,b)=>tier(a)-tier(b)||pref(b)-pref(a))}
   else c.sort((a,b)=>pref(b)-pref(a));
   if(cat==="Zapatos"&&c.some(x=>!bootInHeat(x,ctx.temp)))c=c.filter(x=>!bootInHeat(x,ctx.temp));
-  if(cat==="Zapatos"&&c.some(x=>!newColorOverflow(x,l)))c=c.filter(x=>!newColorOverflow(x,l)); // calzado: sin cuarto color si hay alternativa
+  if(cat==="Zapatos"&&c.some(x=>!newColorOverflow(x,l,ctx)))c=c.filter(x=>!newColorOverflow(x,l,ctx)); // calzado: sin cuarto color si hay alternativa
   if(cat==="Bolsos"&&l.some(p=>formalLevel(p)>=2))c=c.filter(x=>!isBackpack(x)||formalLevel(x)>=2&&!isOutdoor(x)); // Q3 (#108): mochila de vestir sí
   if(cat==="Bolsos"&&hasSkirtOrDress(l))c=c.filter(x=>!outdoorPack(x)); // sin bolso antes que mochila de montaña con vestido
   if(cat==="Bolsos"&&["party","event","formal"].includes(ctx.occasion)){const lv=x=>Array.isArray(x.occasions)&&x.occasions.includes(ctx.occasion)?3:formalLevel(x),top=Math.max(0,...c.map(lv));if(top>=2)c=c.filter(x=>lv(x)>=top)} // fiesta: el bolso más arreglado que haya (de fiesta antes que de diario)
