@@ -1774,7 +1774,9 @@ function rankOutfits(o={}){
   // repetidas, siempre dentro de un margen razonable de calidad.
   const principal=c=>new Set(c.gs.filter(g=>["Arriba","Abajo","Vestidos","Casa","Baño"].includes(g.category)).map(g=>g.id));
   const usedPrincipal=new Set(out.flatMap(c=>[...principal(c)]));
-  const reuse=c=>[...principal(c)].filter(id=>usedPrincipal.has(id)).length;
+  // En «Combina una prenda» esta pieza debe repetirse en todos los looks:
+  // no contarla como falta de diversidad al seleccionar las alternativas.
+  const reuse=c=>[...principal(c)].filter(id=>id!==o.required&&usedPrincipal.has(id)).length;
   const strongest=eligible.reduce((v,c)=>Math.max(v,c.score),-Infinity);
   const quality=eligible.filter(c=>c.score>=strongest-12);
   const leastReuse=quality.length?Math.min(...quality.map(reuse)):Infinity;
