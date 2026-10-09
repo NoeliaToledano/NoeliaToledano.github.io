@@ -150,7 +150,7 @@ try{
  await page.getByRole("heading",{name:"Calendario de looks"}).waitFor();
  assert.ok(await page.locator("[data-remove-use]").count()>0,"Wear records must appear in calendar");
  await page.locator('[data-view="today"]').click();
- await page.locator("#prefDiversity").evaluate(el=>{el.value="80";el.dispatchEvent(new Event("input",{bubbles:true}))});
+ assert.equal(await page.locator("#prefDiversity").count(),0,"El porcentaje de diversidad no debe mostrarse");
  await page.locator('[data-view="stylist"]').click(); await page.locator("#openLooks").click();
  const existingLooks=await page.locator("[data-look]").count();
  forceServerError=true;
@@ -159,7 +159,7 @@ try{
  await page.getByText("No se pudieron generar looks").waitFor();
  assert.equal(await page.locator("[data-look]").count(),existingLooks,"Server failures must not create looks");
  await page.locator('[data-view="today"]').click();
- await page.locator("#prefDiversity").evaluate(el=>{el.value="90";el.dispatchEvent(new Event("input",{bubbles:true}))});
+ assert.equal(await page.locator("[data-extra-pref]").count(),0,"Los looks se completan automáticamente");
  await page.locator('[data-view="stylist"]').click(); await page.locator("#openLooks").click();
  forceUnauthorized=true;
  await page.locator(".looks-tools").evaluate(el=>el.open=true);
