@@ -1004,7 +1004,7 @@ function renderGarmentPairs(g){
   :'<p class="muted">Todavía no hay prendas en tu armario que combinen bien con esta.</p>')+(missing.length?'<p class="muted pair-note">Para afinar, completa en la ficha: '+fx(missing.join(", "))+'.</p>':'');
  box.querySelector("#garmentPairsOccasion").value=selected;
  box.querySelector("#garmentPairsOccasion").addEventListener("change",()=>renderGarmentPairs(g));
- $("[data-thumb]",box).forEach(b=>b.addEventListener("click",()=>openGarment(b.dataset.thumb)));
+ box.querySelectorAll("[data-thumb]").forEach(b=>b.addEventListener("click",()=>openGarment(b.dataset.thumb)));
 }
 function closeGarment(){$("#garmentSheet").classList.add("hidden")}
 async function saveGarment(e){
