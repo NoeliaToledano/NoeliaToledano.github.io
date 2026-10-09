@@ -190,8 +190,13 @@ console.log("PASS: Styling engine (20/100/500 prendas): capas según tiempo, var
   appState.data=normalizeData({garments:[G("t","Arriba","Blusa","Azul",{style:"party",formality:"party"}),G("p","Abajo","Falda","Azul",{style:"party",formality:"party"}),
    G("z","Zapatos","Tacones","Negro",{style:"party",formality:"party"}),G("b","Bolsos","Mochila","Naranja",{style:"sport",formality:"sport",pattern:"graphic"})]});
   out.badBag=rankOutfits({max:1,occasion:"party",temp:22,date:"2026-07-15",extras:{shoes:true,bag:true}})[0].ids;
+  // 8) Con 17 °C la capa es opcional: unos tacones que «permiten» añadir la americana no ganan a unas deportivas que combinan mejor con la sudadera
+  appState.data=normalizeData({garments:[G("s","Arriba","Sudadera","Gris",{formality:"casual"}),G("j","Abajo","Vaqueros","Vaquero",{formality:"casual"}),G("d","Zapatos","Deportivas","Negro",{occasions:["daily"]}),
+   G("h","Zapatos","Tacones","Beige",{style:"party",formality:"party",occasions:["party","event","work"]}),G("b","Capas","Blazer","Beige",{style:"smart",formality:"smartcasual",warmth:"bajo"})]});
+  out.optLayer=rankOutfits({max:1,occasion:"daily",temp:17,date:"2026-04-15"})[0].ids;
   return out;`);
   const r=probe(document,sessionStorage,{randomUUID:()=>"t"});
+  assert.ok(r.optLayer.includes("d")&&!r.optLayer.includes("h"),"Capa opcional: no se eligen tacones solo para poder añadirla ("+r.optLayer+")");
   assert.ok(r.ct>=.6&&r.cp<.6,"La americana de cuadros combina con la camisa ("+r.ct+") pero no con el pantalón de rayas ("+r.cp+")");
   assert.ok(r.third.every(ids=>!(ids.includes("c")&&ids.includes("p"))),"La tercera pieza se mide con todas: sin americana de cuadros con pantalón de rayas");
   assert.ok(r.third.every(ids=>!ids.includes("a")),"Un complemento que no aporta no se añade por obligación");

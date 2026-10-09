@@ -2047,7 +2047,7 @@ function completeOutfit(base,pool,ctx,used=new Map()){
  const first=completeOutfitGreedy(base,pool,ctx,used);
  if(!ctx.extras.shoes||base.some(g=>g.category==="Zapatos"))return first;
  const shoes=pool.filter(x=>x.category==="Zapatos"&&!base.includes(x)).slice(0,12);
- const core=l=>l.filter(g=>!["Bolsos","Accesorios"].includes(g.category)).length; /* completo = calzado y capa; bolso y complementos son opcionales */
+ const need=layerRule(ctx.temp).need,core=l=>l.filter(g=>!["Bolsos","Accesorios"].includes(g.category)&&(need||g.category!=="Capas")).length; /* completo = calzado (y capa si hace frío); lo opcional no gana por sumar piezas */
  let best=first;
  for(const z of shoes.filter(z=>!first.includes(z)).slice(0,2)){const alt=completeOutfitGreedy(base,pool,ctx,used,z);if(core(alt)>core(best)&&alt.includes(z))best=alt}
  return best;
