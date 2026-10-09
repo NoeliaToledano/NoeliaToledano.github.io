@@ -1167,43 +1167,93 @@ async function cropBox(src,box){
  c.getContext("2d").drawImage(img,x0,y0,cw,ch,0,0,cw,ch);return toJpeg(c,IMAGE_QUALITY);
 }
 const outfitMatches=it=>myGarments().filter(g=>g.category===it.category&&(isDuplicate(it,g)||!!it.color&&norm(g.color)===norm(it.color))).slice(0,4);
-let outfitDraft=null;
-function pickOutfitPhoto(){
- const input=document.createElement("input");input.type="file";input.accept="image/*";
- input.addEventListener("change",()=>{const f=input.files?.[0];if(f)startOutfitPhoto(f)});input.click();
+function renderInspoSheet(d){
+ let body;
+ if(d.loading)body='<p class="muted" role="status" aria-live="polite">Buscando las prendas parecidas en tu armario…</p><button type="button" class="secondary wide" id="outfitCancel">Cancelar</button>';
+ else if(d.preview)body=(d.error?'<p class="error" role="alert">'+fx(d.error)+'</p>':'')+
+  '<p class="muted">Reconoceré cada prenda del look y buscaré las más parecidas de tu armario. La imagen no se guarda: solo tu versión del look.</p>'+
+  '<div class="actions"><button type="button" class="secondary" id="outfitChange">Cambiar imagen</button><button type="button" class="primary" id="outfitAnalyze">'+(d.error?'Reintentar':'Recrear con mi armario')+' · 1 análisis</button></div>';
+ else{const sel=outfitSelection(d),miss=d.items.filter(it=>it.choice==="missing");
+  body='<p class="muted">Tu versión con lo que tienes. Cambia cualquier prenda si prefieres otra.</p>'+
+  '<div class="outfit-items">'+d.items.map((it,i)=>'<div class="outfit-item"><img src="'+it.crop+'" alt=""><div class="outfit-item-body"><strong>'+fx(it.name||it.category)+'</strong><span class="muted">'+fx(it.category+(it.color?" · "+it.color:""))+'</span>'+
+   '<select data-outfit-choice="'+i+'" aria-label="'+fx("Qué uso en lugar de «"+(it.name||it.category)+"»")+'">'+optionList([...it.matches.map(g=>[g.id,"Mi «"+g.name+"»"]),["missing","No tengo nada parecido"],["skip","No la necesito"]],it.choice)+'</select></div></div>').join("")+'</div>'+
+  (sel.length?'<div class="inspo-result"><p class="helper">Tu look</p>'+outfitBoard(sel)+'</div>':'')+
+  '<label class="field"><span>Nombre del look</span><input id="outfitName" maxlength="80" placeholder="Inspiración" value="'+fx(d.name)+'"></label>'+
+  (miss.length?'<label class="switch-line"><input type="checkbox" id="inspoWish"'+(d.wish?' checked':'')+'> Añadir a la wishlist lo que me falta ('+fx(miss.map(it=>it.name||it.category).join(", "))+')</label>':'')+
+  '<p class="helper" id="outfitWarn">'+fx(!sel.length?"No he encontrado nada parecido en tu armario."+(miss.length?" Puedes añadir las prendas a la wishlist.":""):lookComplete(sel)?"Se guardará tu versión del look con 👍: así aprendo lo que te gusta.":BASE_MSG+": no se guardará el look.")+'</p>'+
+  '<button type="button" class="primary wide" id="outfitSave">Guardar</button>'}
+ const {el,close}=showSheet("outfitSheet",'<div class="section-head"><h2 id="outfitSheetTitle">Recrear un look con mi armario</h2><button type="button" class="secondary" data-close-sheet>Cerrar</button></div>'+
+  '<div class="outfit-review-layout"><div class="outfit-review-photo"><img class="outfit-photo" src="'+d.image+'" alt="Look de inspiración"><p class="outfit-photo-caption">Inspiración · no se guarda</p></div><div class="outfit-review-content">'+body+'</div></div>',()=>{if(outfitDraft===d)outfitDraft=null});
+ $("#outfitAnalyze",el)?.addEventListener("click",analyzeOutfit);
+ $("#outfitCancel",el)?.addEventListener("click",()=>{outfitDraft={token:{},image:d.image,preview:true,inspo:true};renderOutfitSheet()});
+ $("#outfitChange",el)?.addEventListener("click",()=>{close();pickOutfitPhoto(true)});
+ if(!d.items)return;
+ $$("[data-outfit-choice]",el).forEach(x=>x.addEventListener("change",()=>{d.name=$("#outfitName",el).value;d.wish=$("#inspoWish",el)?.checked??d.wish;d.items[Number(x.dataset.outfitChoice)].choice=x.value;renderOutfitSheet()}));
+ $("#outfitSave",el)?.addEventListener("click",async e=>{
+  const btn=e.currentTarget;if(d.saving)return;d.saving=true;btn.disabled=true;
+  d.name=$("#outfitName",el).value.trim();d.wish=$("#inspoWish",el)?.checked??false;
+  const sel=outfitSelection(d),ids=[...new Set(sel.map(g=>g.id))],complete=ids.length&&lookComplete(sel),miss=d.wish?d.items.filter(it=>it.choice==="missing"):[],now=new Date().toISOString(),lookId=uid();
+  if(!complete&&!miss.length){d.saving=false;btn.disabled=false;return toast(ids.length?BASE_MSG:"No hay nada que guardar")}
+  const ok=await mutate(()=>{
+   if(complete){myLooks().unshift({id:lookId,name:d.name||"Inspiración",garmentIds:ids,occasion:appState.data.preferences.occasion||"daily",favorite:false,ai:false,inspired:true,updatedAt:now});appState.data.feedback[lookId]="up"}
+   for(const it of miss)appState.data.wishlist.unshift({id:uid(),name:it.name||it.garmentType||it.category,price:0,category:it.category,url:"",bought:false,addedAt:dayISO(),verdict:"Inspiración",updatedAt:now});
+  });
+  if(!ok){d.saving=false;btn.disabled=false;return}
+  outfitDraft=null;close();
+  toast("Guardado: "+[complete?"tu versión del look":"",miss.length?plural(miss.length,"prenda","prendas")+" en la wishlist":""].filter(Boolean).join(" y "));
+ });
 }
-function bindOutfitPhoto(root){$$("[data-outfit-photo]",root).forEach(b=>b.addEventListener("click",pickOutfitPhoto))}
-async function startOutfitPhoto(file){
+/* «Inspiración: recréalo con tu armario» (Noelia, 09/10): una captura de un look que te gusta (Pinterest, una influencer,
+   una revista) → el mismo análisis «outfit» → para cada prenda, las más parecidas de tu armario por sus características.
+   No se guarda ninguna imagen ni se crean prendas: la captura es de otra persona. Tu versión se guarda como look con 👍. */
+function inspoScore(it,g){
+ if(g.category!==it.category)return -1;
+ const ci=colorInfo(it.color,it.pattern),cg=colorInfo(g.color,g.pattern),same=(a,b)=>a&&b&&norm(a)===norm(b);
+ let s=same(it.color,g.color)?3:ci.fam&&ci.fam===cg.fam&&ci.fam!=="neutro"?1.5:ci.word&&ci.word===cg.word?2:0;
+ if(it.garmentType&&(same(it.garmentType,g.type)||norm(textOf(g)).includes(norm(it.garmentType))))s+=2;
+ if((it.pattern||"plain")===(g.pattern||"plain"))s+=1;
+ for(const [k,w] of [["formality",1],["sleeve",.5],["length",.5],["style",.5]])if(it[k]&&g[k]&&it[k]===g[k])s+=w;
+ return s;
+}
+const inspoMatches=it=>myGarments().map(g=>({g,s:inspoScore(it,g)})).filter(x=>x.s>=2).sort((a,b)=>b.s-a.s).slice(0,3).map(x=>x.g);
+let outfitDraft=null;
+function pickOutfitPhoto(inspo=false){
+ const input=document.createElement("input");input.type="file";input.accept="image/*";
+ input.addEventListener("change",()=>{const f=input.files?.[0];if(f)startOutfitPhoto(f,inspo===true)});input.click();
+}
+function bindOutfitPhoto(root){$$("[data-outfit-photo]",root).forEach(b=>b.addEventListener("click",()=>pickOutfitPhoto(false)));$$("[data-inspo-photo]",root).forEach(b=>b.addEventListener("click",()=>pickOutfitPhoto(true)))}
+async function startOutfitPhoto(file,inspo=false){
  let image;try{image=await readImage(file)}catch(e){return toast(e.message==="IMAGE_TOO_LARGE"?"La imagen es demasiado grande":"No se pudo leer la foto")}
  if(!image)return;
- outfitDraft={token:{},image,preview:true};renderOutfitSheet(); // primero vista previa: el análisis solo se gasta al confirmar
+ outfitDraft={token:{},image,preview:true,inspo};renderOutfitSheet(); // primero vista previa: el análisis solo se gasta al confirmar
 }
 async function analyzeOutfit(){
  const d0=outfitDraft;if(!d0?.image||d0.loading)return;
- const token={},image=d0.image;outfitDraft={token,image,loading:true};renderOutfitSheet();
+ const token={},image=d0.image,inspo=!!d0.inspo;outfitDraft={token,image,loading:true,inspo};renderOutfitSheet();
  try{
   const out=await api("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image,mode:"outfit"})});
   if(outfitDraft?.token!==token)return;
   const items=[];
   for(const raw of Array.isArray(out.items)?out.items:[]){
    const category=OUTFIT_TYPES[raw.type];if(!category||!Array.isArray(raw.box))continue;
-   const it={...mapAnalysis(raw),category,crop:await cropBox(image,raw.box).catch(()=>image)},matches=outfitMatches(it);
-   items.push({...it,matches,choice:matches[0]?.id||"new"});
+   const it={...mapAnalysis(raw),category,crop:await cropBox(image,raw.box).catch(()=>image)},matches=inspo?inspoMatches(it):outfitMatches(it);
+   items.push({...it,matches,choice:matches[0]?.id||(inspo?"missing":"new")});
   }
   if(outfitDraft?.token!==token)return;
-  outfitDraft=items.length?{token,image,items,name:"",wear:false}:{token,image,preview:true,error:"No he encontrado prendas en la foto. Prueba con una foto de cuerpo entero y con buena luz."};
+  outfitDraft=items.length?{token,image,items,name:"",wear:false,inspo,wish:true}:{token,image,preview:true,inspo,error:"No he encontrado prendas en la foto. Prueba con una foto de cuerpo entero y con buena luz."};
  }catch(e){
   if(outfitDraft?.token!==token)return;
   if(e.message==="SESSION_EXPIRED"){outfitDraft=null;$$("#outfitSheet").forEach(x=>x.remove());return}
-  outfitDraft={token,image,preview:true,error:e.message==="AI_QUOTA"?"Has llegado al límite de análisis de hoy.":"No he podido reconocer las prendas. Puedes reintentarlo."};
+  outfitDraft={token,image,preview:true,inspo,error:e.message==="AI_QUOTA"?"Has llegado al límite de análisis de hoy.":"No he podido reconocer las prendas. Puedes reintentarlo."};
  }
  renderOutfitSheet();
 }
 function outfitSelection(d){
- return d.items.filter(it=>it.choice!=="skip").map(it=>it.choice==="new"?it:myGarments().find(g=>g.id===it.choice)).filter(Boolean);
+ return d.items.filter(it=>it.choice!=="skip"&&it.choice!=="missing").map(it=>it.choice==="new"?it:myGarments().find(g=>g.id===it.choice)).filter(Boolean);
 }
 function renderOutfitSheet(){
  const d=outfitDraft;if(!d)return;
+ if(d.inspo)return renderInspoSheet(d);
  let body;
  if(d.loading)body='<p class="muted" role="status" aria-live="polite">Reconociendo las prendas…</p><button type="button" class="secondary wide" id="outfitCancel">Cancelar</button>';
  else if(d.preview)body=(d.error?'<p class="error" role="alert">'+fx(d.error)+'</p>':'')+
@@ -1464,7 +1514,7 @@ function renderLooks(root){
  if(ui.lookFilter==="ai")looks=looks.filter(l=>l.ai);
  const fb=appState.data.feedback;
  stylistShell(root,"Mis looks","Tus combinaciones guardadas y las sugeridas por la IA.",
-  '<div class="section-head"><h2>Conjuntos ('+looks.length+')</h2><span class="head-actions"><button class="secondary" data-outfit-photo aria-label="Guardar el look que llevo con una foto">📸 Foto</button><button class="primary" id="newLook">+ Crear</button></span></div>'+
+  '<div class="section-head"><h2>Conjuntos ('+looks.length+')</h2><span class="head-actions"><button class="secondary" data-inspo-photo aria-label="Recrear con mi armario un look que me inspira">✨ Inspiración</button><button class="secondary" data-outfit-photo aria-label="Guardar el look que llevo con una foto">📸 Foto</button><button class="primary" id="newLook">+ Crear</button></span></div>'+
   '<div class="filter-tabs">'+[["all","Todos"],["favorites","Favoritos ♡"],["ai","Sugeridos por IA"]].map(([k,t])=>'<button class="chip-button'+(ui.lookFilter===k?' on':'')+'" data-look-filter="'+k+'">'+t+'</button>').join("")+'</div>'+
   '<details class="looks-tools"><summary>Más opciones para mis looks</summary><div class="looks-tools-body"><button class="secondary wide" id="aiLooks">Sugerir looks con IA</button>'+tasteCardHtml()+'</div></details>'+
   (looks.length?'<div class="grid">'+looks.map(l=>'<div class="look-tile">'+lookCard(l)+
