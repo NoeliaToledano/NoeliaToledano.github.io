@@ -1581,9 +1581,16 @@ function engineContext(o={}){
 }
 /* Completa una base: calzado, capa (regla de temperatura), bolso y un complemento, si combinan con todo.
    used: veces que ya sale cada prenda en las propuestas elegidas (para variar complementos, D2). */
+function summerFootwear(g){return g.category==="Zapatos"&&/chancl|flip.?flop|sandali?as?|slides?/.test([g.name,g.type,g.subtype].filter(Boolean).join(" ").toLowerCase())}
+function winterHat(g){return g.category==="Accesorios"&&/gorro|beanie|pasamonta|balaclava|wool hat/.test([g.name,g.type,g.subtype].filter(Boolean).join(" ").toLowerCase())}
+function weatherCompatible(g,look,ctx){
+ if(summerFootwear(g)&&(ctx.temp<19||look.some(winterHat)))return false;
+ if(winterHat(g)&&(ctx.temp>=20||look.some(summerFootwear)))return false;
+ return true;
+}
 function completeOutfitGreedy(base,pool,ctx,used=new Map(),firstPick=null){
  const l=[...base],rule=layerRule(ctx.temp),home=ctx.occasion==="home",beach=ctx.occasion==="beach";
- const fits=x=>!l.includes(x)&&l.every(p=>!related(x,p)||stylesOk(x,p))&&l.every(p=>pairColor(x,p).s>=.45||!BIG.includes(p.category)||!BIG.includes(x.category));
+ const fits=x=>!l.includes(x)&&weatherCompatible(x,l,ctx)&&l.every(p=>!related(x,p)||stylesOk(x,p))&&l.every(p=>pairColor(x,p).s>=.45||!BIG.includes(p.category)||!BIG.includes(x.category));
  const pref=x=>(x.favorite?.5:0)+1/(1+(ctx.worn.get(x.id)||0))+(ctx.forgotten.has(x.id)?.5:0)-(ctx.avoid.has(x.id)?2:0)-(used.get(x.id)||0)*1.5+
   l.reduce((t,p)=>t+pairColor(x,p).s,0)/Math.max(1,l.length);
  const plan=[ctx.extras.shoes&&!home&&!beach?"Zapatos":beach&&ctx.extras.shoes?"Zapatos":null,!home&&rule.max>=0?"Capas":null,ctx.extras.bag&&!home?"Bolsos":null,!home?"Accesorios":null];
