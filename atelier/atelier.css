@@ -400,3 +400,22 @@ p.notice-card{display:block}
 .today-extra-body .section-head h2{font-size:16px}
 .today-extra-body .actions{margin:6px 0 12px}
 @media(max-width:390px){.today-extra-body .actions{flex-direction:column}.today-extra-body .actions>*{width:100%}}
+
+/* Hoy · solo un grupo de opciones secundarias, manteniendo controles accesibles. */
+.today-unified-options{border:1px solid var(--line);border-radius:16px;background:var(--surface);margin:22px 0;overflow:hidden}
+.today-unified-options>summary{cursor:pointer;padding:16px 18px;font-size:14px;font-weight:600;color:var(--ink)}
+.today-options-content{padding:0 18px 20px}
+.today-ia-section>h2,.today-extra-tools>h2{font-size:15px;font-weight:650;letter-spacing:0;margin:15px 0 12px}
+.today-ia-section>.field,.today-ia-section .filter-grid .field{margin:8px 0}
+.today-extra-tools{border-top:1px solid var(--line);margin-top:24px;padding-top:8px}
+.today-extra-tools .today-extra-body{padding:0}
+.today-extra-tools .actions{margin:0 0 12px}
+@media(max-width:390px){.today-options-content{padding-inline:12px}.today-extra-tools .actions{flex-direction:column}}
+/* Compras: claridad de la pestaña principal y acciones de foto. */
+[data-shop-tab="buy"].seg-tab{font-weight:700}
+#buyCheck{margin-top:18px}
+#buyCheck>h2{font-family:Georgia,serif;font-weight:500;font-size:clamp(26px,6vw,34px);margin-top:0}
+#buyCheck>.muted{font-size:14px;line-height:1.5;margin-bottom:19px}
+#buyCheck .buy-photo-actions{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:10px}
+#buyCheck .buy-photo-actions button{min-width:0;min-height:48px}
+@media(max-width:360px){#buyCheck .buy-photo-actions{grid-template-columns:1fr}}
