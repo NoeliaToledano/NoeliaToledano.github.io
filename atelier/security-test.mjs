@@ -92,6 +92,18 @@ return {warm:heavyKnitInHeat(garment("Arriba","Jersey grueso"),27),
 `)(document,sessionStorage,{randomUUID:()=>"test"});
 assert.deepEqual(qualityProbe,{warm:true,light:false,cold:true,mild:false,formal:true,bright:1});
 console.log("PASS: P2/P5/P7/P9 styling context regressions");
+// P7: Mocasines casual de temporada son alternativa válida si no hay zapatos de fiesta.
+const formalFallbackProbe=new Function("document","sessionStorage","crypto",src+`
+appState.profile={id:"audit"};appState.data=emptyData();
+appState.data.garments=[
+ {id:"shirt",name:"Camisa",category:"Arriba",color:"Blanco",style:"smart",season:"all"},
+ {id:"pants",name:"Pantalón",category:"Abajo",color:"Negro",style:"smart",season:"all"},
+ {id:"loafer",name:"Mocasines negros",category:"Zapatos",color:"Negro",style:"casual",season:"all"}
+];
+return rankOutfits({occasion:"party",temp:17,max:2}).map(l=>l.ids);
+`)(document,sessionStorage,{randomUUID:()=>"test"});
+assert.ok(formalFallbackProbe.length&&formalFallbackProbe[0].includes("loafer"),"La fiesta debe recuperar mocasines aunque sean casual");
+console.log("PASS: P7 formal fallback bypasses occasion footwear filter");
 // Motor de estilismo: banco de pruebas con armarios de 20, 100 y 500 prendas
 const engineProbe=new Function("document","sessionStorage","crypto",src+`
 const COLORS=["Negro","Blanco","Gris","Beige","Azul","Vaquero","Rojo","Verde","Rosa","Marrón"],STY=["casual","casual","smart","sport","party"];
