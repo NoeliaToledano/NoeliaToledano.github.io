@@ -40,3 +40,15 @@ Para empezar con solo fotografías autorizadas de dos looks, pasa sus IDs separa
 ## Trazabilidad
 
 Cada ejecución genera, además de `embeddings.json`, un `embeddings.json.provenance.json` con identificador del modelo, dimensiones, IDs analizados y carácter diagnóstico del coseno. Conserva ambos ficheros juntos con la versión exacta del entorno Python/Transformers; evita comparar inferencias de pesos o versiones desconocidas. Estos metadatos no sustituyen comprobar licencia ni consentimiento para las imágenes.
+
+## Atributos visuales por texto (experimento)
+
+Con los embeddings reales ya generados y el **mismo identificador de modelo**, se pueden clasificar por similitud descripciones de estampado y estética:
+
+```sh
+python atelier/benchmarks/real-photos/fashionclip-attributes.py \
+  --embeddings /tmp/atelier-fashionclip-embeddings.json \
+  --output /tmp/atelier-fashionclip-attributes.json
+```
+
+La salida contiene rankings y valores coseno: **no** son probabilidades calibradas ni una evaluación de compatibilidad entre conjuntos. La inferencia de texto usa pesos preentrenados de FashionCLIP descargados en ejecución local, sin enviar imágenes. Antes de guardar atributos en el armario, comparar las predicciones con fichas de referencia y respetar correcciones de cada usuario. No se han ejecutado estos modelos durante esta PR.
