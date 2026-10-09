@@ -80,6 +80,18 @@ return rankOutfits({occasion:"beach",temp:28,max:2}).map(l=>l.ids);
 `)(document,sessionStorage,{randomUUID:()=>"test"});
 assert.ok(beachFootwearProbe.length>0&&beachFootwearProbe[0].includes("flip"),"Playa debe admitir chanclas aunque su tipo sea Otro");
 console.log("PASS: beach includes flip-flops recognized by name");
+const qualityProbe=new Function("document","sessionStorage","crypto",src+`
+const garment=(category,name,color="Negro")=>({id:name,name,category,color,style:"casual",season:"all"});
+const fallback=garment("Zapatos","Mocasines marrones");
+return {warm:heavyKnitInHeat(garment("Arriba","Jersey grueso"),27),
+ light:heavyKnitInHeat(garment("Arriba","Jersey fino"),27),
+ cold:insufficientColdLayer(garment("Capas","Chaleco acolchado"),8),
+ mild:insufficientColdLayer(garment("Capas","Chaleco acolchado"),17),
+ formal:smartFallbackShoes(fallback),
+ bright:vividColorRepeat([garment("Arriba","a","Rojo"),garment("Abajo","b","Rojo"),garment("Capas","c","Rojo")])};
+`)(document,sessionStorage,{randomUUID:()=>"test"});
+assert.deepEqual(qualityProbe,{warm:true,light:false,cold:true,mild:false,formal:true,bright:1});
+console.log("PASS: P2/P5/P7/P9 styling context regressions");
 // Motor de estilismo: banco de pruebas con armarios de 20, 100 y 500 prendas
 const engineProbe=new Function("document","sessionStorage","crypto",src+`
 const COLORS=["Negro","Blanco","Gris","Beige","Azul","Vaquero","Rojo","Verde","Rosa","Marrón"],STY=["casual","casual","smart","sport","party"];
