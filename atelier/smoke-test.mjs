@@ -169,6 +169,20 @@ try{
  });
  assert.ok(silhouettePriority.balanced>silhouettePriority.intermediate&&silhouettePriority.intermediate>silhouettePriority.unbalanced,
   "El ajuste de la silueta debe favorecer volúmenes complementarios frente a dos prendas holgadas");
+ 
+ // El estilo «Cómoda» permite dos piezas holgadas intencionalmente sin premiarlas
+ // por encima del contraste más equilibrado.
+ const comfortableSilhouette=await page.evaluate(()=>{
+  const base={occasion:null,temp:22,extras:{shoes:false,bag:false}};
+  const top={id:"comfort-top",category:"Arriba",color:"Blanco",style:"casual",fit:"oversize"};
+  const bottom={id:"comfort-bottom",category:"Abajo",color:"Negro",style:"casual",fit:"holgado"};
+  const regular=scoreOutfit([top,bottom],engineContext({...base,dress:null})).score;
+  const comfy=scoreOutfit([top,bottom],engineContext({...base,dress:"comoda"})).score;
+  return {regular,comfy};
+ });
+ assert.ok(comfortableSilhouette.comfy>comfortableSilhouette.regular,
+  "El modo Cómoda debe ser más tolerante con dos prendas holgadas");
+
  await page.locator(".daily-look").waitFor(); // «Tu look de hoy» nada más entrar
  assert.equal(await page.locator("#app").isVisible(),true);
  assert.equal(await page.locator("#auth").isVisible(),false);
