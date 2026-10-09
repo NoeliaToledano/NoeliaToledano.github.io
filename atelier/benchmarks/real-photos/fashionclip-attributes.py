@@ -55,6 +55,14 @@ def rank_labels(image_vector, text_vectors):
         out.append({"label": label, "cosine": round(sum(x*y for x,y in zip(a,b)), 6)})
     return sorted(out, key=lambda x: (-x["cosine"], x["label"]))
 
+def verify_provenance(meta, model_name, images):
+    if not isinstance(meta, dict) or meta.get("model") != model_name:
+        raise ValueError("Image embedding model differs from text model; regenerate both using identical weights")
+    if not isinstance(images, dict) or meta.get("items") != len(images):
+        raise ValueError("Image embedding provenance item count does not match supplied data")
+    if set(meta.get("ids", [])) != set(images):
+        raise ValueError("Image embedding provenance IDs differ from supplied images")
+
 def main():
     cli = argparse.ArgumentParser(description=__doc__)
     cli.add_argument("--embeddings", required=True)
@@ -68,10 +76,10 @@ def main():
     if not provenance.is_file():
         cli.error("Missing image embedding provenance; cannot verify matching model weights")
     meta = json.loads(provenance.read_text(encoding="utf-8"))
-    if meta.get("model") != args.model:
-        cli.error("Image embedding model differs from text model; regenerate both using identical weights")
-    if meta.get("items") != len(images):
-        cli.error("Image embedding provenance item count does not match supplied data")
+    try:
+        verify_provenance(meta, args.model, images)
+    except ValueError as exc:
+        cli.error(str(exc))
     try:
         import torch
         from transformers import CLIPModel, CLIPProcessor
