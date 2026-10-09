@@ -185,3 +185,61 @@ Diseñar tests disjoint por prenda, outfit y, cuando sea posible, fuente/usuario
 | Color complementario | controlar saturación y superficie vs aprobar por teoría del círculo cromático |
 
 **Entregables antes de cambiar el motor:** matriz de errores por ocasión/estilo, etiqueta de confianza por atributo, mecanismo de explicación y búsqueda de sustitución, test ciego congelado y baseline contra los datos actuales. Ninguna métrica aislada certifica criterio humano.
+
+
+## 17. Tercera ronda contrastada: explicaciones verificables y compatibilidad por atributos
+
+**Hallazgo de investigación 2024:** *Deciphering Compatibility Relationships with Textual Descriptions via Extraction and Explanation* (AAAI 2024) publicó Pair Fashion Explanation (PFE), un recurso centrado en explicar relaciones de compatibilidad entre prendas, y un procedimiento en dos etapas para generar explicaciones más informativas. Artículo: https://ojs.aaai.org/index.php/AAAI/article/view/28764 ; código/datos: https://github.com/wangyu-ustc/PairFashionExplanation .
+
+**Hallazgo de investigación 2024:** *Explainable Fashion Compatibility Prediction: An Attribute-Augmented Neural Framework* (Electronic Commerce Research and Applications, 2024) propone modelar interacciones **a nivel de atributos** utilizando imagen más metadatos, no una sola representación global de prenda. https://www.sciencedirect.com/science/article/abs/pii/S1567422324000966
+
+**Implicación para Atelier:** diseñar un evaluador de compatibilidad que devuelva señales estructuradas comprobables, no solo un score opaco:
+
+```json
+{
+  "compatibility": 0.0,
+  "confidence": 0.0,
+  "evidence": [
+    {"kind":"color_balance","garmentIds":["a","b"],"effect":"positive","confidence":0.8},
+    {"kind":"occasion_formality","garmentIds":["c"],"effect":"negative","confidence":0.9}
+  ],
+  "proposedSwap": {"removeId":"c","replaceId":"d","expectedBenefit":"occasion_fit"}
+}
+```
+
+Solo un **contrato hipotético para experimentación**: no introducir scores ni porcentajes de confianza inventados en la interfaz. Para mostrar “estilísticamente favorecedor”, la señal deberá estar apoyada en atributos reales; una explicación plausible pero falsa perjudica la confianza. No generar explicaciones con un modelo costoso si la razón ya sale del motor local.
+
+## 18. El problema de la evaluación y el riesgo de sobreajuste
+
+Revisión académica: Selwon y Szymański, *A Review of Explainable Fashion Compatibility Modeling Methods*, ACM Computing Surveys 2024, examina reproducibilidad, interpretabilidad, sesgos en datasets y sostenibilidad de sistemas de recomendación de moda. https://doi.org/10.1145/3664614
+
+Otra revisión extensa, *Computational Technologies for Fashion Recommendation: A Survey*, ACM Computing Surveys 2024, separa las tareas de recomendación de prendas, compatibilidad, conjuntos completos y personalización, y subraya diferencias entre estudios y necesidades reales. https://doi.org/10.1145/3627100
+
+**Crítico:** Polyvore nondisjoint permite reutilizar prendas entre train/test; Polyvore disjoint separa prendas, por lo que es más exigente para generalizar a un armario que no aparecía en entrenamiento. Referencia de implementación con descripción de las particiones: https://github.com/open-mmlab/mmfashion/blob/master/docs/dataset/FASHION_COMPATIBILITY_DATASET.md ; ficha del dataset original: https://mariya.fyi/polyvore .
+
+El repositorio Runway publica un ejemplo ilustrativo: reportó una AUC muy inflada al incluir conexiones del test en el grafo y la corrigió con embeddings inductivos sin contexto del test. Sus números son autodeclarados, no una evaluación independiente. https://github.com/NeilP211/runway
+
+**Protocolo recomendado:** usar partición de desarrollo para calibración y congelar otra de test; evitar fugas por foto, prenda, outfit, usuario, variantes de prendas duplicadas o misma fuente fotográfica; reportar intervalos de incertidumbre (bootstrap por outfit/armario, no por prendas dependientes). No decir “supera a una estilista” sin evaluación humana profesional y diseño de comparación apropiado.
+
+## 19. De un solo juez a preferencias fiables
+
+El banco A/B de Claude es un excelente **conjunto inicial de hipótesis**, no un patrón oro infalible. Un juez que crea ejemplos también puede construirlos de forma que favorezcan las reglas que ya conoce.
+
+Recomendación para interfaz de evaluación humana:
+1. Mostrar dos looks en orden aleatorio, misma ocasión, temperatura y perfil de estilo, sin puntuaciones ni textos explicativos que revelen la respuesta esperada.
+2. Respuestas: prefiero A, prefiero B, ambos funcionan, ninguno funciona, información insuficiente.
+3. Pedir motivo opcional normalizado: ocasión, proporciones, color, textura, estampado, calzado, comodidad, identidad personal.
+4. Guardar votos agregados anónimos; separar acuerdo entre evaluadores y dificultad.
+5. No convertir desacuerdos en errores automáticamente: pueden reflejar estilos diferentes o un contexto mal especificado.
+
+**Métricas**: accuracy A/B en casos con acuerdo claro, tasa de empatados, acuerdo interevaluador, peor resultado por ocasión, diversidad de estilos, rendimiento en armarios pequeños, latencia, coste y calidad factual de las explicaciones.
+
+## 20. Priorización técnica propuesta
+
+- **P0: etiquetas y ejemplos de calidad**. Verificar que las causas de error de las pruebas sean correctas y no preferencias subjetivas disfrazadas de normas.
+- **P1: trazabilidad de señales**. Conocer por qué un look sube o baja para localizar dobles penalizaciones y conflictos de contexto.
+- **P2: reranking contextual**. Aplicar atributos a nivel de conjunto y condiciones del usuario, comparando contra el motor actual con tests cegados.
+- **P3: sustitución óptima de una pieza**. Optimizar una sustitución local y explicar la razón con señales verificables.
+- **P4: representación visual aprendida**. Solo si P0-P3 muestran límites cuantificados y la nueva opción supera un baseline simple a coste aceptable.
+
+**Principio final:** primero enseñanza de buenas decisiones y medición de calidad humana; luego, si aporta valor, complejidad neuronal. La prioridad no es maximizar una puntuación interna sino mejorar la experiencia de vestir con prendas ya disponibles.
