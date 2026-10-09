@@ -137,6 +137,25 @@ try{
  assert.equal(principalDiversity.count,2,"Deben existir dos propuestas para el armario equilibrado");
  assert.equal(principalDiversity.shared,0,
   "Dos propuestas equivalentes deben cambiar tanto la camiseta como el pantalón");
+ // Combina una prenda: mantener la pieza obligatoria y variar las otras.
+ const fixedGarmentLooks=await page.evaluate(()=>{
+  const pool=[
+   {id:"req-top",name:"Camisa elegida",category:"Arriba",color:"Blanco",style:"casual"},
+   {id:"req-bottom-a",name:"Pantalón A",category:"Abajo",color:"Negro",style:"casual"},
+   {id:"req-bottom-b",name:"Pantalón B",category:"Abajo",color:"Beige",style:"casual"},
+   {id:"req-bottom-c",name:"Pantalón C",category:"Abajo",color:"Azul",style:"casual"}
+  ];
+  // rankOutfits resuelve la prenda obligatoria desde el armario del perfil.
+  const original=appState.data.garments;
+  try{
+   appState.data.garments=pool;
+   const looks=rankOutfits({pool,required:"req-top",occasion:null,temp:22,extras:{shoes:false,bag:false},max:3,avoid:new Set()});
+   return {count:looks.length,hasRequired:looks.every(l=>l.ids.includes("req-top")),bottoms:looks.map(l=>l.garments.find(g=>g.category==="Abajo")?.id)};
+  }finally{appState.data.garments=original}
+ });
+ assert.equal(fixedGarmentLooks.count,3,"Deben ofrecerse tres looks con la prenda elegida");
+ assert.ok(fixedGarmentLooks.hasRequired,"La prenda seleccionada no debe desaparecer");
+ assert.equal(new Set(fixedGarmentLooks.bottoms).size,3,"Variar pantalón sin cambiar la prenda obligatoria");
  await page.locator(".daily-look").waitFor(); // «Tu look de hoy» nada más entrar
  assert.equal(await page.locator("#app").isVisible(),true);
  assert.equal(await page.locator("#auth").isVisible(),false);
