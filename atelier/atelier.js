@@ -1524,6 +1524,47 @@ function thermalOk(g,temp){
  if(g.category==="Abajo")return !(temp<14&&t<=1)&&!(temp>=28&&t>=5);
  return true;
 }
+/* Aislamiento térmico (clo) por prenda, aproximado a las tablas ISO 9920 / ASHRAE 55 (camiseta 0,08; camisa larga 0,25;
+   pantalón 0,15–0,24; abrigo 0,36–0,48). Usa manga, largo, grosor y tejido de la ficha; sin datos, el tipo o el nombre. */
+function cloOf(g){
+ const txt=textOf(g),fab=g.fabric||"";
+ const th=({ligero:-1,medio:0,grueso:1}[g.thickness]??(/grueso|chunky|borrego|sherpa|forrad|acolchad/i.test(txt)?1:/\bfin[oa]\b|liger|gasa|chiffon/i.test(txt)?-1:0)) // el tejido se suma siempre (revisión de Codex, #127)
+  +(["wool"].includes(fab)||/\blana\b|wool|cashmere|cachemir/i.test(txt)?.5:0)-(fab==="linen"||/\blino\b|linen/i.test(txt)?.5:0);
+ const w=(lo,mid,hi)=>th<0?mid+(lo-mid)*Math.min(1,-th):mid+(hi-mid)*Math.min(1,th);
+ const SLEEVELESS=/tirantes|sin mangas|sleeveless|\btank\b|palabra de honor|strapless|halter/i;
+ if(g.category==="Arriba"){
+  const s=g.sleeve&&g.sleeve!=="no aplica"?g.sleeve:SLEEVELESS.test(txt)?"sin mangas":/jersey|su[eé]ter|sweater|sudadera|hoodie|manga larga|long sleeve|cuello alto|turtleneck|camisa|blusa|shirt/i.test(txt)?"larga":"corta";
+  const knit=fab==="knit"||/jersey|su[eé]ter|sweater|sudadera|hoodie|c[aá]rdigan|punto/i.test(txt);
+  return s==="sin mangas"?w(.05,.08,.12):s==="corta"?w(.08,.14,.19):s==="tres cuartos"?w(.17,.21,.26):knit?w(.25,.3,.37):w(.2,.25,.34);
+ }
+ if(g.category==="Abajo"){
+  if(g.length==="cropped"||/\bshorts?\b|bermuda|minifalda|mini skirt/i.test(txt))return .07;
+  if(/falda|skirt/i.test(txt))return g.length==="long"||/larga|maxi/i.test(txt)?w(.17,.22,.28):g.length==="midi"||/midi/i.test(txt)?w(.14,.18,.23):w(.11,.14,.2);
+  return w(.15,.2,.25)+(fab==="denim"||/vaquer|jean/i.test(txt)?.02:0);
+ }
+ if(g.category==="Vestidos"){
+  const s=g.sleeve&&g.sleeve!=="no aplica"?g.sleeve:SLEEVELESS.test(txt)?"sin mangas":/manga larga|long sleeve/i.test(txt)?"larga":"corta";
+  const base={"sin mangas":.2,"corta":.26,"tres cuartos":.3,"larga":.33}[s]??.26;
+  return Math.max(.12,w(base-.06,base,base+.12)+(g.length==="long"||/largo|maxi|\blong\b/i.test(txt)?.05:g.length==="cropped"||/corto|mini/i.test(txt)?-.04:0)+(/\bmono\b|jumpsuit/i.test(txt)?.03:0));
+ }
+ if(g.category==="Capas"){
+  if(/chaleco|\bvest\b|gilet/i.test(txt))return w(.1,.13,.2);
+  if(/plum[ií]fero|plumas|puffer|\bdown\b|parka/i.test(txt))return w(.5,.6,.7);
+  if(/gabardina|trench|chubasquero|impermeable|cortavientos/i.test(txt))return w(.3,.36,.42);
+  if(/abrigo|\bcoat\b|trenca|pea ?coat/i.test(txt))return w(.38,.46,.55);
+  if(/c[aá]rdigan|cardigan|rebeca|kimono|sobrecamisa|overshirt/i.test(txt))return w(.18,.24,.32);
+  if(/blazer|americana|chaqueta|jacket|cazadora|bomber|cuero|leather|vaquera|denim/i.test(txt))return w(.25,.32,.4);
+  return {bajo:.24,medio:.34,alto:.5}[g.warmth]??w(.25,.33,.45);
+ }
+ if(g.category==="Zapatos")return /sandal|chancl|flip.?flop|alpargat|slides?/i.test(txt)?.01:/bot[ií]n|botines|ankle boot/i.test(txt)?.06:/\bbotas?\b|\bboots?\b/i.test(txt)?.1:.03;
+ if(g.category==="Accesorios")return /bufanda|scarf|fular|pashmina|foulard/i.test(txt)?.05:/gorro|beanie/i.test(txt)?.03:/guantes|gloves/i.test(txt)?.02:0;
+ return 0;
+}
+/* Abrigo del look completo (suma de prendas + ropa interior, ISO 9920) y lo que pide la temperatura exterior:
+   1,35 clo a 5 °C → 0,3 clo a 28 °C (calibrado con looks de calle típicos: abrigo+jersey+pantalón+botas ≈ 1,1–1,2 a 8 °C;
+   camisa+vaqueros+chaqueta ≈ 0,85 a 17 °C; camiseta+shorts ≈ 0,2–0,3 a 28 °C) */
+const outfitClo=gs=>.04+gs.reduce((t,g)=>t+cloOf(g),0);
+const cloTarget=temp=>Math.max(.3,Math.min(1.6,1.35-(temp-5)*.045));
 /* Ocasión: si la prenda tiene ocasiones, manda eso; si no, su estilo. Casa y Baño solo en su ocasión. */
 /* Trabajo y eventos: fuera shorts, chanclas, sandalias planas, zuecos, gorras y gorros (evaluación visual #99) */
 const WORK_NO=/\bshorts?\b|chancl|sandalia|zueco|gorra|gorro|beanie|crop top|ch[aá]ndal|mallas|pantal[oó]n deportivo|camiseta t[eé]cnica|\brot[oa]s?\b|lavad[oa]s? (al )?[aá]cido|desgastad|deshilachad|distress|ripped|acid.?wash|destroyed/i; // rotos o lavado ácido: no para el trabajo (evaluación Polyvore)
@@ -1618,6 +1659,10 @@ function scoreOutfit(gs,ctx){
  const rule=layerRule(ctx.temp),layer=gs.find(g=>g.category==="Capas");let context=.8;
  if(rule.need&&!layer){context-=.4;warnings.push("Hace frío y no hay abrigo que combine")}
  if(layer&&rule.need)reasons.push("Abrigo para "+ctx.temp+" °C");else if(layer&&rule.max>=0)reasons.push("Capa ligera para "+ctx.temp+" °C");
+ // Abrigo del conjunto (clo) frente a lo que pide la temperatura: penaliza de forma gradual quedarse corto o pasarse (en casa o en bañador, no)
+ if(Number.isFinite(ctx.temp)&&big.length&&ctx.occasion!=="home"&&!gs.some(g=>["Casa","Baño"].includes(g.category))){const d=outfitClo(gs)-cloTarget(ctx.temp),tol=["party","event","formal"].includes(ctx.occasion)?.45:.3;
+  if(d<-tol){context-=Math.min(.45,(-d-tol)*1.2);if(d<-tol-.12&&!warnings.length)warnings.push("Puede que pases frío con "+ctx.temp+" °C")}
+  else if(d>tol+.05){context-=Math.min(.3,(d-tol-.05));if(d>tol+.2)warnings.push("Quizá demasiado abrigo para "+ctx.temp+" °C")}}
  if(ctx.extras.shoes&&!gs.some(g=>g.category==="Zapatos")){context-=.25;warnings.push("No hay calzado que combine")}
  if(ctx.occasion&&gs.every(g=>occasionFits(g,ctx.occasion)))context+=.2;
  // Personal (10): favoritas, olvidadas, usado hace poco, Tus gustos
