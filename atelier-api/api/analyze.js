@@ -23,11 +23,6 @@ export default async function handler(req, res) {
   if (!process.env.OPENAI_API_KEY) {
     return res.status(503).json({ error: "Atelier AI aún no tiene configurada la clave de OpenAI." });
   }
-  // Límite diario por perfil en el servidor (el del móvil no basta: hay varios dispositivos)
-  try {
-    const q = await dailyQuota(session.sub, "analyze", 40);
-    if (!q.ok) return res.status(429).json({ error: "Has llegado al límite de 40 análisis de hoy. Mañana podrás seguir." });
-  } catch (e) { console.error("QUOTA", e.message); }
 
   try {
     const { image } = req.body || {};
@@ -37,6 +32,11 @@ export default async function handler(req, res) {
     if (image.length > 8_000_000) {
       return res.status(413).json({ error: "La imagen es demasiado grande. Haz una foto con menor resolución." });
     }
+    // Límite diario por perfil en el servidor, contado solo para peticiones válidas
+    try {
+      const q = await dailyQuota(session.sub, "analyze", 40);
+      if (!q.ok) return res.status(429).json({ error: "Has llegado al límite de 40 análisis de hoy. Mañana podrás seguir." });
+    } catch (e) { console.error("QUOTA", e.message); }
 
     const prompt = [
       "Cataloga la prenda de la foto. No inventes marca ni detalles no visibles; usa null si dudas.",

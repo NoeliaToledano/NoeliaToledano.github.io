@@ -87,7 +87,7 @@ for(const n of [20,100,500]){
   coldWarmest:cold.every(l=>{const c=l.garments.find(g=>g.category==="Capas");return !c||c.warmth==="alto"}),
   shoesDistinct:new Set(warm.map(l=>l.garments.find(g=>g.category==="Zapatos")?.id).filter(Boolean)).size,
   baseOverlap:warm.some((a,i)=>warm.some((b,j)=>j>i&&big(a).some(id=>big(b).includes(id)))),
-  workSport:work.some(l=>l.garments.some(g=>g.style==="sport")),
+  workSport:work.some(l=>l.garments.some(g=>g.style==="sport"&&g.category!=="Zapatos")),
   dresses:rankOutfits({max:40}).filter(l=>l.garments.some(g=>g.category==="Vestidos")).length,
   required:around.every(l=>l.ids.includes(req.id)),
   reasons:warm.every(l=>Array.isArray(l.reasons)),
@@ -101,9 +101,50 @@ for(const [n,r] of Object.entries(engineProbe)){
  if(n!=="20")assert.ok(r.coldWarmest,n+": con frío, la capa que más abriga");
  assert.ok(r.shoesDistinct>=2,n+": calzado variado entre las 3 propuestas");
  assert.ok(!r.baseOverlap,n+": las 3 propuestas no repiten prendas principales");
- assert.ok(!r.workSport,n+": «Trabajo» no propone ropa de deporte");
+ assert.ok(!r.workSport,n+": «Trabajo» no propone ropa de deporte (las deportivas sí, como smart casual)");
  assert.ok(r.dresses>=1,n+": los vestidos aparecen");
  assert.ok(r.required&&r.reasons&&r.dup,n+": prenda obligatoria, motivos y sin duplicados");
  assert.ok(r.ms<1500,n+": rankOutfits en "+r.ms+" ms");
 }
 console.log("PASS: Styling engine (20/100/500 prendas): capas según tiempo, variedad, ocasión, vestidos — tiempos "+Object.entries(engineProbe).map(([n,r])=>n+":"+r.ms+"ms").join(" "));
+
+// Estilos flexibles (#52): deportivas + vaqueros + americana sí; mallas + sudadera en informal; nada de gimnasio en boda ni con vestido de fiesta
+const styleProbe=new Function("document","sessionStorage","crypto",src+`
+const G=(id,category,color,style,extra={})=>({id,name:id,category,color,style,season:"all",pattern:"plain",createdAt:"2026-10-01",updatedAt:"x",...extra});
+appState.profile={id:"noelia"};appState.data=emptyData();
+const W=appState.data.garments=[G("camiseta","Arriba","Blanco","casual"),G("vaquero","Abajo","Vaquero","casual"),G("deportivas","Zapatos","Blanco","sport"),
+ G("americana","Capas","Negro","smart",{warmth:"bajo"}),G("mocasines","Zapatos","Marrón","smart"),G("vestido-fiesta","Vestidos","Negro","party"),
+ G("mallas","Abajo","Negro","sport"),G("sudadera","Arriba","Gris","sport"),G("tacones","Zapatos","Negro","party"),G("pantalon-traje","Abajo","Negro","smart"),G("blusa","Arriba","Blanco","smart")];
+const by=id=>W.find(g=>g.id===id),P=appState.data.preferences;P.temperature=18;
+const ctx=d=>engineContext({occasion:"daily",dress:d});
+const smartCasual=scoreOutfit([by("camiseta"),by("vaquero"),by("deportivas"),by("americana")],ctx("arreglada"));
+P.dressStyle="informal";const informal=rankOutfits({max:6,occasion:"daily"});
+P.dressStyle=null;const wedding=rankOutfits({max:5,occasion:"formal"});
+return {smartCasual:smartCasual.score,smartReasons:smartCasual.reasons,completes:completeOutfit([by("camiseta"),by("vaquero")],W,ctx("arreglada")).map(g=>g.id),
+ sportParty:pairs(by("mallas"),by("vestido-fiesta"))||stylesOk(by("sudadera"),by("vestido-fiesta")),sportCasual:pairs(by("sudadera"),by("vaquero")),
+ informalSport:informal.some(l=>l.ids.includes("mallas")&&l.ids.includes("sudadera")),
+ weddingSport:wedding.some(l=>l.garments.some(g=>g.style==="sport")),weddingCount:wedding.length,
+ dressParty:rankOutfits({max:20,occasion:null}).some(l=>l.ids.includes("vestido-fiesta")&&l.garments.some(g=>g.style==="sport"&&g.category!=="Zapatos"))};
+`)(document,sessionStorage,{randomUUID:()=>"test"});
+assert.ok(styleProbe.smartCasual>=60,"Deportivas + vaqueros + americana debe puntuar bien en «arreglada» ("+styleProbe.smartCasual+")");
+assert.ok(styleProbe.smartReasons.some(r=>/deportivas/i.test(r)),"Explica la mezcla con deportivas");
+assert.ok(!styleProbe.sportParty,"Ropa de deporte con vestido de fiesta: no");
+assert.ok(styleProbe.sportCasual,"Sudadera deportiva con vaqueros: sí");
+assert.ok(styleProbe.informalSport,"En «informal» se proponen mallas + sudadera");
+assert.ok(!styleProbe.weddingSport&&styleProbe.weddingCount>=1,"Ocasión formal: sin ropa de gimnasio");
+assert.ok(!styleProbe.dressParty,"El vestido de fiesta nunca con prendas deportivas");
+console.log("PASS: Flexible styles (#52): athleisure, sport+casual, no gym clothes at formal events");
+
+// Revisiones de Codex: planes antiguos con id aleatorio → uno por día; ocasión sin prendas → sin looks inventados
+const codexProbe=new Function("document","sessionStorage","crypto",src+`
+const legacy=normalizeData({plans:[{id:"a1",date:"2026-10-10",garmentIds:["x"],updatedAt:"2026-10-01"},{id:"b2",date:"2026-10-10",garmentIds:["y"],updatedAt:"2026-10-02"},{id:"plan:2026-10-11",date:"2026-10-11",garmentIds:["z"],updatedAt:"x"}]});
+const merged=mergeData(normalizeData({plans:[{id:"c3",date:"2026-10-12",garmentIds:["p"],updatedAt:"2026-10-05"}]}),{plans:[{id:"d4",date:"2026-10-12",garmentIds:["q"],updatedAt:"2026-10-06"}]});
+appState.profile={id:"noelia"};appState.data=emptyData();
+appState.data.garments=[{id:"t",category:"Arriba",color:"Blanco",style:"casual"},{id:"b",category:"Abajo",color:"Negro",style:"casual"}];
+return {legacy:legacy.plans.map(p=>p.id+"="+p.garmentIds[0]).sort().join(","),merged:merged.plans.map(p=>p.id+"="+p.garmentIds[0]).join(","),formal:rankOutfits({occasion:"formal",max:3}).length,daily:rankOutfits({occasion:"daily",max:3}).length};
+`)(document,sessionStorage,{randomUUID:()=>"test"});
+assert.equal(codexProbe.legacy,"plan:2026-10-10=y,plan:2026-10-11=z","Planes antiguos: un plan por día, gana el más reciente");
+assert.equal(codexProbe.merged,"plan:2026-10-12=q","Fusión: dos planes del mismo día de dos móviles → uno");
+assert.equal(codexProbe.formal,0,"Ocasión formal sin prendas formales: no se inventan looks informales");
+assert.ok(codexProbe.daily>=1);
+console.log("PASS: Codex review fixes: legacy plan ids, same-day plans, strict occasion filter");

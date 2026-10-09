@@ -15,7 +15,6 @@ export default async function handler(req,res){
   const session=verifySession(req);
   if(!session) return res.status(401).json({error:"Sesión no válida o caducada."});
   if(!process.env.OPENAI_API_KEY) return res.status(503).json({error:"Atelier AI aún no está configurado."});
-  try{const q=await dailyQuota(session.sub,"looks",20);if(!q.ok)return res.status(429).json({error:"Has llegado al límite de 20 sugerencias de hoy. Mañana podrás seguir."})}catch(e){console.error("QUOTA",e.message)}
 
   // Todo lo que entra en el prompt se valida y se recorta (coste y seguridad)
   const body=req.body||{}, short=(v,n)=>String(v??"").replace(/[\u0000-\u001f]/g," ").slice(0,n);
@@ -24,6 +23,8 @@ export default async function handler(req,res){
   body.occasion=OCC.has(body.occasion)?body.occasion:"libre";body.season=SEASON.has(body.season)?body.season:"cualquiera";
   body.weather=/^-?\d{1,2}(\.\d)? °C$/.test(String(body.weather||""))?body.weather:"25 °C";
   if(items.length<2) return res.status(400).json({error:"No hay suficientes prendas candidatas."});
+  // Se cuenta solo si la petición es válida
+  try{const q=await dailyQuota(session.sub,"looks",20);if(!q.ok)return res.status(429).json({error:"Has llegado al límite de 20 sugerencias de hoy. Mañana podrás seguir."})}catch(e){console.error("QUOTA",e.message)}
   const ids=new Set(items.map(x=>String(x.i)));
   const need=Math.max(1,Math.min(5,Number(body.need)||3));
   const taste=v=>(Array.isArray(v)?v:[]).slice(0,6).map(l=>(Array.isArray(l)?l:[]).map(String).filter(id=>ids.has(id)).slice(0,6)).filter(l=>l.length>=2);
