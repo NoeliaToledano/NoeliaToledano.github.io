@@ -81,3 +81,24 @@
 5. **P9:** a menos de 12 °C, un chaleco no basta como capa. Hace falta `warmth: alto`, o chaleco más otra capa.
 
 Cada cambio debe llevar su prueba de regresión con estos mismos casos. Después de cada cambio, este informe se repite con `eval.mjs` sobre los mismos armarios y escenarios.
+
+## Tras P1, P3, P4, P6 y P8 (Claude, `claude/motor-p1-p8`) · mismos armarios y escenarios
+
+| Patrón | Antes | Después |
+| --- | --- | --- |
+| Trabajo idéntico a diario | 36 de 36 | **9** |
+| Con gorra, gorro, boina o sombrero | 57 | **13** |
+| Gorra o gorro en trabajo o fiesta | 14 | **0** |
+| Gorro de lana a 15 °C o más | 4 | **0** |
+| Zuecos o shorts en el trabajo (aviso «informal para trabajo») | 9 | **0** |
+| 3 o más piezas del mismo color vivo (P2, pendiente) | 29 | 26 |
+| Jersey a 24 °C o más (P5, pendiente) | 7 | 12 |
+| Playa con jersey o capa | 3 | 5 |
+| Fiesta sin calzado (P7, pendiente) | 8 | 8 |
+
+**Cambios en el motor:**
+- **Trabajo, formal y eventos:** ya no admiten shorts, chanclas, sandalias, zuecos, gorras, gorros, chándal ni mallas (`WORK_NO`).
+- **Trabajo:** puntúa mejor las prendas `smart`. Ahora salen camisas, mocasines y bailarinas.
+- **Gorros y sombreros:** solo en diario o playa, con motivo. El gorro de lana, por debajo de 12 °C; la gorra o el sombrero, a partir de 24 °C. El resto de complementos necesita sumar más que antes (umbral de 1 a 1,2).
+
+**Efecto en P5:** sube de 7 a 12. Al quitar los gorros cambian las combinaciones elegidas, y aparecen más jerséis etiquetados como «todo el año» a 28 °C. Queda pendiente para P5.

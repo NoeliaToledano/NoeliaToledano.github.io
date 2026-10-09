@@ -358,3 +358,25 @@ console.log("PASS: S6 long-offline devices don't resurrect deletions");
   console.log("PASS: Visual look benchmark harness generated "+report.looks.length+" reviewed-ready outfits");
  }finally{try{fs.unlinkSync(resultFile)}catch{}}
 }
+
+// Evaluación visual #99: trabajo sin prendas informales ni gorras; gorros y sombreros solo con motivo
+{
+  const probe=new Function("document","sessionStorage","crypto",src+`
+  const G=(id,category,type,color,style="casual",season="all",extra={})=>({id,name:type+" "+color,category,type,color,style,season,updatedAt:"x",...extra});
+  appState.profile={id:"noelia"};appState.data=normalizeData({garments:[
+   G("t1","Arriba","Camiseta","Blanco"),G("t2","Arriba","Camisa","Azul","smart"),G("b1","Abajo","Shorts","Vaquero","casual","warm"),G("b2","Abajo","Pantalón","Negro","smart"),
+   G("z1","Zapatos","Zuecos","Verde","casual","warm"),G("z2","Zapatos","Mocasines","Marrón","smart"),G("z3","Zapatos","Sandalias","Beige","casual","warm"),
+   G("c1","Capas","Abrigo","Negro","casual","cold",{warmth:"alto"}),
+   G("h1","Accesorios","Gorro","Gris","casual","cold"),G("h2","Accesorios","Gorra","Negro"),G("h3","Accesorios","Sombrero","Beige","casual","warm")]});
+  const ids=o=>rankOutfits(o).map(r=>r.ids);
+  const work=[...ids({max:3,occasion:"work",date:"2026-07-15",temp:28}),...ids({max:3,occasion:"work",date:"2026-01-15",temp:8})].flat();
+  const daily28=ids({max:3,occasion:"daily",date:"2026-07-15",temp:28}).flat(),daily17=ids({max:3,occasion:"daily",date:"2026-04-15",temp:17}).flat(),daily6=ids({max:3,occasion:"daily",date:"2026-01-15",temp:6}).flat();
+  return {work,daily28,daily17,daily6};`);
+  const r=probe(document,sessionStorage,{randomUUID:()=>"t"});
+  for(const id of ["b1","z1","z3","h1","h2","h3"])assert.ok(!r.work.includes(id),"Trabajo sin "+id);
+  assert.ok(r.work.includes("z2"),"Trabajo con mocasines");
+  assert.ok(!r.daily17.some(id=>["h1","h2","h3"].includes(id)),"A 17 °C, sin gorros ni sombreros");
+  assert.ok(!r.daily28.includes("h1"),"Gorro de lana nunca con calor");
+  assert.ok(r.daily6.every(id=>!["h2","h3"].includes(id)),"Con frío, sin gorra ni sombrero");
+  console.log("PASS: #99 work looks without casual pieces; headwear only when it makes sense");
+}
