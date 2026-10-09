@@ -19,11 +19,11 @@ Registrar por cada propuesta: ID reproducible, armario, ocasión, temperatura, p
 **Fallos automáticos bloqueantes:**
 - base inválida (falta arriba+abajo o vestido/mono);
 - combinaciones imposibles por clima u ocasión (por ejemplo, gorro de invierno y chanclas);
-- categorías redundantes o un accesorio impuesto que perjudica la coherencia;
+- categorías duplicadas de forma objetivamente inválida (por ejemplo, dos pares de zapatos cuando solo se permite uno);
 - mismo look repetido con cambios triviales;
 - prenda obligatoria omitida.
 
-**Fallos que exigen revisión humana:** silueta, mezcla de estilos, formalidad, proporciones, combinación estética de estampados y elección de complementos. Una puntuación matemática alta **no** prueba que sea un buen outfit.
+**Fallos que exigen revisión humana:** silueta, mezcla de estilos, formalidad, proporciones, combinación estética de estampados, accesorios que restan coherencia y elección de complementos. Una puntuación matemática alta **no** prueba que sea un buen outfit.
 
 ## Métricas
 - Tasa de looks técnicamente válidos, separados por estación y ocasión.
@@ -50,3 +50,6 @@ python atelier/benchmarks/render_looks.py ./look-benchmark/looks.json
 El primer comando descarga un **catálogo fotográfico candidato**; las etiquetas inferidas por palabras necesitan corrección humana antes de interpretar los resultados. El segundo ejecuta el motor local en 72 escenarios (cuatro tamaños de armario, tres temperaturas y seis ocasiones) y conserva la puntuación y alertas de cada look. El tercero crea `review.html` para ver las prendas juntas y `review.csv` para anotar las valoraciones.
 
 No subir a GitHub los directorios de fotografías, reportes o valoraciones; respetar condiciones de uso de las imágenes de origen. El test automático en CI utiliza 21 prendas de ejemplo para verificar el funcionamiento de este flujo, **no equivale a haber revisado 1.000 imágenes**.
+
+## Reproducibilidad de propuestas IA
+La evaluación offline del motor local es reproducible mediante la versión de código y las entradas. La generación remota con IA no lo es necesariamente. Para comparar resultados de IA, anotar el nombre y versión real del modelo, el prompt y parámetros de la petición, un identificador de ejecución, la fecha y las respuestas completas de las sugerencias. Conservar estos registros localmente y sin imágenes personales ni secretos; repetir varias ejecuciones por escenario y comparar distribuciones, no asumir que una sola respuesta es determinista. No mezclar la tasa de éxito del motor local con la de IA.
