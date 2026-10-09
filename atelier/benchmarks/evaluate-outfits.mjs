@@ -19,7 +19,7 @@ appState.profile={id:"offline-benchmark"};
 appState.data=emptyData();
 const categories=["Arriba","Abajo","Vestidos","Capas","Zapatos","Bolsos","Accesorios"];
 const groups=new Map(categories.map(c=>[c,[]]));
-for(const item of input){const a=groups.get(item.category);if(a)a.push({...item,style:item.style||"casual",season:item.season||"all",color:item.color||"Negro"})}
+for(const item of input){const a=groups.get(item.category);if(a)a.push({...item,style:item.style||"",season:item.season||"all",color:item.color||""})}
 const sizes=[20,100,500,1000],result=[],totals=[];
 for(const size of sizes){
  const wardrobe=[],offset=new Map(categories.map(c=>[c,0]));
@@ -41,6 +41,7 @@ for(const size of sizes){
    const hats=gs.filter(g=>/gorro|beanie|pasamonta|balaclava/i.test(g.name||""));
    const summer=shoes.some(g=>/chancl|flip.flop|sandali?as?/i.test(g.name||""));
    const flags=[];
+   if(gs.some(g=>!g.color||!g.style))flags.push("unreviewed_metadata");
    if(!lookComplete(gs))flags.push("incomplete_base");
    if(temp<19&&summer)flags.push("summer_shoes_in_cold");
    if(temp>=20&&hats.length)flags.push("winter_hat_in_heat");
