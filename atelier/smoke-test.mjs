@@ -34,28 +34,39 @@ try{
  await page.locator("#loginBtn").click();
  await page.getByRole("heading",{name:"Hoy",exact:true}).waitFor({timeout:6000}).catch(async e=>{console.log("LOGIN_DIAGNOSTIC",{error:await page.locator("#authError").textContent(),authVisible:await page.locator("#auth").isVisible(),appVisible:await page.locator("#app").isVisible(),browserErrors:errors});throw e});
 
- // Regresión visual del collage (1–7 prendas): todas las fotos deben permanecer
- // visibles y dentro de su tarjeta, con las piezas principales por delante.
- const collageAudit=await page.evaluate(()=>{
-  const img="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/pVYAAAAASUVORK5CYII=";
+ // Regresión de collages de 1–7 prendas en un navegador móvil:
+ // las fotos deben decodificar, no recortarse y conservar la jerarquía.
+ const collageAudit=await page.evaluate(async()=>{
+  const photo="data:image/svg+xml,"+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="60" height="120"><rect width="60" height="120" fill="navy"/></svg>');
   const categories=["Arriba","Capas","Abajo","Zapatos","Bolsos","Accesorios","Vestidos"];
-  const records=categories.map((category,i)=>({id:"audit-"+i,category,name:"Pieza "+i,image:img,bgWhite:i===0}));
-  const host=document.createElement("div");host.style.cssText="position:absolute;left:0;top:0;width:340px;visibility:hidden";document.body.append(host);
+  const pieces=categories.map((category,i)=>({id:"audit-"+i,name:"Pieza "+i,category,image:photo,bgWhite:i===0}));
+  // photoUrl solo acepta JPEG/PNG data URL: crear PNG rectangular con canvas.
+  const canvas=document.createElement("canvas");canvas.width=60;canvas.height=120;
+  const context=canvas.getContext("2d");context.fillStyle="#29374a";context.fillRect(0,0,60,120);
+  const png=canvas.toDataURL("image/png");pieces.forEach(item=>item.image=png);
+  const host=document.createElement("div");host.style.cssText="position:fixed;left:0;top:0;width:340px;opacity:.01;pointer-events:none;z-index:-1";document.body.append(host);
   const failures=[];
-  for(let count=1;count<=7;count++){
-   host.innerHTML=outfitBoard(records.slice(0,count));
-   const board=host.querySelector(".look-mixed-board"),cards=[...host.querySelectorAll(".look-mixed-item")];
-   if(!board||cards.length!==count||board.dataset.count!==String(count)){failures.push("Cantidad "+count);continue}
-   const outer=board.getBoundingClientRect();
-   for(const card of cards){
-    const rect=card.getBoundingClientRect();
-    if(rect.width<1||rect.height<1||rect.left<outer.left-1||rect.top<outer.top-1||rect.right>outer.right+1||rect.bottom>outer.bottom+1)failures.push("Tarjeta fuera de rejilla: "+count);
+  try{
+   for(let count=1;count<=7;count++){
+    host.innerHTML=outfitBoard(pieces.slice(0,count));
+    const board=host.querySelector(".look-mixed-board"),cards=[...host.querySelectorAll(".look-mixed-item")];
+    if(!board||cards.length!==count||board.dataset.count!==String(count)){failures.push("Cantidad "+count);continue}
+    const images=cards.map(card=>card.querySelector("img"));
+    images.forEach(img=>{if(img)img.loading="eager"});
+    await Promise.all(images.map(img=>img?.decode().catch(()=>{})||Promise.resolve()));
+    const outer=board.getBoundingClientRect(),areas=[];
+    for(let i=0;i<cards.length;i++){
+     const card=cards[i],rect=card.getBoundingClientRect(),img=images[i],photoRect=img?.getBoundingClientRect();
+     areas.push(rect.width*rect.height);
+     if(rect.width<1||rect.height<1||rect.left<outer.left-1||rect.top<outer.top-1||rect.right>outer.right+1||rect.bottom>outer.bottom+1)failures.push("Tarjeta fuera de rejilla: "+count+"/"+i);
+     if(!img||!img.complete||img.naturalWidth!==60||img.naturalHeight!==120||getComputedStyle(img).objectFit!=="contain"||!photoRect||photoRect.width<1||photoRect.height<1||photoRect.left<rect.left-1||photoRect.top<rect.top-1||photoRect.right>rect.right+1||photoRect.bottom>rect.bottom+1)failures.push("Foto recortada o sin cargar: "+count+"/"+i);
+    }
+    if(count>=2&&(images[0]?.alt!=="Pieza 0"||areas[0]<=Math.max(...areas.slice(1))))failures.push("Jerarquía protagonista: "+count);
    }
-   if(count>=2&&cards[0].querySelector("img")?.alt!=="Pieza 0")failures.push("La prenda principal no protagoniza "+count);
-  }
-  host.remove();return failures;
+  }finally{host.remove()}
+  return failures;
  });
- assert.deepEqual(collageAudit,[],"Collage de looks fuera de su rejilla u orden incorrecto");
+ assert.deepEqual(collageAudit,[],"Regresión de composición fotográfica de looks");
  await page.locator(".daily-look").waitFor(); // «Tu look de hoy» nada más entrar
  assert.equal(await page.locator("#app").isVisible(),true);
  assert.equal(await page.locator("#auth").isVisible(),false);
