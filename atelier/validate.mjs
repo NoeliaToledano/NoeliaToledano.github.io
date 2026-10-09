@@ -33,4 +33,4 @@ const api=new URL("../atelier-api/",import.meta.url);
 for(const f of ["_lib/auth.js","_lib/store.js",...fs.readdirSync(new URL("api/",api)).filter(f=>f.endsWith(".js")).map(f=>"api/"+f)]){
  try{execFileSync(process.execPath,["--check",new URL(f,api).pathname],{stdio:"pipe"})}catch(e){fail("atelier-api/"+f+": error de sintaxis\n"+String(e.stderr||e.message).split("\n").slice(0,4).join("\n"))}
 }
-console.log("Atelier release gate OK (app y backend)");
+// Regression checks for the offline external-model integration.\nfor(const test of ["benchmarks/real-photos/model-compare.test.mjs","benchmarks/real-photos/embeddings-to-pairs.test.mjs"]){\n try{execFileSync(process.execPath,[new URL("./"+test,import.meta.url).pathname],{stdio:"pipe"});}\n catch(e){fail(test+": benchmark regression\\n"+String(e.stderr||e.message).split("\\n").slice(0,8).join("\\n"));}\n}\nconsole.log("Atelier release gate OK (app y backend)");
