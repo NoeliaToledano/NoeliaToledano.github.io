@@ -55,9 +55,10 @@ export function createRelationCache({profileId,engineVersion,pairEvidence}){
   calculated++;
   return value;
  }
- function neighbors(id,{limit=20,filter=null}={}){
+ function neighbors(id,{limit=20,filter=null,rank=null}={}){
   if(!Number.isInteger(limit)||limit<1)throw Error("Invalid limit");
   if(filter!==null&&typeof filter!=="function")throw Error("Invalid filter");
+  if(rank!==null&&typeof rank!=="function")throw Error("Invalid rank");
   if(!items.has(id))return [];
   const out=[];
   for(const other of items.keys()){
@@ -66,7 +67,10 @@ export function createRelationCache({profileId,engineVersion,pairEvidence}){
    if(value===null||value===undefined||filter&&!filter(value,items.get(other)))continue;
    out.push({garmentId:other,evidence:value});
   }
-  return out.slice(0,limit); // Caller supplies context-aware sorting; do not fake ranking.
+  // Ranking depends on weather, occasion and personal preferences. Never cache it.
+  // Crucially, rank BEFORE applying the limit so insertion order cannot bury a good match.
+  if(rank)out.sort((a,b)=>rank(b.evidence,items.get(b.garmentId))-rank(a.evidence,items.get(a.garmentId)) || a.garmentId.localeCompare(b.garmentId));
+  return out.slice(0,limit);
  }
  return Object.freeze({profileId,engineVersion,reconcile,evidence,neighbors,
   stats:()=>({garments:items.size,edges:edges.size,calculated,reused}),
