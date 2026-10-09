@@ -1,7 +1,7 @@
 // Offline prototype of a per-profile wardrobe compatibility graph.
 // Scores are explainable heuristic estimates, NOT neural scores or proof of style.
 // A pair relationship is NOT a mandate to include both garments in a look.
-const UPPER=["Arriba","Vestidos"], LOWER=["Abajo"], SHOES=["Zapatos"], LAYERS=["Capas"];
+const UPPER=["Arriba"], LOWER=["Abajo"], SHOES=["Zapatos"], LAYERS=["Capas"];
 const BASE=new Set(["Negro","Blanco","Gris","Beige","Crema","Marrón","Azul marino","Denim"]);
 const MIX=new Set(["Rojo:Verde","Azul:Naranja","Amarillo:Morado"]);
 const norm=x=>String(x||"").trim().toLowerCase();
@@ -13,7 +13,7 @@ export function compatibleRoles(a,b){
  const x=a.category,y=b.category;
  if(x===y)return false; // different garment types do not imply simultaneous use.
  const is=(p,q)=>(p.includes(x)&&q.includes(y))||(p.includes(y)&&q.includes(x));
- return is(UPPER,LOWER)||is(UPPER,SHOES)||is(LOWER,SHOES)||
+ return is(UPPER,LOWER)||is(UPPER,SHOES)||is(LOWER,SHOES)||is(["Vestidos"],SHOES)||is(["Vestidos"],LAYERS)||
    is(LAYERS,UPPER)||is(LAYERS,LOWER)||is(LAYERS,SHOES)||
    (x==="Vestidos"&&(y==="Bolsos"||y==="Accesorios"))||
    (y==="Vestidos"&&(x==="Bolsos"||x==="Accesorios"))||
