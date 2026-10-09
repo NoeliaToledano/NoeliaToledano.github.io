@@ -1288,9 +1288,10 @@ function renderToday(root){
   '<label class="switch-line"><input id="prefAvoid" type="checkbox"'+(p.avoidRepeats?' checked':'')+'> Evitar repetir combinaciones recientes</label>'+
   '<button class="primary wide" id="suggestSmart">✦ Generar looks con mi ropa</button>'+
   '<p class="helper">Se envían solo los nombres y atributos de tus prendas, nunca las fotos. Sugerencias con IA hoy: '+u.looks+' de '+AI_LIMITS.looks+'.</p></details>'+
-  '<div class="actions"><button class="secondary" id="createManual">+ Crear look manual</button><button class="secondary" id="openCalendar">Calendario de uso</button></div>'+
-  '<div class="section-head"><h2>Rescata una prenda olvidada</h2></div>'+
-  (candidates.length?'<div class="insight-list">'+candidates.map(g=>'<button class="list-line link-line" data-rescue="'+fx(g.id)+'"><strong>'+fx(g.name)+'</strong><span class="muted">'+fx(plural(wornCount(g.id),"uso","usos"))+' · ver looks ›</span></button>').join("")+'</div>':'<div class="empty">No tienes prendas olvidadas. ¡Bien!</div>'));
+  '<details class="today-extra-tools"><summary>Más herramientas</summary><div class="today-extra-body">'+
+  '<div class="actions"><button class="secondary" id="createManual">Crear look manual</button><button class="secondary" id="openCalendar">Calendario de uso</button></div>'+
+  (candidates.length?'<div class="section-head"><h2>Prendas olvidadas</h2></div><div class="insight-list">'+candidates.map(g=>'<button class="list-line link-line" data-rescue="'+fx(g.id)+'"><strong>'+fx(g.name)+'</strong><span class="muted">'+fx(plural(wornCount(g.id),"uso","usos"))+' · ver looks ›</span></button>').join("")+'</div>':'')+
+  '</div></details>');
  $("#prefOccasion")?.addEventListener("change",e=>{const d=p.dailyLook;if(d&&!d.touched)d.date=null;setPref("occasion",e.target.value,true)});
  bindExtrasToggles(root,()=>{const d=p.dailyLook;if(d&&!d.touched)d.date=null;render()});
  bindDailyLook(root);
