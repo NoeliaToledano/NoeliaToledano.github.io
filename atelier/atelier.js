@@ -1889,7 +1889,7 @@ function scoreOutfit(gs,ctx){
  if(layer&&rule.need)reasons.push("Abrigo para "+ctx.temp+" °C");else if(layer&&rule.max>=0)reasons.push("Capa ligera para "+ctx.temp+" °C");
  // Abrigo del conjunto (clo) frente a lo que pide la temperatura: penaliza de forma gradual quedarse corto o pasarse (en casa o en bañador, no)
  if(Number.isFinite(ctx.temp)&&big.length&&ctx.occasion!=="home"&&!gs.some(g=>["Casa","Baño"].includes(g.category))){const d=outfitClo(gs)-cloTarget(ctx.temp),tol=["party","event","formal"].includes(ctx.occasion)?.45:.3;
-  if(d<-tol){context-=Math.min(.45,(-d-tol)*1.2);if(d<-tol-.12&&!warnings.length)warnings.push("Puede que pases frío con "+ctx.temp+" °C")}
+  if(d<-tol){context-=Math.min(.45,(-d-tol)*1.2);if(d<-tol-.12){if(rule.need)context-=.25; /* con frío de verdad (< 15 °C), quedarse corto es un fallo de función, no de gusto: pesa más que un detalle de estilo */if(!warnings.length)warnings.push("Puede que pases frío con "+ctx.temp+" °C")}}
   else if(d>tol+.05){context-=Math.min(.3,(d-tol-.05));if(d>tol+.2)warnings.push("Quizá demasiado abrigo para "+ctx.temp+" °C")}}
  if(ctx.extras.shoes&&!gs.some(g=>g.category==="Zapatos")){context-=.25;warnings.push("No hay calzado que combine")}
  if(ctx.occasion&&gs.every(g=>occasionFits(g,ctx.occasion)))context+=.2;
@@ -2047,7 +2047,8 @@ function completeOutfit(base,pool,ctx,used=new Map()){
  const first=completeOutfitGreedy(base,pool,ctx,used);
  if(!ctx.extras.shoes||base.some(g=>g.category==="Zapatos"))return first;
  const shoes=pool.filter(x=>x.category==="Zapatos"&&!base.includes(x)).slice(0,12);
- const need=layerRule(ctx.temp).need,core=l=>l.filter(g=>!["Bolsos","Accesorios"].includes(g.category)&&(need||g.category!=="Capas")).length; /* completo = calzado (y capa si hace frío); lo opcional no gana por sumar piezas */
+ const need=layerRule(ctx.temp).need,coldWithout=l=>scoreOutfit(l.filter(g=>g.category!=="Capas"),ctx).warnings.some(w=>/frío/.test(w));
+ const core=l=>l.filter(g=>!["Bolsos","Accesorios"].includes(g.category)&&(g.category!=="Capas"||need||coldWithout(l))).length; /* completo = calzado y capa si hace falta (frío o aviso de frío sin ella); lo opcional no gana por sumar piezas (revisión de Codex, #168) */
  let best=first;
  for(const z of shoes.filter(z=>!first.includes(z)).slice(0,2)){const alt=completeOutfitGreedy(base,pool,ctx,used,z);if(core(alt)>core(best)&&alt.includes(z))best=alt}
  return best;
