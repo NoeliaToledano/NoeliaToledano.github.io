@@ -38,4 +38,6 @@ for(const test of ["benchmarks/real-photos/model-compare.test.mjs","benchmarks/r
  try{execFileSync(process.execPath,[new URL("./"+test,import.meta.url).pathname],{stdio:"pipe"});}
  catch(e){fail(test+": benchmark regression\n"+String(e.stderr||e.message).split("\n").slice(0,8).join("\n"));}
 }
+try{execFileSync(process.execPath,[new URL("./benchmarks/styling-formulas.test.mjs",import.meta.url).pathname],{stdio:"pipe"});}
+catch(e){fail("Styling formulas regression: "+String(e.stderr||e.message));}
 console.log("Atelier release gate OK (app y backend)");
