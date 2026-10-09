@@ -179,6 +179,17 @@ try{
  });
  assert.ok(comfyLoose.relaxed>comfyLoose.ordinary,
   "El estilo Cómoda debe aceptar la silueta holgada");
+ const fittedComfort=await page.evaluate(()=>{
+  const top={id:"fit-t",category:"Arriba",color:"Blanco",style:"casual",fit:"entallado"};
+  const bottom={id:"fit-b",category:"Abajo",color:"Negro",style:"casual",fit:"ajustado"};
+  const ctx=dress=>engineContext({occasion:null,temp:22,extras:{shoes:false,bag:false},dress});
+  return {comfy:scoreOutfit([top,bottom],ctx("comoda")).score,
+   ordinary:scoreOutfit([top,bottom],ctx(null)).score};
+ });
+ // La diferencia de estilo tiene su propia puntuación: comprobar el bonus de silueta
+ // aislado con el mismo contexto y la misma ropa, sin premiar dos piezas ceñidas.
+ assert.ok(fittedComfort.comfy<=fittedComfort.ordinary+5,
+  "Dos prendas ajustadas no deben recibir el bonus de silueta holgada");
  await page.locator(".daily-look").waitFor(); // «Tu look de hoy» nada más entrar
  assert.equal(await page.locator("#app").isVisible(),true);
  assert.equal(await page.locator("#auth").isVisible(),false);
