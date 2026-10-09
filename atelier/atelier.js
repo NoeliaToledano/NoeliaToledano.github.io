@@ -1653,6 +1653,10 @@ function scoreOutfit(gs,ctx){
  if(target&&styled.length){const fit=styled.reduce((t,g)=>t+(target[g.style]??.5),0)/styled.length;style=.5*style+.5*fit;
   if(ctx.dress==="comoda"&&gs.some(g=>["holgado","oversize"].includes(g.fit)||["knit","cotton"].includes(g.fabric)))style=Math.min(1,style+.1);
   if(fit>=.85&&ctx.dress)reasons.push("Encaja con tu estilo de hoy: "+DRESS_LABEL[ctx.dress].toLowerCase());else if(fit>=.85)reasons.push("Arreglado para el trabajo")}
+ // Detalles de estilista (banco A/B, #128): doble vaquero sin contraste y prendas llamativas en el trabajo restan un poco
+ const denim=big.filter(g=>g.color==="Vaquero"||g.fabric==="denim"||/vaquer|denim|chambray|\bjeans?\b/i.test(textOf(g))).length;
+ if(denim>=2&&big.filter(g=>g.category!=="Capas").every(g=>g.color==="Vaquero"||g.fabric==="denim"||/vaquer|denim|chambray|\bjeans?\b/i.test(textOf(g))))style-=.15;
+ if(ctx.occasion==="work"){const loud=gs.filter(g=>g.pattern==="animal"||/leopard|cebra|zebra|serpiente|snake|animal print|\bpelo\b|faux fur|\bfur\b|lentejuel|sequin|purpurina|glitter/i.test(textOf(g))).length;if(loud)style-=Math.min(.3,.15*loud)}
  const mix=new Set(styled.map(g=>g.style));
  if(mix.has("sport")&&mix.has("smart"))reasons.push("Las deportivas le dan un aire informal y actual");
  else if(mix.size===2&&styled.length>=3)reasons.push("Mezcla un toque de otro estilo");
@@ -1666,6 +1670,8 @@ function scoreOutfit(gs,ctx){
   else if(d>tol+.05){context-=Math.min(.3,(d-tol-.05));if(d>tol+.2)warnings.push("Quizá demasiado abrigo para "+ctx.temp+" °C")}}
  if(ctx.extras.shoes&&!gs.some(g=>g.category==="Zapatos")){context-=.25;warnings.push("No hay calzado que combine")}
  if(ctx.occasion&&gs.every(g=>occasionFits(g,ctx.occasion)))context+=.2;
+ // Con frío, un top sin mangas, de hombros al aire o corto bajo el abrigo no es lo natural (banco A/B, #128)
+ if(Number.isFinite(ctx.temp)&&ctx.temp<12&&ctx.occasion!=="home"&&gs.some(g=>g.category==="Arriba"&&(g.sleeve==="sin mangas"||/off.?shoulder|hombros al aire|palabra de honor|strapless|tirantes|sin mangas|sleeveless|\btank\b|crop/i.test(textOf(g)))))context-=.25;
  const issues=lookIssues(gs,ctx);if(issues.length){context-=Math.min(.6,.3*issues.length);warnings.push(...issues.slice(0,2))}
  // Personal (10): favoritas, olvidadas, usado hace poco, Tus gustos
  let personal=.5;const fav=gs.filter(g=>g.favorite).length,forg=gs.filter(g=>ctx.forgotten.has(g.id));
