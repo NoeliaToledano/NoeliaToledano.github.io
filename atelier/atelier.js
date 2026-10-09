@@ -1294,8 +1294,6 @@ function renderToday(root){
   '<label class="field"><span>Temporada</span><select id="prefSeason">'+optionList(Object.entries(seasons),p.season)+'</select></label></div>'+
   '<label class="field"><span>Temperatura exterior (°C; por defecto '+DEFAULT_TEMPERATURE+')</span><input id="prefTemperature" type="number" min="-30" max="55" step="1" placeholder="Si lo dejas vacío, uso '+DEFAULT_TEMPERATURE+' °C" value="'+fx(currentTemperature())+'"></label>'+
   '<div class="weather-line"><button type="button" class="chip-button" id="useWeather">📍 Usar el tiempo de hoy</button>'+(p.autoWeather?'<button type="button" class="chip-button" id="stopWeather">Volver a '+DEFAULT_TEMPERATURE+' °C</button>':'')+'</div>'+(info?'<p class="helper">'+fx(info)+'</p>':'')+
-  '<div class="field"><label for="prefDiversity">Diversidad <abbr title="Cuánto priorizar prendas poco usadas para variar tus looks">ⓘ</abbr>: <strong id="diversityText">'+fx(p.diversity)+'</strong>%</label><input id="prefDiversity" type="range" min="0" max="100" step="5" value="'+fx(p.diversity)+'"></div>'+
-  extrasTogglesHtml()+
   '<label class="switch-line"><input id="prefAvoid" type="checkbox"'+(p.avoidRepeats?' checked':'')+'> Evitar repetir combinaciones recientes</label>'+
   '<button class="primary wide" id="suggestSmart">✦ Generar looks con mi ropa</button>'+
   '<p class="helper">Se envían solo los nombres y atributos de tus prendas, nunca las fotos. Sugerencias con IA hoy: '+u.looks+' de '+AI_LIMITS.looks+'.</p></section>'+
@@ -1308,7 +1306,6 @@ function renderToday(root){
  bindDailyLook(root);
  $("#prefSeason")?.addEventListener("change",e=>setPref("season",e.target.value,false));
  $("#prefTemperature")?.addEventListener("change",e=>{const v=e.target.value,n=Number(v);if(v===""||(Number.isFinite(n)&&n>=-30&&n<=55)){p.autoWeather=false;if(p.dailyLook&&!p.dailyLook.touched)p.dailyLook.date=null;setPref("temperature",v===""?DEFAULT_TEMPERATURE:n,true)}else toast("Introduce entre -30 y 55 °C")});
- $("#prefDiversity")?.addEventListener("input",e=>{$("#diversityText").textContent=e.target.value});$("#prefDiversity")?.addEventListener("change",e=>setPref("diversity",Number(e.target.value),false)); // se guarda al soltar (R4)
  $("#prefAvoid")?.addEventListener("change",e=>setPref("avoidRepeats",e.target.checked,false));
  $("#suggestSmart")?.addEventListener("click",()=>suggestLooks());
  $("#createManual")?.addEventListener("click",()=>openLook());
@@ -1474,13 +1471,9 @@ function renderLooks(root){
 /* Complementos en las propuestas: calzado y bolso se pueden quitar (preferencia por perfil).
    En «Estar en casa» y «Playa y piscina» el calzado no se añade nunca. */
 const NO_SHOES_OCCASIONS=new Set(["home","beach"]);
-function lookExtras(){const p=appState.data.preferences;return {shoes:p.lookShoes!==false&&!NO_SHOES_OCCASIONS.has(p.occasion),bag:p.lookBag!==false}}
-function extrasTogglesHtml(){
- const p=appState.data.preferences,auto=NO_SHOES_OCCASIONS.has(p.occasion);
- return '<div class="extras-line" role="group" aria-label="Qué incluir en las propuestas"><label class="switch-line"><input type="checkbox" data-extra-pref="lookShoes"'+(p.lookShoes!==false?' checked':'')+(auto?' disabled':'')+'> Incluir calzado</label><label class="switch-line"><input type="checkbox" data-extra-pref="lookBag"'+(p.lookBag!==false?' checked':'')+'> Incluir bolso</label></div>'+
-  (auto?'<p class="helper">Con la ocasión «'+fx(occasions[p.occasion]||"")+'» las propuestas no llevan calzado.</p>':'');
-}
-function bindExtrasToggles(root,after){$$("[data-extra-pref]",root).forEach(c=>c.addEventListener("change",async()=>{appState.data.preferences[c.dataset.extraPref]=c.checked;await saveState();after?after():render()}))}
+function lookExtras(){const occasion=appState.data.preferences.occasion||"daily";return {shoes:!NO_SHOES_OCCASIONS.has(occasion),bag:occasion!=="home"}}
+function extrasTogglesHtml(){return ""}
+function bindExtrasToggles(){}
 /* ===================== Motor de estilismo (un solo motor para Hoy, Mi semana, Combinar prenda y Cambiar prenda) =====================
    Sin IA. Especificación: docs/atelier/STYLING_ENGINE_SPEC.md. Pasos:
    1) contexto (fecha, ocasión, temperatura) → 2) prendas que encajan (ocasión y temporada) → 3) bases (arriba+abajo, vestido,
@@ -2265,7 +2258,7 @@ function renderSettings(root){
   '<div class="feature-card"><h2>Compras</h2><label class="field"><span>Presupuesto de compras (€)</span><input id="shoppingBudget" type="number" min="0" max="100000" step="1" inputmode="numeric" value="'+fx(p.budget)+'"></label><p class="helper">Lo uso en la wishlist y en «¿Lo compro?» para avisarte si una compra te haría pasarte.</p></div>'+
   '<div class="feature-card"><h2>Preferencias del estilista</h2>'+
   '<label class="field"><span>Prenda olvidada tras (días)</span><input id="settingsForget" type="number" min="30" max="365" value="'+fx(p.forgottenDays)+'"></label>'+
-  '<label class="field"><span>Diversidad de combinaciones: <strong id="settingsDiversityText">'+fx(p.diversity)+'</strong>%</span><input id="settingsDiversity" type="range" min="0" max="100" step="5" value="'+fx(p.diversity)+'"></label></div>'+
+  '</div>'+ 
   '<div class="feature-card"><h2>Uso de la IA hoy</h2><p class="muted">Análisis de fotos: '+u.analyze+' de '+AI_LIMITS.analyze+'. Sugerencias de looks: '+u.looks+' de '+AI_LIMITS.looks+'.</p><p class="helper">Los límites diarios mantienen bajo el coste de la API. «¿Lo compro?», las recomendaciones y «Combinar prenda» no usan la IA.</p></div>'+
   '<div class="feature-card"><h2>Fotos</h2><p class="muted">'+fx(myGarments().filter(g=>g.photoFx).length+" de "+myGarments().filter(g=>validImage(g.image)).length+" fotos mejoradas ("+myGarments().filter(g=>g.bgWhite).length+" con fondo blanco).")+'</p>'+
   (myGarments().some(needsWhite)?'<button class="secondary wide" id="whiteAll">✨ Fondo blanco en todas las fotos</button><p class="helper">Como en una tienda online: prenda sobre fondo blanco, con luz, color y nitidez. Si en alguna no se puede separar la prenda, se mejora conservando el fondo. Se hace en tu móvil, sin gastar tokens. Las originales se guardan en este dispositivo y puedes volver a ellas desde cada prenda.</p>':'')+'</div>'+
@@ -2278,7 +2271,6 @@ function renderSettings(root){
  $("#syncButton")?.addEventListener("click",async e=>{e.target.disabled=true;e.target.textContent="Sincronizando…";$("#syncStatus").textContent="Sincronizando…";await syncNow();render()});
  $("#shoppingBudget")?.addEventListener("change",e=>{const n=Number(e.target.value);if(e.target.value===""||!Number.isFinite(n)||n<0)return toast("Introduce un importe en euros");setPref("budget",Math.round(n*100)/100,false);toast("Presupuesto guardado: "+euro(n))});
  $("#settingsForget")?.addEventListener("change",e=>{const n=Number(e.target.value);if(Number.isInteger(n)&&n>=30&&n<=365)setPref("forgottenDays",n);else toast("Introduce entre 30 y 365 días")});
- $("#settingsDiversity")?.addEventListener("input",e=>{$("#settingsDiversityText").textContent=e.target.value});$("#settingsDiversity")?.addEventListener("change",e=>setPref("diversity",Number(e.target.value),false)); // se guarda al soltar (R4)
  $("#exportBackup")?.addEventListener("click",downloadBackup);
  $("#importBackup")?.addEventListener("change",e=>importBackup(e.target.files[0]));
  $("#whiteAll")?.addEventListener("click",e=>whiteAll(e.target));
