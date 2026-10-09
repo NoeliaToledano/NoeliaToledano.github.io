@@ -1047,6 +1047,7 @@ async function recordWear(ids,date,lookId){
  await mutate(()=>logs().unshift({id:uid(),date,garmentIds:validIds,lookId:lookId||null,updatedAt:new Date().toISOString()}),"Uso registrado");
 }
 function openLook(id){
+ if(!id&&!stylistReady())return toast(stylistMissingText());
  const l=myLooks().find(x=>x.id===id);
  $("#lookTitle").textContent=l?"Editar look":"Nuevo look";$("#lookId").value=l?.id||"";$("#lookName").value=l?.name||"";$("#lookOccasion").replaceChildren(...Object.entries(occasions).map(([value,label])=>new Option(label,value)));$("#lookOccasion").value=l?.occasion||"daily";$("#lookFavorite").checked=!!l?.favorite;
  $("#lookGarments").innerHTML=myGarments().length?myGarments().map(g=>`<label class="field"><span><input type="checkbox" value="${esc(g.id)}" ${l?.garmentIds.includes(g.id)?"checked":""}> ${esc(g.name)}</span></label>`).join(""):`<p class="muted">Añade prendas antes de crear un look.</p>`;
@@ -1235,6 +1236,31 @@ function renderOutfitSheet(){
  });
 }
 
+/* Disponibilidad mínima: existencia de base completa, no compatibilidad subjetiva
+   de colores. Nunca esconder el acceso a fotografía de look. */
+function stylistReady(){
+ return lookComplete(myGarments());
+}
+function stylistMissingText(){
+ const cats=new Set(myGarments().map(g=>g.category));
+ if(cats.has("Arriba")&&!cats.has("Abajo"))return "Añade una parte de abajo o fotografía el look que llevas.";
+ if(cats.has("Abajo")&&!cats.has("Arriba"))return "Añade una parte de arriba o fotografía el look que llevas.";
+ return "Añade parte de arriba y de abajo, o un vestido o mono. También puedes fotografiar tu look.";
+}
+function stylistLocked(root){
+ const saved=myLooks().length;
+ stylistShell(root,"Tu estilista","Completa tu armario para empezar a crear combinaciones.",
+ '<section class="stylist-locked" aria-labelledby="stylistLockedTitle">'+
+ '<h2 id="stylistLockedTitle">Tu estilista estará listo pronto</h2>'+
+ '<p>'+fx(stylistMissingText())+'</p>'+
+ '<button type="button" class="primary" data-outfit-photo>Hacer foto de mi look</button>'+
+ '<button type="button" class="secondary" id="stylistAddGarment">Añadir una prenda</button>'+
+ (saved?'<button type="button" class="link-button" id="stylistSavedLooks">Ver looks guardados ('+saved+')</button>':'')+
+ '</section>');
+ bindOutfitPhoto(root);
+ $("#stylistAddGarment")?.addEventListener("click",()=>openGarment());
+ $("#stylistSavedLooks")?.addEventListener("click",()=>setView("looks"));
+}
 /* ===================== 7. Estilista ===================== */
 const STYLIST_TABS=[["week","Mi semana"],["around","Combinar prenda"],["looks","Mis looks",' id="openLooks"']];
 function stylistShell(root,title,subtitle,body){
@@ -1242,6 +1268,7 @@ function stylistShell(root,title,subtitle,body){
  $$("[data-stylist-tab]",root).forEach(b=>b.addEventListener("click",()=>{const t=b.dataset.stylistTab;if(t==="looks")return setView("looks");ui.stylistTab=t;setView("stylist")}));
 }
 function renderStylist(root){
+ if(!stylistReady())return stylistLocked(root);
  if(ui.stylistTab==="today"||ui.stylistTab==="trips"||ui.stylistTab==="looks")ui.stylistTab="around";
  if(ui.stylistTab==="around")return renderAround(root);
  return renderWeek(root);
@@ -1293,7 +1320,7 @@ function showAiProposals(props,occasion){
   else{saved.delete(i);b.disabled=false}}));
 }
 async function suggestLooks(){
- if(myGarments().length<2)return toast("Añade al menos dos prendas");
+ if(!stylistReady())return toast(stylistMissingText());
  const btn=$("#aiLooks")||$("#suggestSmart");if(!btn||btn.disabled)return;btn.disabled=true;btn.textContent="Pensando…";
  try{
   const p=appState.data.preferences;
@@ -1411,6 +1438,7 @@ async function applySwap(l,o,mode){
  if(ok)closeSwap();
 }
 function renderLooks(root){
+ if(!stylistReady()&&!myLooks().length)return stylistLocked(root);
  let looks=myLooks();
  if(ui.lookFilter==="favorites")looks=looks.filter(l=>l.favorite);
  if(ui.lookFilter==="ai")looks=looks.filter(l=>l.ai);
