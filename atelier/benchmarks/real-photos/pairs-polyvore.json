@@ -20,7 +20,8 @@
   "better": "a",
   "kind": "formalidad",
   "hard": false,
-  "why": "Trabajo: pantalón negro, salones y blazer frente a vaqueros lavados, deportivas doradas y mochila de montaña"
+  "why": "Trabajo: pantalón negro, salones y blazer frente a vaqueros lavados, deportivas doradas y mochila de montaña",
+  "noelia": "a"
  },
  {
   "id": "p02",
@@ -43,7 +44,8 @@
   "better": "b",
   "kind": "complementos",
   "hard": true,
-  "why": "Dos complementos animal print (serpiente y cebra) recargan; mejor complementos lisos"
+  "why": "Dos complementos animal print (serpiente y cebra) recargan; mejor complementos lisos",
+  "noelia": "b"
  },
  {
   "id": "p03",
@@ -64,7 +66,8 @@
   "better": "a",
   "kind": "estampados",
   "hard": true,
-  "why": "Tres estampados (rayas, cuadros, rayas) frente a uno con básicos"
+  "why": "Tres estampados (rayas, cuadros, rayas) frente a uno con básicos",
+  "noelia": "b"
  },
  {
   "id": "p04",
@@ -85,7 +88,8 @@
   "better": "b",
   "kind": "temperatura",
   "hard": false,
-  "why": "Botas de terciopelo y vaqueros a 28 °C"
+  "why": "Botas de terciopelo y vaqueros a 28 °C",
+  "noelia": "a"
  },
  {
   "id": "p05",
@@ -104,7 +108,8 @@
   "better": "a",
   "kind": "color",
   "hard": true,
-  "why": "Camisa vaquera con vaquero lavado al ácido: doble vaquero sin contraste"
+  "why": "Camisa vaquera con vaquero lavado al ácido: doble vaquero sin contraste",
+  "noelia": "a"
  },
  {
   "id": "p06",
@@ -125,7 +130,8 @@
   "better": "b",
   "kind": "ocasión",
   "hard": true,
-  "why": "Abrigo de leopardo de pelo para la oficina frente a abrigo gris"
+  "why": "Abrigo de leopardo de pelo para la oficina frente a abrigo gris",
+  "noelia": "a"
  },
  {
   "id": "p07",
@@ -144,7 +150,8 @@
   "better": "a",
   "kind": "formalidad",
   "hard": false,
-  "why": "Vestido largo de lentejuelas con deportivas"
+  "why": "Vestido largo de lentejuelas con deportivas",
+  "noelia": "a"
  },
  {
   "id": "p08",
@@ -163,7 +170,8 @@
   "better": "b",
   "kind": "ocasión",
   "hard": false,
-  "why": "Tacones en la playa"
+  "why": "Tacones en la playa",
+  "noelia": "b"
  },
  {
   "id": "p09",
@@ -182,7 +190,8 @@
   "better": "a",
   "kind": "formalidad",
   "hard": false,
-  "why": "Trabajo: salones y reloj frente a sandalias de goma y gafas rosas"
+  "why": "Trabajo: salones y reloj frente a sandalias de goma y gafas rosas",
+  "noelia": "a"
  },
  {
   "id": "p10",
@@ -203,7 +212,8 @@
   "better": "b",
   "kind": "temperatura",
   "hard": true,
-  "why": "Top corto sin mangas a 8 °C, aunque lleve abrigo"
+  "why": "Top corto sin mangas a 8 °C, aunque lleve abrigo",
+  "noelia": "b"
  },
  {
   "id": "p11",
@@ -224,7 +234,8 @@
   "better": "a",
   "kind": "estampados",
   "hard": true,
-  "why": "Bolso de camuflaje con falda de cuadros"
+  "why": "Bolso de camuflaje con falda de cuadros",
+  "noelia": "a"
  },
  {
   "id": "p12",
@@ -245,7 +256,8 @@
   "better": "b",
   "kind": "estampados",
   "hard": true,
-  "why": "Rayas + palazzo estampado + cárdigan estampado: tres estampados"
+  "why": "Rayas + palazzo estampado + cárdigan estampado: tres estampados",
+  "noelia": "b"
  },
  {
   "id": "p13",
@@ -266,7 +278,8 @@
   "better": "a",
   "kind": "formalidad",
   "hard": false,
-  "why": "Sudadera gráfica y Vans en el trabajo"
+  "why": "Sudadera gráfica y Vans en el trabajo",
+  "noelia": "a"
  },
  {
   "id": "p14",
@@ -285,7 +298,8 @@
   "better": "b",
   "kind": "temperatura",
   "hard": true,
-  "why": "Fedora de lana a 28 °C"
+  "why": "Fedora de lana a 28 °C",
+  "noelia": "b"
  },
  {
   "id": "p15",
@@ -306,7 +320,8 @@
   "better": "a",
   "kind": "estampados",
   "hard": true,
-  "why": "Jersey de cuadros bajo abrigo de cuadros distintos"
+  "why": "Jersey de cuadros bajo abrigo de cuadros distintos",
+  "noelia": "a"
  },
  {
   "id": "p16",
@@ -327,7 +342,8 @@
   "better": "b",
   "kind": "formalidad",
   "hard": true,
-  "why": "Fiesta: salón y cartera frente a botín informal y bolso de diario"
+  "why": "Fiesta: salón y cartera frente a botín informal y bolso de diario",
+  "noelia": "b"
  },
  {
   "id": "p17",
@@ -348,7 +364,8 @@
   "better": "a",
   "kind": "estampados",
   "hard": true,
-  "why": "Pantalón de cuadros con abrigo de rayas"
+  "why": "Pantalón de cuadros con abrigo de rayas",
+  "noelia": "a"
  },
  {
   "id": "p18",
@@ -367,7 +384,8 @@
   "better": "b",
   "kind": "color",
   "hard": true,
-  "why": "Shorts de flores con camiseta roja y deportivas rosas: demasiado color; mejor top neutro"
+  "why": "Shorts de flores con camiseta roja y deportivas rosas: demasiado color; mejor top neutro",
+  "noelia": "="
  },
  {
   "id": "p19",
@@ -388,7 +406,8 @@
   "better": "a",
   "kind": "estampados",
   "hard": true,
-  "why": "Vestido de flores con pendientes de cebra y chaqueta roja"
+  "why": "Vestido de flores con pendientes de cebra y chaqueta roja",
+  "noelia": "a"
  },
  {
   "id": "p20",
@@ -407,7 +426,8 @@
   "better": "b",
   "kind": "complementos",
   "hard": true,
-  "why": "Fiesta: cartera de fiesta frente a bolso de hombro rojo de diario con vestido rosa"
+  "why": "Fiesta: cartera de fiesta frente a bolso de hombro rojo de diario con vestido rosa",
+  "noelia": "b"
  },
  {
   "id": "p21",
@@ -428,7 +448,8 @@
   "better": "a",
   "kind": "ocasión",
   "hard": true,
-  "why": "Chaleco de flecos en el trabajo"
+  "why": "Chaleco de flecos en el trabajo",
+  "noelia": "a"
  },
  {
   "id": "p22",
@@ -449,7 +470,8 @@
   "better": "b",
   "kind": "temperatura",
   "hard": true,
-  "why": "Top de hombros al aire a 8 °C"
+  "why": "Top de hombros al aire a 8 °C",
+  "noelia": "b"
  },
  {
   "id": "p23",
@@ -470,7 +492,8 @@
   "better": "a",
   "kind": "temperatura",
   "hard": false,
-  "why": "Botas en la playa a 28 °C"
+  "why": "Botas en la playa a 28 °C",
+  "noelia": "a"
  },
  {
   "id": "p24",
@@ -491,7 +514,8 @@
   "better": "b",
   "kind": "formalidad",
   "hard": true,
-  "why": "Sudadera con tacones y cartera de fiesta"
+  "why": "Sudadera con tacones y cartera de fiesta",
+  "noelia": "b"
  },
  {
   "id": "p25",
@@ -512,7 +536,8 @@
   "better": "a",
   "kind": "coherencia",
   "hard": true,
-  "why": "Sudadera y mochila de montaña con stilettos"
+  "why": "Sudadera y mochila de montaña con stilettos",
+  "noelia": "a"
  },
  {
   "id": "p26",
@@ -533,7 +558,8 @@
   "better": "b",
   "kind": "ocasión",
   "hard": true,
-  "why": "Top bustier en el trabajo"
+  "why": "Top bustier en el trabajo",
+  "noelia": "="
  },
  {
   "id": "p27",
@@ -554,7 +580,8 @@
   "better": "a",
   "kind": "temperatura",
   "hard": false,
-  "why": "Sandalias a 8 °C"
+  "why": "Sandalias a 8 °C",
+  "noelia": "a"
  },
  {
   "id": "p28",
@@ -575,7 +602,8 @@
   "better": "b",
   "kind": "estampados",
   "hard": true,
-  "why": "Camisa de cuadros con chaleco de punto estampado"
+  "why": "Camisa de cuadros con chaleco de punto estampado",
+  "noelia": "b"
  },
  {
   "id": "p29",
@@ -597,7 +625,8 @@
   "better": "a",
   "kind": "complementos",
   "hard": true,
-  "why": "Vestido dorado con cartera de serpiente, pendientes de cebra y reloj multicolor: recargado"
+  "why": "Vestido dorado con cartera de serpiente, pendientes de cebra y reloj multicolor: recargado",
+  "noelia": "a"
  },
  {
   "id": "p30",
@@ -618,7 +647,8 @@
   "better": "b",
   "kind": "formalidad",
   "hard": false,
-  "why": "Deportivas doradas en el trabajo"
+  "why": "Deportivas doradas en el trabajo",
+  "noelia": "="
  },
  {
   "id": "p31",
@@ -637,7 +667,8 @@
   "better": "a",
   "kind": "coherencia",
   "hard": true,
-  "why": "Vestido con mochila de montaña"
+  "why": "Vestido con mochila de montaña",
+  "noelia": "a"
  },
  {
   "id": "p32",
@@ -660,7 +691,8 @@
   "better": "b",
   "kind": "formalidad",
   "hard": false,
-  "why": "Fiesta con Vans"
+  "why": "Fiesta con Vans",
+  "noelia": "b"
  },
  {
   "id": "p33",
@@ -681,7 +713,8 @@
   "better": "a",
   "kind": "estampados",
   "hard": true,
-  "why": "Jersey de cuadros con palazzo estampado"
+  "why": "Jersey de cuadros con palazzo estampado",
+  "noelia": "a"
  },
  {
   "id": "p34",
@@ -702,6 +735,7 @@
   "better": "b",
   "kind": "ocasión",
   "hard": true,
-  "why": "Vaqueros rotos en el trabajo"
+  "why": "Vaqueros rotos en el trabajo",
+  "noelia": null
  }
 ]

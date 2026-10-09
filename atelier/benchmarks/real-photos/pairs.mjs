@@ -2,7 +2,7 @@
 //   node atelier/benchmarks/real-photos/pairs.mjs [pairs-polyvore.json] [labels-polyvore.json] [--json]
 // Cada par tiene dos looks completos (a, b), la ocasión, la temperatura, el mejor («better») y el motivo.
 // «hard»: los dos looks cumplen las reglas básicas y la diferencia es estética o de contexto.
-// Limitación: las etiquetas son de un solo juez (Claude); para validarlas hace falta la votación a ciegas de #128.
+// «noelia»: voto a ciegas de Noelia (09/10/2026; a, b, «=» igual o null sin voto). Es la referencia: el motor se mide contra ella.
 import fs from "node:fs";
 const HERE=new URL(".",import.meta.url).pathname,args=process.argv.slice(2).filter(a=>!a.startsWith("--"));
 const PAIRS=JSON.parse(fs.readFileSync(HERE+(args[0]||"pairs-polyvore.json"))),L=JSON.parse(fs.readFileSync(HERE+(args[1]||"labels-polyvore.json")));
@@ -32,7 +32,10 @@ for(const p of PAIRS){
 const pct=(xs)=>xs.length?Math.round(100*xs.filter(r=>r.ok).length/xs.length)+"% ("+xs.filter(r=>r.ok).length+"/"+xs.length+")":"—";
 if(process.argv.includes("--json")){console.log(JSON.stringify(rows,null,1));process.exit(0)}
 const pctK=(xs,k)=>xs.length?Math.round(100*xs.filter(r=>r[k]).length/xs.length)+"% ("+xs.filter(r=>r[k]).length+"/"+xs.length+")":"—";
-console.log("Acierto del motor (restricciones o puntuación):",pct(rows),"· difíciles:",pct(rows.filter(r=>r.hard)));
+const voted=rows.filter(r=>r.noelia==="a"||r.noelia==="b"),engineOf=r=>r.va.length&&!r.vb.length?"b":r.vb.length&&!r.va.length?"a":r.pick; // independiente de la etiqueta de la estilista (revisión de Codex, #137)
+console.log("Acuerdo con Noelia (voto a ciegas): motor",voted.filter(r=>engineOf(r)===r.noelia).length+"/"+voted.length,"· estilista (Claude)",voted.filter(r=>r.better===r.noelia).length+"/"+voted.length,"· «igual»:",rows.filter(r=>r.noelia==="=").length);
+for(const r of voted.filter(r=>engineOf(r)!==r.noelia))console.log("  ≠ Noelia",r.id,r.occasion,r.temp+" °C","Noelia="+r.noelia,"motor="+engineOf(r),"a="+r.sa,"b="+r.sb,"—",r.why);
+console.log("Acierto del motor frente a la estilista (restricciones o puntuación):",pct(rows),"· difíciles:",pct(rows.filter(r=>r.hard)));
 console.log("  Restricciones: el look peor se descarta al generar:",pctK(rows,"okRules"));
 console.log("  Puntuación: prefiere el mejor:",pctK(rows,"okScore"),"· en pares donde los dos cumplen las restricciones:",pctK(rows.filter(r=>r.legal),"okScore"),"· empates:",rows.filter(r=>r.pick==="=").length);
 const by=k=>{const m={};for(const r of rows)(m[r[k]]??=[]).push(r);return Object.entries(m).map(([x,v])=>x+" "+pct(v)).join(" · ")};
