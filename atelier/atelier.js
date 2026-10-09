@@ -1491,6 +1491,39 @@ const SEASON3=m=>m>=5&&m<=8?"warm":m===11||m<=1?"cold":"mid";          // jun–
 const SEASON_TEMP={warm:27,mid:19,cold:11};                              // para fechas sin tiempo real
 function tempFor(date){return !date||date===dayISO()?currentTemperature():SEASON_TEMP[SEASON3(Number(date.slice(5,7))-1)]}
 const seasonFits=(g,s)=>!g.season||g.season==="all"||s==="mid"||g.season===s;
+/* Perfil de prenda (petición de Noelia, 09/10): el motor decide con las características de la ficha (formalidad,
+   manga, grosor, tejido, largo, ocasiones), que rellena el análisis y puede corregir la usuaria. El nombre solo se usa
+   cuando falta el dato. */
+const textOf=g=>[g.type,g.subtype,g.name,g.details].filter(Boolean).join(" ");
+const FORMAL_LEVEL={sport:0,casual:1,smartcasual:2,formal:3,party:3};
+const formalLevel=g=>g.formality in FORMAL_LEVEL?FORMAL_LEVEL[g.formality]:({sport:0,casual:1,smart:2,party:3}[g.style]??1);
+// Uso deportivo o de montaña (una mochila de trekking, unas zapatillas de running), por formalidad o, si falta, por el nombre
+const OUTDOOR=/monta[ñn]a|trekking|hiking|senderismo|running|gimnasio|\bgym\b|camping|north face|quechua/i;
+const isOutdoor=g=>g.formality==="sport"||(!g.formality&&(g.style==="sport"||OUTDOOR.test(textOf(g))));
+/* Abrigo térmico de 0 (muy fresco) a 6 (muy abrigado), o null si no se sabe: manga o largo + grosor + tejido */
+function thermal(g){
+ const txt=textOf(g);let t=null;
+ if(["Arriba","Vestidos"].includes(g.category)){
+  t={"sin mangas":0,"corta":1,"tres cuartos":2,"larga":3}[g.sleeve]??null;
+  if(t===null&&/tirantes|sin mangas|sleeveless|tank|palabra de honor/i.test(txt))t=0;
+  if(t===null&&/jersey|su[eé]ter|sweater|sudadera|manga larga|long sleeve|cuello alto|turtleneck/i.test(txt))t=3;
+ }else if(g.category==="Abajo"){
+  t={cropped:0,regular:2,midi:2,long:3}[g.length]??null;
+  if(t===null&&/\bshorts?\b|bermuda|minifalda|mini skirt/i.test(txt))t=0;
+ }
+ if(t===null)return null;
+ t+={ligero:0,medio:1,grueso:2}[g.thickness]??(/jersey|su[eé]ter|sweater|punto grueso|chunky/i.test(txt)?2:1);
+ if(["wool","knit"].includes(g.fabric)||/lana|wool|cashmere|cachemir/i.test(txt))t+=1;
+ if(g.fabric==="linen"||/lino|linen/i.test(txt))t-=1;
+ return Math.max(0,t);
+}
+/* ¿Va con esta temperatura? Manga larga y gruesa no con calor; shorts y minifaldas no con frío */
+function thermalOk(g,temp){
+ const t=thermal(g);if(t===null)return true;
+ if(["Arriba","Vestidos"].includes(g.category))return !(temp>=24&&t>=5)&&!(temp>=28&&t>=4);
+ if(g.category==="Abajo")return !(temp<14&&t<=1)&&!(temp>=28&&t>=5);
+ return true;
+}
 /* Ocasión: si la prenda tiene ocasiones, manda eso; si no, su estilo. Casa y Baño solo en su ocasión. */
 /* Trabajo y eventos: fuera shorts, chanclas, sandalias planas, zuecos, gorras y gorros (evaluación visual #99) */
 const WORK_NO=/\bshorts?\b|chancl|sandalia|zueco|gorra|gorro|beanie|crop top|ch[aá]ndal|mallas|pantal[oó]n deportivo|camiseta t[eé]cnica/i;
@@ -1500,13 +1533,29 @@ function occasionFits(g,occ){
  if(g.category==="Casa")return occ==="home";
  if(g.category==="Baño")return occ==="beach";
  if(occ==="home")return ["Zapatos"].includes(g.category)?/casa|zapatilla/i.test(g.type||g.name||""):false;
- if((occ==="work"||occ==="formal"||occ==="event")&&WORK_NO.test([g.type,g.subtype,g.name].filter(Boolean).join(" ")))return false; // P1/P8 (#99)
- if(g.category==="Bolsos"&&!["daily","sport"].includes(occ)&&BACKPACK.test([g.type,g.name].filter(Boolean).join(" ")))return false; // Q3 (#108)
+ const occs=Array.isArray(g.occasions)?g.occasions.filter(o=>o in occasions):[];
+ if(occs.includes(occ))return true; // lo que indica la ficha (análisis o la usuaria) manda sobre el nombre
+ const formal=formalLevel(g);
+ if(["work","formal","event"].includes(occ)){
+  // Con formalidad arreglada o formal, vale aunque el nombre diga «sandalia» o «mochila»; informal, se mira el tipo; deporte o fiesta, no
+  if(occ==="work"&&["smartcasual","formal"].includes(g.formality))return true;
+  if(occ!=="work"&&g.formality)return formal>=2&&g.formality!=="sport";
+  if(g.formality&&!["casual"].includes(g.formality))return false;
+  if(WORK_NO.test(textOf(g))||g.category==="Abajo"&&g.length==="cropped")return false; // P1/P8 (#99)
+ }
+ if(occ==="party"&&g.formality&&formal<2)return false;
+ if(!["daily","sport","beach"].includes(occ)&&isOutdoor(g)&&g.category!=="Zapatos")return false; // Q3 (#108): mochila de montaña, ropa técnica
+ if(g.category==="Bolsos"&&!["daily","sport"].includes(occ)&&!g.formality&&g.style!=="smart"&&BACKPACK.test(textOf(g)))return false; // mochila sin más datos: solo diario
  // Gorros, gorras, boinas y sombreros solo en diario o playa; vale también para las sugerencias con IA (revisión de Codex, #100)
  if(g.category==="Accesorios"&&!["daily","beach"].includes(occ)&&HEADWEAR.test([g.type,g.subtype,g.name].filter(Boolean).join(" ")))return false;
- const occs=Array.isArray(g.occasions)?g.occasions.filter(o=>o in occasions):[];
  if(occs.length)return occs.includes(occ)||(occ==="daily"&&!occs.every(o=>["sport","home","beach","formal","party","event"].includes(o)));
  if(g.category==="Zapatos"&&g.style==="sport"&&["daily","work"].includes(occ))return true;
+ if(g.formality){ // con formalidad conocida, decide ella (no el estilo)
+  if(occ==="sport")return g.formality==="sport";
+  if(["party","event","formal"].includes(occ))return formal>=2;
+  if(occ==="beach")return formal<=1;
+  if(occ==="daily")return g.formality!=="party";
+ }
  const ok=OCC_STYLES[occ];return !g.style||!ok||ok.includes(g.style);
 }
 /* Compatibilidad dura: relación de categorías y estilos compatibles. El color ya no descarta: puntúa (spec §4). */
@@ -1601,6 +1650,7 @@ function weatherCompatible(g,look,ctx){
 }
 /* Context checks used by the local outfit engine, not accessory-style policy. */
 function heavyKnitInHeat(g,temp){
+ if(thermal(g)!==null&&(g.sleeve||g.thickness||g.length||g.fabric))return !thermalOk(g,temp); // con datos de la ficha
  const label=[g.name,g.type,g.subtype].filter(Boolean).join(" ").toLowerCase();
  return temp>=24&&g.category==="Arriba"&&/jersey|suéter|sueter|sweater|pul[oó]ver|wool jumper/.test(label)&&
   !/camiseta|manga corta|jersey fino|ligero|lightweight/.test(label);
@@ -1626,7 +1676,7 @@ function vividColorRepeat(gs){
 }
 function completeOutfitGreedy(base,pool,ctx,used=new Map(),firstPick=null){
  const l=[...base],rule=layerRule(ctx.temp),home=ctx.occasion==="home",beach=ctx.occasion==="beach";
- const fits=x=>!l.includes(x)&&!(l.some(isBackpack)&&["smart","party"].includes(x.style))&&!heavyKnitInHeat(x,ctx.temp)&&!insufficientColdLayer(x,ctx.temp)&&weatherCompatible(x,l,ctx)&&l.every(p=>!related(x,p)||stylesOk(x,p))&&l.every(p=>pairColor(x,p).s>=.45||!BIG.includes(p.category)||!BIG.includes(x.category));
+ const fits=x=>!l.includes(x)&&!(l.some(g=>isBackpack(g)&&(isOutdoor(g)||formalLevel(g)<2))&&formalLevel(x)>=2)&&!heavyKnitInHeat(x,ctx.temp)&&!insufficientColdLayer(x,ctx.temp)&&weatherCompatible(x,l,ctx)&&l.every(p=>!related(x,p)||stylesOk(x,p))&&l.every(p=>pairColor(x,p).s>=.45||!BIG.includes(p.category)||!BIG.includes(x.category));
  const pref=x=>(x.favorite?.5:0)+1/(1+(ctx.worn.get(x.id)||0))+(ctx.forgotten.has(x.id)?.5:0)-(ctx.avoid.has(x.id)?2:0)-(used.get(x.id)||0)*1.5+
   l.reduce((t,p)=>t+pairColor(x,p).s,0)/Math.max(1,l.length);
  const plan=[ctx.extras.shoes&&!home&&!beach?"Zapatos":beach&&ctx.extras.shoes?"Zapatos":null,!home&&rule.max>=0?"Capas":null,ctx.extras.bag&&!home?"Bolsos":null,!home?"Accesorios":null];
@@ -1642,7 +1692,7 @@ function completeOutfitGreedy(base,pool,ctx,used=new Map(),firstPick=null){
   else if(cat==="Zapatos"&&ctx.occasion==="work"){ // Q2 (#108): deportivas solo si no hay otro calzado (por tipo o nombre, no solo por estilo)
    const other=c.filter(x=>!isSneaker(x));if(other.length)c=other;c.sort((a,b)=>pref(b)-pref(a))}
   else c.sort((a,b)=>pref(b)-pref(a));
-  if(cat==="Bolsos"&&l.some(p=>["smart","party"].includes(p.style)))c=c.filter(x=>!BACKPACK.test([x.type,x.name].filter(Boolean).join(" "))); // Q3 (#108)
+  if(cat==="Bolsos"&&l.some(p=>formalLevel(p)>=2))c=c.filter(x=>!isBackpack(x)||formalLevel(x)>=2&&!isOutdoor(x)); // Q3 (#108): mochila de vestir sí
   if(cat==="Zapatos"&&beach)c=c.filter(x=>/sandal|chancl|alpargat|zueco/i.test([x.type,x.name,x.subtype].filter(Boolean).join(" ")));
   // P3/P4 (#99): un gorro o sombrero solo con motivo (frío o sol de verano en diario/playa); otros complementos, si suman
   if(cat==="Accesorios")c=c.filter(x=>!HEADWEAR.test([x.type,x.subtype,x.name].filter(Boolean).join(" "))||headwearMakesSense(x,ctx));
@@ -1681,9 +1731,9 @@ function rankOutfits(o={}){
   if(ctx.occasion==="home")bases=pool.filter(g=>g.category==="Casa").map(g=>[g]);
   if(ctx.occasion==="beach")bases=pool.filter(g=>g.category==="Baño").map(g=>[g]);
   bases=[...bases,...outfitBases(pool.filter(g=>!["Casa","Baño"].includes(g.category)))];
-  if(req)bases=bases.filter(b=>b.every(p=>!related(req,p)||stylesOk(req,p))&&(!isBackpack(req)||b.every(p=>!["smart","party"].includes(p.style)))).map(b=>[...b,req]); // mochila elegida: sin prendas smart ni party (revisión de Codex, #111)
+  if(req)bases=bases.filter(b=>b.every(p=>!related(req,p)||stylesOk(req,p))&&(!isBackpack(req)||!isOutdoor(req)&&formalLevel(req)>=2||b.every(p=>formalLevel(p)<2))).map(b=>[...b,req]); // mochila elegida: sin prendas smart ni party (revisión de Codex, #111)
  }
- bases=bases.filter(b=>b.length&&!b.some(g=>heavyKnitInHeat(g,ctx.temp))&&b.every((x,i)=>b.every((y,j)=>i===j||!related(x,y)||stylesOk(x,y))));
+ bases=bases.filter(b=>b.length&&!b.some(g=>heavyKnitInHeat(g,ctx.temp)||!thermalOk(g,ctx.temp))&&b.every((x,i)=>b.every((y,j)=>i===j||!related(x,y)||stylesOk(x,y))));
  // Puntuación y selección variada: valor = puntuación − solapamiento con las ya elegidas (prendas principales pesan más)
  // R2: las bases se completan con la versión rápida; la búsqueda de calzado alternativo (completeOutfit) solo para las elegidas
  ctx.byCat=new Map();for(const g of pool){if(!ctx.byCat.has(g.category))ctx.byCat.set(g.category,[]);ctx.byCat.get(g.category).push(g)}
