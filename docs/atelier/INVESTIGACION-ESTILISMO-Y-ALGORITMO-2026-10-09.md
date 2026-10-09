@@ -117,3 +117,71 @@ No fijar pesos definitivos todavía. Aprender/calibrar con conjunto de desarroll
 **Fase D — despliegue:** PR pequeña, checks verdes y banco de regresión; explicación comprensible de por qué el look encaja.
 
 **Decisión de producto:** nunca vender como "estilista experto" un modelo que solo supera sus propias reglas; exigir evaluación externa con personas y preferencias reales.
+
+
+## 11. Segunda ronda de investigación: detectar la pieza que falla y recuperar alternativas
+
+**Problema central:** las puntuaciones de compatibilidad describen el look, pero pueden no indicar qué cambio lo mejoraría. La tarea de *visual incompatibility detection* (VICTOR, 2023) estudia detectar el elemento discordante de un outfit y entrenar representaciones contrastivas de prendas. Distinguir: (a) puntuar look completo, (b) detectar pieza discordante y (c) sustituirla por una alternativa disponible. Fuente: https://www.sciencedirect.com/science/article/pii/S1047320322002619
+
+**Experimento Atelier**: para cada conjunto del banco con error concreto, generar sustituciones de **una sola prenda** y comparar el cambio de puntuación con un juicio humano. Métricas:
+- localizar la pieza problemática correcta (top-1/top-2);
+- mejorar el look sin romper ocasión/clima/completitud;
+- minimizar reemplazos innecesarios;
+- explicaciones coherentes: “este calzado hace más informal el conjunto” solo si los atributos lo respaldan.
+
+Importante: la pieza diferente o llamativa no es necesariamente la discordante. El estilismo maximalista debe poder tener un punto focal intencionado.
+
+## 12. Grafos e interacciones de orden superior
+
+**Dressing as a Whole** (Cui et al., 2019) representa categorías como nodos y aprende interacciones entre categorías, evitando tratar todo outfit como una lista ordenada. https://arxiv.org/abs/1902.08009
+
+**OCPHN** (2022) modela compatibilidad mediante hipergrafos: la relación entre tres o más prendas puede ser diferente a la suma de relaciones por pares. https://www.mdpi.com/2227-7390/10/20/3913
+
+**Comparación GNN 2024** (Gulati) reproduce enfoques de grafos e hipergrafos sobre Polyvore e investiga embeddings visuales. No asumir que sus números trasladan directamente a armarios privados pequeños. https://arxiv.org/abs/2404.18040
+
+**Implementación ligera propuesta antes de aprender GNN**:
+1. Extraer un vector legible de cada prenda: categoría, matiz/croma/claridad, fit, longitud, textura, formalidad, patrón, capacidad térmica, grado de confianza.
+2. Extraer funciones agregadas del outfit: balance de color por superficie aproximada, número de focos, contraste de volumen, continuidad de formalidad, mezcla de tejidos, capas, coherencia climática.
+3. Añadir interacciones explícitas **solo si el banco A/B muestra valor incremental**: por ejemplo (vestido de fiesta, deportivas, ocasión formal) y (estampado superior, estampado bolso, tercera prenda neutra).
+4. Comparar el baseline agregador con un ranker ligero entrenado en un conjunto de desarrollo y con una evaluación ciega separada.
+5. Considerar grafo/hipergrafo o embeddings solo cuando haya suficiente dato etiquetado, soporte de licencias y beneficio frente a un método explicable.
+
+## 13. Evidencia nueva de multimodalidad y preferencias
+
+- **LMLMO (Decision Support Systems, 2025)** usa características visuales e inferencias multimodales para valorar combinaciones; estudia FashionVC y EVALUATION3. https://www.sciencedirect.com/science/article/pii/S0167923625000582
+- **GPA-BPR (Decision Support Systems, 2025)** estudia la estabilidad de gustos con interacciones usuario-prenda y feedback implícito. https://www.sciencedirect.com/science/article/pii/S0167923625000569
+- **Personalized Outfit Compatibility Prediction Using Outfit Graph Network (IJCNN, 2023)** combina la representación del conjunto con una representación de preferencia individual. https://ieeexplore.ieee.org/document/10191458/
+- **Review of Explainable Fashion Compatibility Modeling Methods (ACM Computing Surveys, 2024)** es una revisión útil sobre reproducibilidad, explicabilidad, sesgos y sostenibilidad. DOI 10.1145/3664614. https://doi.org/10.1145/3664614
+
+**Aplicación práctica:** Atelier ya captura favoritos/rechazos. Separar aprendizaje de (i) afinidad estética general, (ii) preferencias persistentes del perfil, (iii) intención de la sesión. No interpretar un rechazo aislado como una prohibición global. No compartir preferencias entre perfiles familiares.
+
+## 14. Qué enseñan las guías de estilismo sobre creatividad
+
+University of the Arts London recomienda fundamentos de forma, color y proporción, uso intencionado de accesorios y experimentación con contrastes de materiales, siluetas y tonos. La creatividad es compatible con un motor medible si las convenciones son preferencias blandas contextualizadas. https://www.arts.ac.uk/study-at-ual/short-courses/stories/3-golden-rules-for-aspiring-fashion-stylists
+
+Un ranker no debe premiar siempre “mínimo número de estampados”, “todo neutro”, “parte ajustada + parte holgada”, “tacones con vestidos” ni “colores cercanos”. Debe poder reconocer un *look armonioso clásico* y un *look expresivo intencional* como dos objetivos distintos.
+
+## 15. Precaución fundamental: fuga de información en benchmarks
+
+Proyecto independiente Runway publica una experiencia instructiva: sus primeras métricas eran artificialmente altas cuando el grafo utilizado para evaluar incluía señal de coaparición del conjunto de prueba; al pasar a una evaluación inductiva sin esos enlaces, reporta AUC inferior. Es una advertencia metodológica, no un benchmark verificado de Atelier. https://github.com/NeilP211/runway
+
+Diseñar tests disjoint por prenda, outfit y, cuando sea posible, fuente/usuario; evitar reutilizar los mismos pares A/B para inventar la regla y certificar el resultado. Reportar métricas separadas de casos fáciles (cumplimiento de reglas) y casos difíciles (decisión estética).
+
+## 16. Nuevas pruebas adversariales prioritarias
+
+| Prueba | Diferencia que el motor debe aprender |
+| --- | --- |
+| Blazer + pantalón sastre + calzado | zapatillas limpias en oficina creativa vs sneakers técnicas en entrevista formal |
+| Vestido + botas | botín estructurado elegante vs botas de nieve en evento interior |
+| Rayas + cuadros | escala/paleta compatibles vs estampados que compiten |
+| Oversize + oversize | silueta relajada deliberada vs capas desproporcionadas para el objetivo elegido |
+| Total black | textura, brillo, estructura y focalización vs ausencia de contraste visual |
+| Dos denim | lavado/tono armonizados o contraste intencionado vs piezas sin intención |
+| Falda satinada + punto | mezcla atractiva de texturas vs una desproporción poco funcional |
+| Abrigo + bufanda | aislamiento suficiente vs accesorio insuficiente como sustituto del abrigo |
+| Prenda protagonista | otras prendas enmarcan el foco vs varios focos compiten sin intención |
+| Look válido rechazado | separar “no es mi estilo” de “no funciona estéticamente” |
+| Vestido sin tacones | no penalizar sistemáticamente bailarinas, botas o deportivas si el contexto las admite |
+| Color complementario | controlar saturación y superficie vs aprobar por teoría del círculo cromático |
+
+**Entregables antes de cambiar el motor:** matriz de errores por ocasión/estilo, etiqueta de confianza por atributo, mecanismo de explicación y búsqueda de sustitución, test ciego congelado y baseline contra los datos actuales. Ninguna métrica aislada certifica criterio humano.
