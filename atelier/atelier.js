@@ -1360,18 +1360,20 @@ async function suggestLooks(){
 /* Tus gustos: rasgos de los looks que te gustan (👍 o ♥) y de los que no (👎), calculado en el móvil, sin IA.
    Cada look se describe con rasgos (monocromático, con estampados, con color, vestido, estilo…) y se compara
    cuántas veces gusta un rasgo con lo que gustan los looks en general. Solo se muestra con datos suficientes. */
-const TASTE_LABELS={mono:"looks monocromáticos (un solo color)",neutral:"looks solo en neutros",color:"looks con color",multicolor:"looks con varios colores",pattern:"looks con estampados",plain:"looks lisos, sin estampados",dress:"looks con vestido o mono",layer:"looks con una capa encima"};
+const TASTE_LABELS={mono:"looks monocromáticos (un solo color)",neutral:"looks solo en neutros",color:"looks con color",multicolor:"looks con varios colores",pattern:"looks con estampados",plain:"looks lisos, sin estampados",dress:"looks con vestido o mono",layer:"looks con una capa encima",denim:"looks con doble vaquero",vividmono:"looks tono sobre tono en color vivo"};
 function lookTraits(l,resolved){
  const gs=resolved||(()=>{const byId=new Map(myGarments().map(g=>[g.id,g]));return (l.garmentIds||[]).map(id=>byId.get(id)).filter(Boolean)})(),t=new Set();
  const main=gs.filter(g=>["Arriba","Abajo","Vestidos","Capas"].includes(g.category));
  const tones=main.map(g=>{const c=colorInfo(g.color,g.pattern);return c.fam==="neutro"?"n:"+c.word.replace(/a$/,"o"):c.fam}).filter(Boolean);
  const fams=new Set(main.map(g=>colorInfo(g.color,g.pattern).fam).filter(f=>f&&f!=="neutro"&&f!=="estampado"));
  if(tones.length>=2&&new Set(tones).size===1)t.add("mono");
+ if(t.has("mono")&&!tones[0].startsWith("n:"))t.add("vividmono"); // tono sobre tono en color vivo: gusto distinto de «todo negro» (revisión de ChatGPT, #139)
  if(tones.length>=2&&tones.every(x=>x.startsWith("n:"))&&!t.has("mono"))t.add("neutral");
  if(fams.size>=1)t.add("color");if(fams.size>=2)t.add("multicolor");
  for(const f of fams)t.add("fam:"+f);
  if(gs.some(g=>(g.pattern&&g.pattern!=="plain")||colorInfo(g.color).fam==="estampado"))t.add("pattern");else if(gs.length)t.add("plain");
  if(gs.some(g=>g.category==="Vestidos"))t.add("dress");if(gs.some(g=>g.category==="Capas"))t.add("layer");
+ if(main.filter(isDenimPiece).length>=2)t.add("denim");
  const st=gs.map(g=>g.style).filter(Boolean),top=st.sort((a,b)=>st.filter(x=>x===b).length-st.filter(x=>x===a).length)[0];
  if(top&&st.filter(x=>x===top).length*2>st.length)t.add("style:"+top);
  return t;
@@ -1501,6 +1503,11 @@ const formalLevel=g=>g.formality in FORMAL_LEVEL?FORMAL_LEVEL[g.formality]:({spo
 const OUTDOOR=/monta[ñn]a|trekking|hiking|senderismo|running|gimnasio|\bgym\b|camping|north face|quechua/i;
 const isOutdoor=g=>g.formality==="sport"||(!g.formality&&(g.style==="sport"||OUTDOOR.test(textOf(g))));
 /* Abrigo térmico de 0 (muy fresco) a 6 (muy abrigado), o null si no se sabe: manga o largo + grosor + tejido */
+/* Prenda vaquera: la ficha (tejido) manda; sin dato, el color «Vaquero» o el nombre (revisión de Codex, #134) */
+const isDenimPiece=g=>g.fabric&&g.fabric!=="unknown"?g.fabric==="denim":g.color==="Vaquero"||/vaquer|denim|chambray|\bjeans?\b/i.test(textOf(g));
+/* Prenda de abajo corta: la ficha (largo) manda; sin dato, el nombre («mini», «minifalda», «shorts»…) (prueba de degradación, #128) */
+const SHORT_BOTTOM=/\bshorts?\b|bermuda|minifalda|\bmini\b|mini ?skirt|micro ?falda/i;
+const isShortBottom=g=>g.category==="Abajo"&&(g.length&&g.length!=="na"?g.length==="cropped":SHORT_BOTTOM.test(textOf(g)));
 function thermal(g){
  const txt=textOf(g);let t=null;
  if(["Arriba","Vestidos"].includes(g.category)){
@@ -1509,7 +1516,7 @@ function thermal(g){
   if(t===null&&/jersey|su[eé]ter|sweater|sudadera|manga larga|long sleeve|cuello alto|turtleneck/i.test(txt))t=3;
  }else if(g.category==="Abajo"){
   t={cropped:0,regular:2,midi:2,long:3}[g.length]??null;
-  if(t===null&&/\bshorts?\b|bermuda|minifalda|mini skirt/i.test(txt))t=0;
+  if(t===null&&SHORT_BOTTOM.test(txt))t=0;
  }
  if(t===null)return null;
  t+={ligero:0,medio:1,grueso:2}[g.thickness]??(/jersey|su[eé]ter|sweater|punto grueso|chunky/i.test(txt)?2:1);
@@ -1538,7 +1545,7 @@ function cloOf(g){
   return s==="sin mangas"?w(.05,.08,.12):s==="corta"?w(.08,.14,.19):s==="tres cuartos"?w(.17,.21,.26):knit?w(.25,.3,.37):w(.2,.25,.34);
  }
  if(g.category==="Abajo"){
-  if(g.length==="cropped"||/\bshorts?\b|bermuda|minifalda|mini skirt/i.test(txt))return .07;
+  if(g.length&&g.length!=="na"?g.length==="cropped":SHORT_BOTTOM.test(txt))return .07;
   if(/falda|skirt/i.test(txt))return g.length==="long"||/larga|maxi/i.test(txt)?w(.17,.22,.28):g.length==="midi"||/midi/i.test(txt)?w(.14,.18,.23):w(.11,.14,.2);
   return w(.15,.2,.25)+(fab==="denim"||/vaquer|jean/i.test(txt)?.02:0);
  }
@@ -1568,6 +1575,11 @@ const cloTarget=temp=>Math.max(.3,Math.min(1.6,1.35-(temp-5)*.045));
 /* Ocasión: si la prenda tiene ocasiones, manda eso; si no, su estilo. Casa y Baño solo en su ocasión. */
 /* Trabajo y eventos: fuera shorts, chanclas, sandalias planas, zuecos, gorras y gorros (evaluación visual #99) */
 const WORK_NO=/\bshorts?\b|chancl|sandalia|zueco|gorra|gorro|beanie|crop top|ch[aá]ndal|mallas|pantal[oó]n deportivo|camiseta t[eé]cnica|\brot[oa]s?\b|lavad[oa]s? (al )?[aá]cido|desgastad|deshilachad|distress|ripped|acid.?wash|destroyed|sudadera|hoodie|sweatshirt|bustier|cors[eé]|corset/i; // rotos o lavado ácido: no para el trabajo (evaluación Polyvore)
+/* Código de vestir del trabajo (Ajustes, por perfil): «arreglado» (por defecto), «formal» (traje, entrevista) o «informal» (oficina creativa).
+   Es una convención, no una norma universal (auditoría de reglas, #128 y #136 §6 y §33). */
+const WORK_DRESS={arreglado:"Arreglado",formal:"Formal (traje, entrevista)",informal:"Informal (oficina creativa)"};
+const workDress=()=>WORK_DRESS[appState?.data?.preferences?.workDress]?appState.data.preferences.workDress:"arreglado";
+const WORK_NO_INFORMAL=new RegExp(WORK_NO.source.replace(/\|sudadera\|hoodie\|sweatshirt/,""),"i"); // en oficina informal, sudaderas sí
 const OCC_STYLES={daily:["casual","smart","sport"],work:["smart","casual"],sport:["sport"],beach:["casual","sport"],home:null,event:["smart","party"],party:["party","smart"],formal:["smart","party"]};
 function occasionFits(g,occ){
  if(!occ)return !["Casa","Baño"].includes(g.category);
@@ -1576,18 +1588,19 @@ function occasionFits(g,occ){
  if(occ==="home")return ["Zapatos"].includes(g.category)?/casa|zapatilla/i.test(g.type||g.name||""):false;
  const occs=Array.isArray(g.occasions)?g.occasions.filter(o=>o in occasions):[];
  if(occs.includes(occ))return true; // lo que indica la ficha (análisis o la usuaria) manda sobre el nombre
- const formal=formalLevel(g);
+ const formal=formalLevel(g),wd=workDress();
+ if(occ==="work"&&wd==="formal")return occasionFits(g,"formal"); // código de vestir del perfil: formal = como un evento formal
  if(["work","formal","event"].includes(occ)){
   // Con formalidad arreglada o formal, vale aunque el nombre diga «sandalia» o «mochila»; informal, se mira el tipo; deporte o fiesta, no
   if(occ==="work"&&["smartcasual","formal"].includes(g.formality))return true;
   if(occ==="work"&&g.formality==="party"&&!occs.length&&smartFallbackShoes(g))return true; // salones o tacones lisos de «fiesta»: también de trabajo (banco A/B, #128); sandalias y brillos, no
   if(occ!=="work"&&g.formality)return formal>=2&&g.formality!=="sport";
   if(g.formality&&!["casual"].includes(g.formality))return false;
-  if(WORK_NO.test(textOf(g))||g.category==="Abajo"&&g.length==="cropped"||occ==="work"&&isBackpack(g))return false; // P1/P8 (#99); mochila informal, no (revisión de Codex, #112)
+  if((occ==="work"&&wd==="informal"?WORK_NO_INFORMAL:WORK_NO).test(textOf(g))||isShortBottom(g)||occ==="work"&&isBackpack(g)&&!(wd==="informal"&&!isOutdoor(g)))return false; // P1/P8 (#99); mochila informal, no (revisión de Codex, #112)
  }
  if(occ==="party"&&g.formality&&formal<2)return false;
  if(!["daily","sport","beach"].includes(occ)&&isOutdoor(g)&&g.category!=="Zapatos")return false; // Q3 (#108): mochila de montaña, ropa técnica
- if(g.category==="Bolsos"&&!["daily","sport"].includes(occ)&&!g.formality&&g.style!=="smart"&&BACKPACK.test(textOf(g)))return false; // mochila sin más datos: solo diario
+ if(g.category==="Bolsos"&&!["daily","sport"].includes(occ)&&!(occ==="work"&&wd==="informal")&&!g.formality&&g.style!=="smart"&&BACKPACK.test(textOf(g)))return false; // mochila sin más datos: solo diario
  // Gorros, gorras, boinas y sombreros solo en diario o playa; vale también para las sugerencias con IA (revisión de Codex, #100)
  if(g.category==="Accesorios"&&!["daily","beach"].includes(occ)&&HEADWEAR.test([g.type,g.subtype,g.name].filter(Boolean).join(" ")))return false;
  if(occs.length)return occs.includes(occ)||(occ==="daily"&&!occs.every(o=>["sport","home","beach","formal","party","event"].includes(o)));
@@ -1649,14 +1662,13 @@ function scoreOutfit(gs,ctx){
  const styled=gs.filter(g=>g.style),aff=[];
  for(let i=0;i<styled.length;i++)for(let j=i+1;j<styled.length;j++)aff.push(styleAffinity(styled[i],styled[j]));
  let style=aff.length?aff.reduce((a,b)=>a+b,0)/aff.length:.75;
- const target=DRESS_TARGET[ctx.dress]||(ctx.occasion==="work"?{smart:1,party:.6,casual:.55,sport:.25}:null);
+ const target=DRESS_TARGET[ctx.dress]||(ctx.occasion==="work"?{arreglado:{smart:1,party:.6,casual:.55,sport:.25},formal:{smart:1,party:.7,casual:.3,sport:0},informal:{casual:1,smart:.9,sport:.6,party:.4}}[workDress()]:null);
  if(target&&styled.length){const fit=styled.reduce((t,g)=>t+(target[g.style]??.5),0)/styled.length;style=.5*style+.5*fit;
   if(ctx.dress==="comoda"&&gs.some(g=>["holgado","oversize"].includes(g.fit)||["knit","cotton"].includes(g.fabric)))style=Math.min(1,style+.1);
   if(fit>=.85&&ctx.dress)reasons.push("Encaja con tu estilo de hoy: "+DRESS_LABEL[ctx.dress].toLowerCase());else if(fit>=.85)reasons.push("Arreglado para el trabajo")}
  // Detalles de estilista (banco A/B, #128): doble vaquero sin contraste y prendas llamativas en el trabajo restan un poco
  // La ficha manda: el nombre solo cuenta si falta el dato (revisión de Codex, #134)
- const isDenim=g=>g.fabric&&g.fabric!=="unknown"?g.fabric==="denim":g.color==="Vaquero"||/vaquer|denim|chambray|\bjeans?\b/i.test(textOf(g));
- if(big.filter(isDenim).length>=2&&big.filter(g=>g.category!=="Capas").every(isDenim))style-=.15;
+ if(!ctx.likes?.has("denim")&&big.filter(isDenimPiece).length>=2&&big.filter(g=>g.category!=="Capas").every(isDenimPiece))style-=.15; // gusto: si te gusta el doble vaquero, no resta
  // Animal print y pelo sí valen para la oficina (votos de Noelia, #128); brillos de noche, no
  const isLoud=g=>/lentejuel|sequin|purpurina|glitter|strass|rhinestone/i.test(textOf(g));
  if(ctx.occasion==="work"){const loud=gs.filter(isLoud).length;if(loud)style-=Math.min(.3,.15*loud)}
@@ -1684,7 +1696,7 @@ function scoreOutfit(gs,ctx){
  const clamp=v=>Math.max(0,Math.min(1,v));
  // Lo usado hace poco resta aparte (hasta 15 puntos), para que «distinto cada día» pese de verdad
  const recent=Math.min(1,personal<0?-personal:0);
- const score=Math.round(25*clamp(color)+25*clamp(sil)+20*clamp(style)+20*clamp(context)+10*clamp(personal)-15*recent-(patterns>=3&&!ctx.likes?.has("pattern")?12:0)-12*vividColorRepeat(gs));
+ const score=Math.round(25*clamp(color)+25*clamp(sil)+20*clamp(style)+20*clamp(context)+10*clamp(personal)-15*recent-(patterns>=3&&!ctx.likes?.has("pattern")?12:0)-(ctx.likes?.has("vividmono")?0:12)*vividColorRepeat(gs)); // gusto: solo si te gusta el tono sobre tono en color vivo (no basta con «monocromático»)
  return {score,reasons:[...new Set(reasons)].slice(0,3),warnings};
 }
 /* Contexto común (se calcula una vez por llamada: usos, olvidadas y gustos) */
@@ -1781,7 +1793,7 @@ function completeOutfitGreedy(base,pool,ctx,used=new Map(),firstPick=null){
    c.sort((a,b)=>(Number(formalLevel(b)>=2)-Number(formalLevel(a)>=2))*2+pref(b)-pref(a));
   }
   else if(cat==="Zapatos"&&ctx.occasion==="work"){ // Q2 (#108): deportivas solo si no hay otro calzado (por tipo o nombre, no solo por estilo)
-   const ok=x=>!isSneaker(x)&&!bootInHeat(x,ctx.temp);
+   const ok=x=>(workDress()==="informal"||!isSneaker(x))&&!bootInHeat(x,ctx.temp); // oficina informal: deportivas como cualquier otro calzado
    // Sin calzado de trabajo adecuado: salones o tacones lisos del armario antes que deportivas; botines con calor, lo último
    if(!c.some(ok))c=[...c,...(ctx.allShoes||[]).filter(x=>!c.includes(x)&&smartFallbackShoes(x)&&ok(x)&&fallbackOccOk(x,ctx.occasion)).filter(fits)];
    const tier=x=>ok(x)?0:isSneaker(x)&&!bootInHeat(x,ctx.temp)?1:2;
@@ -2009,7 +2021,7 @@ function computeDaily(date,skip=[]){
 let dailyDirty=false;
 function ensureDailyLook(force=false){
  const p=appState.data.preferences,today=dayISO(),temp=currentTemperature();let d=p.dailyLook;
- const wsig=myGarments().length+"|"+myGarments().reduce((m,g)=>String(g.updatedAt||"")>m?String(g.updatedAt||""):m,"")+"|"+(p.dressStyle||"");
+ const wsig=myGarments().length+"|"+myGarments().reduce((m,g)=>String(g.updatedAt||"")>m?String(g.updatedAt||""):m,"")+"|"+(p.dressStyle||"")+"|"+workDress(); // cambiar el código de vestir rehace el look del día (revisión de Codex, #139)
  const stale=!d||d.date!==today||!d.ids?.length||(!d.touched&&(Math.abs((d.temp??temp)-temp)>=5||d.wsig!==wsig));
  if(!stale&&!force)return d;
  dailyDirty=true;
@@ -2468,6 +2480,7 @@ function renderSettings(root){
   '<div class="feature-card"><h2>Compras</h2><label class="field"><span>Presupuesto de compras (€)</span><input id="shoppingBudget" type="number" min="0" max="100000" step="1" inputmode="numeric" value="'+fx(p.budget)+'"></label><p class="helper">Lo uso en la wishlist y en «¿Lo compro?» para avisarte si una compra te haría pasarte.</p></div>'+
   '<div class="feature-card"><h2>Preferencias del estilista</h2>'+
   '<label class="field"><span>Prenda olvidada tras (días)</span><input id="settingsForget" type="number" min="30" max="365" value="'+fx(p.forgottenDays)+'"></label>'+
+  '<label class="field"><span>Código de vestir en tu trabajo</span><select id="settingsWorkDress">'+Object.entries(WORK_DRESS).map(([k,v])=>'<option value="'+k+'"'+(workDress()===k?' selected':'')+'>'+fx(v)+'</option>').join("")+'</select></label><p class="helper">Lo uso en los looks de trabajo: en una oficina informal valen deportivas y sudaderas; en una formal, solo prendas arregladas.</p>'+
   '</div>'+ 
   '<div class="feature-card"><h2>Uso de la IA hoy</h2><p class="muted">Análisis de fotos: '+u.analyze+' de '+AI_LIMITS.analyze+'. Sugerencias de looks: '+u.looks+' de '+AI_LIMITS.looks+'.</p><p class="helper">Los límites diarios mantienen bajo el coste de la API. «¿Lo compro?», las recomendaciones y «Combinar prenda» no usan la IA.</p></div>'+
   '<div class="feature-card"><h2>Fotos</h2><p class="muted">'+fx(myGarments().filter(g=>g.photoFx).length+" de "+myGarments().filter(g=>validImage(g.image)).length+" fotos mejoradas ("+myGarments().filter(g=>g.bgWhite).length+" con fondo blanco).")+'</p>'+
@@ -2480,6 +2493,7 @@ function renderSettings(root){
   '<button id="logout" class="danger wide">Cerrar sesión</button>';
  $("#syncButton")?.addEventListener("click",async e=>{e.target.disabled=true;e.target.textContent="Sincronizando…";$("#syncStatus").textContent="Sincronizando…";await syncNow();render()});
  $("#shoppingBudget")?.addEventListener("change",e=>{const n=Number(e.target.value);if(e.target.value===""||!Number.isFinite(n)||n<0)return toast("Introduce un importe en euros");setPref("budget",Math.round(n*100)/100,false);toast("Presupuesto guardado: "+euro(n))});
+ $("#settingsWorkDress")?.addEventListener("change",e=>{setPref("workDress",WORK_DRESS[e.target.value]?e.target.value:"arreglado");toast("Código de vestir del trabajo: "+WORK_DRESS[e.target.value].toLowerCase())});
  $("#settingsForget")?.addEventListener("change",e=>{const n=Number(e.target.value);if(Number.isInteger(n)&&n>=30&&n<=365)setPref("forgottenDays",n);else toast("Introduce entre 30 y 365 días")});
  $("#exportBackup")?.addEventListener("click",downloadBackup);
  $("#importBackup")?.addEventListener("change",e=>importBackup(e.target.files[0]));

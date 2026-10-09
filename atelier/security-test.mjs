@@ -447,7 +447,7 @@ console.log("PASS: S6 long-offline devices don't resurrect deletions");
   const mini=G("b1","Abajo","Falda",{length:"cropped"}),midi=G("b2","Abajo","Falda",{length:"midi"});
   const jeans=[G("j1","Abajo","Vaqueros",{name:"Vaqueros acid wash skinny"}),G("j2","Abajo","Vaqueros",{name:"Vaqueros rotos"}),G("j3","Abajo","Vaqueros",{name:"Vaqueros rectos oscuros"}),G("j4","Abajo","Vaqueros",{name:"Vaqueros rotos",formality:"smartcasual"}),G("j6","Abajo","Vaqueros",{name:"Vaquero roto"}),G("j7","Abajo","Vaqueros",{name:"Vaqueros lavados al ácido"}),G("j8","Abajo","Vaqueros",{name:"Vaqueros de lavado ácido"}),G("j5","Vestidos","Vestido",{name:"Vestido largo rotita",formality:"party"})];
   return {
-   jeansWork:jeans.slice(0,4).map(j=>fit(j,"work")).join(),jeansDaily:fit(jeans[1],"daily"),rotita:fit(jeans.find(j=>j.id==="j5"),"party"),spanish:jeans.filter(j=>["j6","j7","j8"].includes(j.id)).map(j=>fit(j,"work")).join(),pumps:[G("h1","Zapatos","Tacones",{name:"Salones de piel",formality:"party"}),G("h2","Zapatos","Tacones",{name:"Tacones con purpurina",formality:"party"}),G("h3","Zapatos","Sandalias",{name:"Sandalias de tacón",formality:"party"}),G("h4","Bolsos","Bolso de fiesta",{formality:"party"})].map(x=>fit(x,"work")).join(),tops:[G("w1","Arriba","Sudadera"),G("w2","Arriba","Top",{name:"Top bustier"}),G("w3","Arriba","Sudadera",{formality:"smartcasual"}),G("w4","Arriba","Blusa")].map(t=>fit(t,"work")).join(),hoodieDaily:fit(G("w5","Arriba","Sudadera"),"daily"),
+   jeansWork:jeans.slice(0,4).map(j=>fit(j,"work")).join(),jeansDaily:fit(jeans[1],"daily"),rotita:fit(jeans.find(j=>j.id==="j5"),"party"),spanish:jeans.filter(j=>["j6","j7","j8"].includes(j.id)).map(j=>fit(j,"work")).join(),shortBottom:[G("m1","Abajo","Falda",{name:"Falda mini de algodón"}),G("m2","Abajo","Falda",{name:"Falda mini",length:"midi"}),G("m3","Abajo","Minifalda")].map(x=>fit(x,"work")).join(),pumps:[G("h1","Zapatos","Tacones",{name:"Salones de piel",formality:"party"}),G("h2","Zapatos","Tacones",{name:"Tacones con purpurina",formality:"party"}),G("h3","Zapatos","Sandalias",{name:"Sandalias de tacón",formality:"party"}),G("h4","Bolsos","Bolso de fiesta",{formality:"party"})].map(x=>fit(x,"work")).join(),tops:[G("w1","Arriba","Sudadera"),G("w2","Arriba","Top",{name:"Top bustier"}),G("w3","Arriba","Sudadera",{formality:"smartcasual"}),G("w4","Arriba","Blusa")].map(t=>fit(t,"work")).join(),hoodieDaily:fit(G("w5","Arriba","Sudadera"),"daily"),
    casualPackWork:fit(casualPack,"work"),partyShoes,
    packs:[fit(dressyPack,"work"),fit(hikePack,"work"),fit(plainPack,"work"),fit(userPack,"work"),fit(hikePack,"daily")].join(),
    shoes:[fit(heelSandal,"work"),fit(heelSandal,"party"),fit(flipflop,"work")].join(),
@@ -460,6 +460,7 @@ console.log("PASS: S6 long-offline devices don't resurrect deletions");
   assert.equal(r.spanish,"false,false,false","Español: «vaquero roto» y «lavado al ácido» tampoco");
   assert.equal(r.tops,"false,false,true,true","Trabajo: ni sudadera ni bustier, salvo que la ficha diga arreglada");assert.equal(r.hoodieDaily,true);
   assert.equal(r.pumps,"true,false,false,false","Trabajo: salones lisos de «fiesta» sí; con purpurina, sandalias o cartera de fiesta, no");
+  assert.equal(r.shortBottom,"false,true,false","Sin largo en la ficha, «mini» cuenta como corta; si la ficha dice midi, manda la ficha");
   assert.equal(r.jeansDaily,true);assert.equal(r.rotita,true,"«rotita» (marca) no se confunde con «rotos»");assert.equal(r.partyShoes,true,"Fiesta: sandalias de tacón con formalidad formal aunque su estilo sea informal");
   assert.equal(r.shoes,"true,true,false","Sandalias de tacón (formalidad formal) sí en trabajo y fiesta; chanclas no");
   assert.equal(r.heat,"false,true,true,true","Jersey de lana grueso no con 27 °C; camisa de lino de manga larga sí");
@@ -587,12 +588,35 @@ console.log("PASS: S6 long-offline devices don't resurrect deletions");
    mix:(()=>{const st=G("t7","Arriba","Jersey",{pattern:"stripes",sleeve:"larga"}),ck=G("b3","Abajo","Pantalón",{pattern:"checks",color:"Beige"}),sc2=G("c6","Capas","Abrigo",{pattern:"stripes",color:"Gris"});
     const c=engineContext({occasion:"daily",temp:8,date:"2026-01-15",extras:{shoes:true,bag:false}}),gap=()=>scoreOutfit([sweater,black,shoes,sc2],c).score-scoreOutfit([st,ck,shoes,sc2],c).score;
     const plain=gap();c.likes=new Set(["pattern"]);return [plain,gap()]})(),
+   denimTaste:(()=>{const c=engineContext({occasion:"daily",temp:17,date:"2026-04-15",extras:{shoes:true,bag:false}}),a=scoreOutfit([chambray,jeans,shoes],c).score;c.likes=new Set(["denim"]);return scoreOutfit([chambray,jeans,shoes],c).score>a})(),
    cold:sc([sweater,black,shoes,coat],"daily",8)>sc([tank,black,shoes,coat],"daily",8),warm:sc([tank,black,shoes],"daily",20)>=sc([sweater,black,shoes],"daily",20)-3};`);
   const r=probe(document,sessionStorage,{randomUUID:()=>"t"});
   assert.equal(r.denim,true,"Camisa vaquera: mejor con pantalón negro que con vaqueros");assert.equal(r.jacketOk,true,"Cazadora vaquera con vaqueros y camisa blanca: sin penalización");
   assert.equal(r.loudWork,true,"Trabajo: el abrigo de leopardo vale (votos de Noelia); las lentejuelas restan");assert.ok(Math.abs(r.loudDaily)<=4,"Diario: el leopardo no se penaliza por ser llamativo");
-  assert.equal(r.cold,true,"8 °C: jersey mejor que top sin mangas bajo el abrigo");assert.ok(r.mix[0]>10&&r.mix[1]<r.mix[0]-10,"Mezcla de estampados: penaliza por defecto, mucho menos si te gustan los estampados ("+r.mix+")");assert.equal(r.cottonShirt,true,"Ficha de algodón: no cuenta como vaquera aunque el nombre lo diga");assert.equal(r.plainLeo,true,"Ficha lisa: no es llamativa aunque el nombre diga leopardo");assert.equal(r.cropLen,true,"Largo «cropped» en la ficha: penaliza con frío aunque el nombre sea «Top»");assert.equal(r.warm,true,"20 °C: el top sin mangas no se penaliza");
+  assert.equal(r.cold,true,"8 °C: jersey mejor que top sin mangas bajo el abrigo");assert.equal(r.denimTaste,true,"Si te gusta el doble vaquero, no resta");assert.ok(r.mix[0]>10&&r.mix[1]<r.mix[0]-10,"Mezcla de estampados: penaliza por defecto, mucho menos si te gustan los estampados ("+r.mix+")");assert.equal(r.cottonShirt,true,"Ficha de algodón: no cuenta como vaquera aunque el nombre lo diga");assert.equal(r.plainLeo,true,"Ficha lisa: no es llamativa aunque el nombre diga leopardo");assert.equal(r.cropLen,true,"Largo «cropped» en la ficha: penaliza con frío aunque el nombre sea «Top»");assert.equal(r.warm,true,"20 °C: el top sin mangas no se penaliza");
   console.log("PASS: Stylist details: double denim, loud pieces at work, sleeveless top in the cold (soft)");
+}
+
+// Código de vestir del trabajo por perfil (auditoría de reglas, #128): arreglado por defecto, formal o informal
+{
+  const probe=new Function("document","sessionStorage","crypto",src+`
+  const G=(id,category,type,extra={})=>({id,name:type,category,type,color:"Negro",style:"casual",season:"all",updatedAt:"x",...extra});
+  appState.profile={id:"noelia"};appState.data=normalizeData({garments:[]});
+  const items=[G("h","Arriba","Sudadera"),G("s","Zapatos","Deportivas",{style:"sport"}),G("m","Bolsos","Mochila",{formality:"casual"}),G("x","Bolsos","Mochila",{name:"Mochila de montaña",formality:"sport"}),G("c","Zapatos","Chanclas"),G("j","Abajo","Vaqueros",{formality:"casual"}),G("b","Arriba","Blusa",{formality:"smartcasual"})];
+  const at=w=>{appState.data.preferences.workDress=w;return items.map(g=>occasionFits(g,"work")?1:0).join("")};
+  const out={def:at(undefined),arreglado:at("arreglado"),informal:at("informal"),formal:at("formal")};
+  appState.data=normalizeData({garments:[G("t1","Arriba","Camisa",{formality:"smartcasual"}),G("p1","Abajo","Pantalón",{formality:"smartcasual"}),G("z1","Zapatos","Deportivas",{name:"Deportivas blancas",favorite:true}),G("z2","Zapatos","Mocasines")]});
+  const shoe=w=>{appState.data.preferences.workDress=w;return rankOutfits({max:1,occasion:"work",date:"2026-04-15",temp:20})[0]?.ids.filter(i=>i[0]==="z").join()};
+  out.shoeDef=shoe("arreglado");out.shoeInf=shoe("informal");appState.data.preferences.workDress="informal";out.plainPack=occasionFits(G("q","Bolsos","Mochila"),"work");
+  const vivid=[G("v1","Arriba","Top",{color:"Rosa"}),G("v2","Abajo","Falda",{color:"Rosa"}),G("v3","Zapatos","Bailarinas",{color:"Rosa"})],c=engineContext({occasion:"daily",temp:20,date:"2026-04-15",extras:{shoes:true,bag:false}});
+  const base=scoreOutfit(vivid,c).score;c.likes=new Set(["mono"]);const mono=scoreOutfit(vivid,c).score;c.likes=new Set(["vividmono"]);out.vivid=[base,mono,scoreOutfit(vivid,c).score];return out;`);
+  const r=probe(document,sessionStorage,{randomUUID:()=>"t"});
+  // orden: sudadera, deportivas, mochila urbana, mochila de montaña, chanclas, vaqueros, blusa
+  assert.equal(r.def,r.arreglado,"Sin ajuste = arreglado");assert.equal(r.arreglado,"0100011","Arreglado: ni sudadera, ni mochilas, ni chanclas; deportivas solo como último recurso");
+  assert.equal(r.informal,"1110011","Informal: sudadera, deportivas y mochila urbana sí; mochila de montaña y chanclas, no");
+  assert.equal(r.formal,"0000001","Formal: solo prendas arregladas");
+  assert.equal(r.shoeDef,"z2","Arreglado: mocasines antes que deportivas");assert.equal(r.plainPack,true,"Informal: mochila sin formalidad en la ficha, sí");assert.ok(r.vivid[1]-r.vivid[0]<=4&&r.vivid[2]-r.vivid[1]>=8,"Gustar de «monocromático» no relaja el color vivo repetido; «tono sobre tono vivo», sí ("+r.vivid+")");assert.equal(r.shoeInf,"z1","Informal: las deportivas favoritas valen");
+  console.log("PASS: Work dress code per profile (arreglado, formal, informal)");
 }
 
 // Foto de look: el análisis devuelve también formalidad, manga y largo (perfil de prenda), solo con valores conocidos
