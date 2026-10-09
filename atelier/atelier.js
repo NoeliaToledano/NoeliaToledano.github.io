@@ -769,13 +769,19 @@ function render(){
 const BOARD_SLOTS={Capas:{x:0,y:3,w:50,h:60,z:1},Arriba:{x:24,y:1,w:52,h:46,z:3},Vestidos:{x:20,y:1,w:60,h:76,z:3},Abajo:{x:27,y:36,w:46,h:58,z:2},Zapatos:{x:1,y:70,w:38,h:28,z:5},Bolsos:{x:64,y:50,w:35,h:34,z:4},Accesorios:{x:68,y:3,w:31,h:26,z:4}};
 function outfitBoard(pieces){
  const categoryOrder={Capas:0,Arriba:1,Vestidos:2,Abajo:3,Zapatos:4,Bolsos:5,Accesorios:6};
- const items=pieces.filter(g=>validImage(g.image)).slice(0,7).sort((a,b)=>(categoryOrder[a.category]??7)-(categoryOrder[b.category]??7));
+ // Ordenar ANTES de limitar a siete para no perder piezas esenciales.
+ const sorted=pieces.filter(g=>validImage(g.image)).sort((a,b)=>(categoryOrder[a.category]??7)-(categoryOrder[b.category]??7));
+ const items=sorted.slice(0,7);
  if(!items.length)return "";
  if(!items.every(g=>g.bgWhite)){
   // El primer hueco del collage es el protagonista: priorizar prendas estructurales.
   // Los complementos van en espacios secundarios, independientemente del orden de selección.
   const visualPriority={Vestidos:0,Capas:1,Arriba:2,Abajo:3,Zapatos:4,Bolsos:5,Accesorios:6};
-  const arranged=items.slice().sort((a,b)=>(visualPriority[a.category]??7)-(visualPriority[b.category]??7));
+  // Evitar que una foto de una habitación ocupe el lugar protagonista.
+  // Solo la foto protagonista debe tener preferencia por fondo blanco.
+  // Las demás conservan el orden de vestirse, sin subir zapatos ni accesorios.
+  const hero=items.find(g=>g.bgWhite&&(visualPriority[g.category]??7)<=3)||items[0];
+  const arranged=[hero,...items.filter(g=>g!==hero)];
   return '<div class="look-mixed-board" data-count="'+arranged.length+'" role="group" aria-label="Prendas del conjunto">'+arranged.map(g=>'<div class="look-mixed-item"><img src="'+photoUrl(g)+'" alt="'+fx(g.name||g.category||"Prenda")+'" loading="lazy"></div>').join("")+'</div>';
  }
  if(items.length===1)return '<div class="board"><img src="'+photoUrl(items[0])+'" alt="'+fx(items[0].name||"Prenda del conjunto")+'" loading="lazy" style="left:8%;top:5%;width:84%;height:90%"></div>';
