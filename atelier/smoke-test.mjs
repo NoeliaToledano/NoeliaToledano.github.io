@@ -96,6 +96,7 @@ try{
  assert.equal(await page.locator("#meta-brand").inputValue(),"Marca introducida a mano");
  await page.locator("#closeGarment").click();
  await page.locator('[data-view="stylist"]').click(); await page.locator("#openLooks").click();
+ await page.locator(".looks-tools > summary").click();
  await page.locator("#aiLooks").click();
  await page.getByText("Look de prueba IA").waitFor();
  // Las propuestas de la IA se revisan: no se guardan solas
