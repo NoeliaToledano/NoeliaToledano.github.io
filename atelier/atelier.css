@@ -312,4 +312,5 @@ p.notice-card{display:block}
 [data-look] .look-chip{min-height:29px;padding:2px 6px 2px 2px;gap:4px}
 [data-look] .look-chip-photo,[data-look] .look-chip-placeholder{width:23px;height:23px}
 [data-look] .look-chip-name{font-size:11px;line-height:1.2}
-[data-look] button{white-space:normal;overflow-wrap:anywhere;max-width:100%}
+.look-tile .tile-tools{flex-wrap:wrap;min-width:0}
+.look-tile .tile-tools .chip-button{flex:1 1 auto;min-width:0;white-space:nowrap;padding-inline:8px}
