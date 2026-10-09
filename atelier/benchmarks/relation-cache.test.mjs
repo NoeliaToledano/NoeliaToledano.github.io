@@ -44,4 +44,21 @@ ranked.reconcile([{id:"anchor",category:"Arriba"},{id:"ordinary",category:"Abajo
 assert.deepEqual(ranked.neighbors("anchor",{limit:1,rank:(_edge,g)=>g.id==="favorite"?100:1}).map(x=>x.garmentId),["favorite"],"A late-added garment must win on context, not wardrobe order");
 assert.deepEqual(ranked.neighbors("anchor",{limit:1,rank:(_edge,g)=>g.id==="ordinary"?100:1}).map(x=>x.garmentId),["ordinary"],"A new context must rerank without stale cached preferences");
 assert.throws(()=>ranked.neighbors("anchor",{rank:"invalid"}),/Invalid rank/);
+
+for(const size of [10,100,500]){
+ let work=0;
+ const garments=Array.from({length:size},(_,i)=>({id:"g"+i,name:"Prenda "+i,color:"Blanco",category:i%2?"Arriba":"Abajo"}));
+ const scale=createRelationCache({profileId:"noelia",engineVersion:"v2",pairEvidence:(a,b)=>{work++;return {color:a.color+"-"+b.color}}});
+ scale.reconcile(garments);
+ for(let i=0;i<size;i++)for(let j=i+1;j<size;j++)scale.evidence(garments[i].id,garments[j].id);
+ assert.equal(work,size*(size-1)/2,"Initial warm-up computes each unordered pair once");
+ scale.reconcile(garments.map((g,i)=>i===Math.floor(size/2)?{...g,color:"Rojo"}:g));
+ for(let i=0;i<size;i++)for(let j=i+1;j<size;j++)scale.evidence(garments[i].id,garments[j].id);
+ assert.equal(work,size*(size-1)/2+size-1,"One edited garment recalculates ONLY its incident edges, even in a 500-item wardrobe");
+ const previous=work;
+ const edited=garments.map((g,i)=>i===Math.floor(size/2)?{...g,color:"Rojo"}:g);
+ scale.reconcile(edited);
+ scale.neighbors(edited[0].id,{limit:2,rank:(_ev,g)=>g.id==="g"+(size-1)?100:1});
+ assert.equal(work,previous,"Contextual rerank must not invalidate stable pair evidence");
+}
 console.log("Incremental relation cache tests: OK");
