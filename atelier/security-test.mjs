@@ -208,3 +208,35 @@ assert.equal(s3.fatal,"SESSION_EXPIRED","Una sesión caducada sí detiene la sin
 assert.equal(s3.upFailed,1);assert.equal(s3.uploaded,"a,c","Una foto rechazada no bloquea las demás");
 assert.equal(s3.posts2,0,"La foto rechazada no se reintenta hasta que cambie");
 console.log("PASS: S3 photo sync: parallel downloads kept on arrival, per-photo failures don't block");
+
+// R4: sincronización ligera — si nada cambió en el servidor, no se descarga el armario
+const r4Probe=new Function("document","sessionStorage","crypto",src+`
+return (async()=>{
+  dbSet=async()=>{};render=()=>{};toast=()=>{};scheduleSync=()=>{};
+  appState.profile={id:"noelia"};appState.token="t";appState.data=normalizeData({garments:[{id:"g1",name:"a",category:"Arriba",updatedAt:"x"}]});
+  sync={...freshSync(),ever:true,rev:5};const urls=[];
+  syncFetch=async(path,o={})=>{urls.push((o.method||"GET")+" "+path);
+    if(o.method==="PUT")return {status:200,body:{rev:6}};
+    return path.includes("since=5")?{status:200,body:{rev:5,unchanged:true,images:[]}}:{status:200,body:{rev:6,data:null,images:[]}}};
+  await syncNow();const clean=urls.slice();urls.length=0;
+  sync.dirty=true;await syncNow();
+  return {clean,dirty:urls,garments:appState.data.garments.length,rev:sync.rev,status:sync.status};
+})();
+`);
+const r4=await r4Probe(document,sessionStorage,{randomUUID:()=>"t"});
+assert.deepEqual(r4.clean,["GET /api/sync?since=5"],"Al día: una sola petición ligera, sin subir nada");
+assert.deepEqual(r4.dirty,["GET /api/sync?since=5","PUT /api/sync"],"Con cambios locales: se suben sin descargar el armario");
+assert.equal(r4.garments,1);assert.equal(r4.rev,6);assert.equal(r4.status,"ok");
+console.log("PASS: R4 light sync: rev-only check when nothing changed");
+
+// S6: un móvil sin sincronizar más de 90 días no resucita lo borrado (lápidas ya caducadas)
+const s6Probe=new Function("document","sessionStorage","crypto",src+`
+const last="2026-01-01T00:00:00Z";
+const local=normalizeData({garments:[{id:"old",name:"borrada en otro móvil",category:"Arriba",updatedAt:"2025-12-01T00:00:00Z"},{id:"kept",name:"en ambos",category:"Arriba",updatedAt:"2025-12-01T00:00:00Z"},{id:"new",name:"creada sin conexión",category:"Arriba",updatedAt:"2026-02-01T00:00:00Z"}]});
+const remote=normalizeData({garments:[{id:"kept",name:"en ambos",category:"Arriba",updatedAt:"2025-12-01T00:00:00Z"}]});
+return {stale:mergeData(local,remote,last).garments.map(g=>g.id).sort().join(),normal:mergeData(local,remote).garments.length};
+`);
+const s6=s6Probe(document,sessionStorage,{randomUUID:()=>"t"});
+assert.equal(s6.stale,"kept,new","Más de 90 días sin conexión: lo borrado en otro móvil no vuelve; lo nuevo se conserva");
+assert.equal(s6.normal,3,"Sin caducidad: la fusión normal no cambia");
+console.log("PASS: S6 long-offline devices don't resurrect deletions");
