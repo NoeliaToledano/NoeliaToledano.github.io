@@ -1188,26 +1188,34 @@ function intentionalMix(a,b){
  return "";
 }
 const EVIDENCE_FIELDS=g=>["color",...(["Arriba","Vestidos","Capas"].includes(g.category)?["sleeve","thickness"]:[]),...(BIG.includes(g.category)?["warmth"]:[]),"formality"];
-let relCache={sig:"",ev:new Map(),ctx:new Map(),learn:new Map()};
-function relSig(){const d=appState.data||{};return (d.garments||[]).length+"|"+(d.garments||[]).reduce((m,g)=>String(g.updatedAt||"")>m?String(g.updatedAt||""):m,"")+"|"+JSON.stringify(d.feedback||{})+"|"+(d.looks||[]).map(l=>l.id+(l.dislikeReason||"")).join(",").length+"|"+(d.preferences?.workDress||"")}
+let relCache={sig:"",ev:new Map(),ctx:new Map(),learn:new Map(),fast:new Map(),feat:new Map()};
+function relSig(){const d=appState.data||{};return (d.garments||[]).length+"|"+(d.garments||[]).reduce((m,g)=>String(g.updatedAt||"")>m?String(g.updatedAt||""):m,"")+"|"+JSON.stringify(d.feedback||{})+"|"+(d.looks||[]).map(l=>l.id+":"+(l.favorite?"f":"")+(l.inspired?"i":"")+(l.dislikeReason||"")+":"+(l.garmentIds||[]).join(".")).join(",") /* lo que enseña relaciones: favorito, inspiración, motivo y prendas (revisión de Codex, #164) */+"|"+(d.preferences?.workDress||"")}
 /* Una vez por cálculo (rankOutfits, ficha): si el armario, el feedback o el código de vestir cambian, se rehace la caché */
 function ensureRelations(){
  const sig=relSig();if(relCache.sig===sig)return;
- relCache={sig,ev:new Map(),ctx:new Map(),learn:new Map()};const fb=appState.data.feedback||{};
+ relCache={sig,ev:new Map(),ctx:new Map(),learn:new Map(),fast:new Map(),feat:new Map()};const fb=appState.data.feedback||{};
  for(const l of myLooks()){const v=fb[l.id]==="down"?(l.dislikeReason==="hoy"||l.dislikeReason==="color"?0:-1):fb[l.id]==="up"||l.favorite||l.inspired?1:0;if(!v)continue;const ids=l.garmentIds||[];
   for(let i=0;i<ids.length;i++)for(let j=i+1;j<ids.length;j++){const k=[ids[i],ids[j]].sort().join("|");relCache.learn.set(k,(relCache.learn.get(k)||0)+v)}}
 }
 /* la formalidad de la ficha manda sobre el estilo (un vestido de fiesta etiquetado «casual» es de fiesta) */
 const SHEET_STYLE={sport:"sport",casual:"casual",smartcasual:"smart",formal:"smart",party:"party"};
 const sheetStyle=g=>g.formality in SHEET_STYLE&&g.style!==SHEET_STYLE[g.formality]?{...g,style:SHEET_STYLE[g.formality]}:g;
+/* Rasgos de cada prenda que usan las relaciones: se calculan una vez por prenda, no por pareja (rendimiento, revisión de Codex #164) */
+function relFeat(g){
+ let f=relCache.feat.get(g);if(f)return f;const t=textOf(g);
+ f={fl:formalLevel(g),heavy:warmthOf(g)>=2||g.thickness==="grueso",light:summerFootwear(g)||isShortBottom(g)||g.sleeve==="sin mangas",occ:REL_OCCS.filter(o=>occasionFits(g,o)),ss:sheetStyle(g),
+  urban:isSneaker(g)&&g.formality!=="sport"&&!OUTDOOR.test(t),structured:g.category==="Capas"&&STRUCTURED.test(t),denim:isDenimPiece(g),declared:!g.formality&&Array.isArray(g.occasions)?g.occasions:[],
+  missing:EVIDENCE_FIELDS(g).filter(k=>!g[k]).map(k=>(g.name||g.type||g.category)+": "+k)};
+ relCache.feat.set(g,f);return f;
+}
 function pairEvidence(a,b){
  if(!a||!b||a.id===b.id||!relatedCats(a,b))return null;
  const key=a.id&&b.id?(a.id<b.id?a.id+"|"+b.id:b.id+"|"+a.id):"";if(key&&relCache.ev.has(key))return relCache.ev.get(key);
- const pc=pairColor(a,b),heavy=g=>warmthOf(g)>=2||g.thickness==="grueso",light=g=>summerFootwear(g)||isShortBottom(g)||g.sleeve==="sin mangas";
- const ev={ids:[a.id,b.id],color:pc.s,colorKind:pc.k||"",small:!BIG.includes(a.category)||!BIG.includes(b.category),style:styleAffinity(sheetStyle(a),sheetStyle(b)),formalGap:Math.abs(formalLevel(a)-formalLevel(b)),
-  register:REGISTER_OF((formalLevel(a)+formalLevel(b))/2),seasonClash:!!(a.season&&b.season&&a.season!=="all"&&b.season!=="all"&&a.season!==b.season),
-  thermalClash:heavy(a)&&light(b)||heavy(b)&&light(a),occasions:REL_OCCS.filter(o=>occasionFits(a,o)&&occasionFits(b,o)),mix:intentionalMix(a,b),declared:[...new Set([a,b].flatMap(g=>!g.formality&&Array.isArray(g.occasions)?g.occasions:[]))],
-  uncertain:[a,b].flatMap(g=>EVIDENCE_FIELDS(g).filter(f=>!g[f]).map(f=>(g.name||g.type||g.category)+": "+f))};
+ const pc=pairColor(a,b),fa=relFeat(a),fb=relFeat(b);
+ const mix=fa.urban&&b.category!=="Zapatos"&&fb.fl>=2||fb.urban&&a.category!=="Zapatos"&&fa.fl>=2?"zapatillas con prenda arreglada":fa.structured&&fb.denim||fb.structured&&fa.denim?"americana con vaquero":"";
+ const ev={ids:[a.id,b.id],color:pc.s,colorKind:pc.k||"",small:!BIG.includes(a.category)||!BIG.includes(b.category),style:styleAffinity(fa.ss,fb.ss),formalGap:Math.abs(fa.fl-fb.fl),
+  register:REGISTER_OF((fa.fl+fb.fl)/2),seasonClash:!!(a.season&&b.season&&a.season!=="all"&&b.season!=="all"&&a.season!==b.season),
+  thermalClash:fa.heavy&&fb.light||fb.heavy&&fa.light,occasions:fa.occ.filter(o=>fb.occ.includes(o)),mix,declared:fa.declared.concat(fb.declared),uncertain:fa.missing.concat(fb.missing)};
  if(key)relCache.ev.set(key,ev);return ev;
 }
 function contextualizePair(ev,ctx){
@@ -1225,7 +1233,13 @@ function contextualizePair(ev,ctx){
  const r={s:Math.max(0,Math.min(1,Math.round(s*100)/100)),register:ev.register,contexts:ev.occasions,mix:ev.mix,uncertain:ev.uncertain};
  relCache.ctx.set(k,r);return r;
 }
-const relationOf=(a,b,ctx)=>contextualizePair(pairEvidence(a,b),ctx);
+/* acceso rápido por objeto (sin construir claves de texto): el motor pregunta cientos de miles de veces por las mismas parejas */
+function relationOf(a,b,ctx){
+ if(!a||!b)return null;const ck=(ctx?.occasion||"")+(ctx?.likes?.has("pattern")?"|p":"");
+ let m=relCache.fast.get(ck);if(!m)relCache.fast.set(ck,m=new Map());
+ let ma=m.get(a);if(!ma)m.set(a,ma=new Map());if(ma.has(b))return ma.get(b);
+ const r=contextualizePair(pairEvidence(a,b),ctx);ma.set(b,r);let mb=m.get(b);if(!mb)m.set(b,mb=new Map());mb.set(a,r);return r;
+}
 const REL_OK=.6,REL_WEAK=.4;
 /* La red vista desde una prenda: con qué combina, de mejor a peor (ficha «Combina con», Combinar prenda) */
 const relationsFor=(g,min=REL_OK)=>{ensureRelations();return myGarments().map(x=>({g:x,r:relationOf(g,x)})).filter(x=>x.r&&x.r.s>=min).sort((a,b)=>b.r.s-a.r.s)};
