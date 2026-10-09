@@ -339,3 +339,38 @@ p.notice-card{display:block}
 .stylist-locked p{max-width:360px;margin:0 auto 24px;color:var(--muted);line-height:1.55}
 .stylist-locked .primary,.stylist-locked .secondary{display:block;width:100%;max-width:300px;min-height:46px;margin:0 auto 10px}
 .stylist-locked .link-button{display:block;margin:16px auto 0}
+
+/* Revisión editorial: foto y acciones separadas, sin añadir controles ni ruido. */
+#outfitSheet .sheet{width:min(100%,1050px)}
+#outfitSheet .section-head{margin:0 0 20px}
+#outfitSheet .outfit-review-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;align-items:start}
+#outfitSheet .outfit-review-photo{min-width:0}
+#outfitSheet .outfit-photo{width:100%;max-height:42vh;object-fit:contain;margin:0;background:#f7f5f2;border:1px solid var(--line);border-radius:16px}
+#outfitSheet .outfit-photo-caption{font-size:11px;color:var(--muted);margin:8px 0 0;text-align:center}
+#outfitSheet .outfit-review-content{min-width:0}
+#outfitSheet .outfit-review-content>p:first-child{margin:0 0 18px;line-height:1.55;font-size:14px;color:var(--muted)}
+#outfitSheet .outfit-item{grid-template-columns:68px minmax(0,1fr);padding:11px;gap:12px;border-radius:12px;box-shadow:none}
+#outfitSheet .outfit-item img{width:68px;height:86px;border-radius:8px}
+#outfitSheet .outfit-item-body{gap:6px}
+#outfitSheet .outfit-item-body strong{font-size:14px}
+#outfitSheet .outfit-item-body>.muted{font-size:12px}
+#outfitSheet .badge-draft{background:transparent;border-color:var(--line);color:var(--muted)}
+#outfitSheet .outfit-items{gap:9px}
+#outfitSheet .actions{align-items:stretch}
+#outfitSheet .actions>button{min-height:46px}
+#outfitSheet .outfit-review-content>.primary.wide{min-height:48px}
+@media(min-width:760px){
+ #outfitSheet .overlay,#outfitSheet.overlay{place-items:center}
+ #outfitSheet .sheet{max-height:min(88dvh,850px);border-radius:24px;padding:28px clamp(24px,3vw,40px)}
+ #outfitSheet .outfit-review-layout{grid-template-columns:minmax(220px,42fr) minmax(0,58fr);gap:clamp(20px,4vw,44px)}
+ #outfitSheet .outfit-review-photo{position:sticky;top:0}
+ #outfitSheet .outfit-photo{max-height:68dvh;aspect-ratio:3/4}
+ #outfitSheet .outfit-review-content{padding-top:2px}
+}
+@media(max-width:390px){
+ #outfitSheet .sheet{padding-inline:16px}
+ #outfitSheet .actions{flex-direction:column}
+ #outfitSheet .actions>button{width:100%}
+ #outfitSheet .outfit-item{gap:9px;padding:9px;grid-template-columns:60px minmax(0,1fr)}
+ #outfitSheet .outfit-item img{width:60px;height:78px}
+}
