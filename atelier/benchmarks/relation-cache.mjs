@@ -1,7 +1,7 @@
 // Reusable local-only index of stable pair evidence; does NOT decide outfit quality.
 // Caller injects the Atelier pairEvidence(a,b) function when its contract is ready.
 // Context (weather, occasion, preferences and feedback) must NEVER be cached here.
-const FIELDS=["category","type","subtype","color","secondaryColor","pattern","fabric","fit","length","sleeve","neckline","thickness","warmth","formality","occasions","season","style","details"];
+const FIELDS=["name","category","type","subtype","color","secondaryColor","pattern","fabric","fit","length","sleeve","neckline","thickness","warmth","formality","occasions","season","style","details"];
 function fingerprint(item){
  const data=FIELDS.map(field=>item[field]===undefined?null:item[field]);
  return JSON.stringify(data);
