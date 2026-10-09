@@ -35,3 +35,18 @@ Registrar por cada propuesta: ID reproducible, armario, ocasión, temperatura, p
 
 ## Regla de publicación
 No modificar el motor exclusivamente para mejorar una métrica agregada. Toda regla nueva necesita un fallo reproducible y una prueba de regresión. Una muestra visual debe superar la revisión en móvil y escritorio; las pruebas automáticas deben seguir en verde. La mejora real requiere recopilar y revisar imágenes; hasta entonces la auditoría visual está **pendiente**, aunque pase la CI.
+
+## Herramientas disponibles en el repositorio
+
+Se han preparado tres herramientas para ejecutar este procedimiento localmente, sin modificar un perfil real:
+
+```bash
+pip install datasets pillow
+python atelier/benchmarks/prepare_photo_bank.py --output ./look-benchmark --limit 1000
+node atelier/benchmarks/evaluate-outfits.mjs ./look-benchmark/garments.json ./look-benchmark/looks.json
+python atelier/benchmarks/render_looks.py ./look-benchmark/looks.json
+```
+
+El primer comando descarga un **catálogo fotográfico candidato**; las etiquetas inferidas por palabras necesitan corrección humana antes de interpretar los resultados. El segundo ejecuta el motor local en 72 escenarios (cuatro tamaños de armario, tres temperaturas y seis ocasiones) y conserva la puntuación y alertas de cada look. El tercero crea `review.html` para ver las prendas juntas y `review.csv` para anotar las valoraciones.
+
+No subir a GitHub los directorios de fotografías, reportes o valoraciones; respetar condiciones de uso de las imágenes de origen. El test automático en CI utiliza 21 prendas de ejemplo para verificar el funcionamiento de este flujo, **no equivale a haber revisado 1.000 imágenes**.
