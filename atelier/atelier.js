@@ -1501,6 +1501,8 @@ function occasionFits(g,occ){
  if(g.category==="Baño")return occ==="beach";
  if(occ==="home")return ["Zapatos"].includes(g.category)?/casa|zapatilla/i.test(g.type||g.name||""):false;
  if((occ==="work"||occ==="formal"||occ==="event")&&WORK_NO.test([g.type,g.subtype,g.name].filter(Boolean).join(" ")))return false; // P1/P8 (#99)
+ // Gorros, gorras, boinas y sombreros solo en diario o playa; vale también para las sugerencias con IA (revisión de Codex, #100)
+ if(g.category==="Accesorios"&&!["daily","beach"].includes(occ)&&HEADWEAR.test([g.type,g.subtype,g.name].filter(Boolean).join(" ")))return false;
  const occs=Array.isArray(g.occasions)?g.occasions.filter(o=>o in occasions):[];
  if(occs.length)return occs.includes(occ)||(occ==="daily"&&!occs.every(o=>["sport","home","beach","formal","party","event"].includes(o)));
  if(g.category==="Zapatos"&&g.style==="sport"&&["daily","work"].includes(occ))return true;

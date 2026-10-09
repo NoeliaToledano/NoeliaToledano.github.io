@@ -371,12 +371,14 @@ console.log("PASS: S6 long-offline devices don't resurrect deletions");
   const ids=o=>rankOutfits(o).map(r=>r.ids);
   const work=[...ids({max:3,occasion:"work",date:"2026-07-15",temp:28}),...ids({max:3,occasion:"work",date:"2026-01-15",temp:8})].flat();
   const daily28=ids({max:3,occasion:"daily",date:"2026-07-15",temp:28}).flat(),daily17=ids({max:3,occasion:"daily",date:"2026-04-15",temp:17}).flat(),daily6=ids({max:3,occasion:"daily",date:"2026-01-15",temp:6}).flat();
-  return {work,daily28,daily17,daily6};`);
+  const fitsParty=["h2","h3"].map(id=>occasionFits(myGarments().find(g=>g.id===id),"party"));
+  return {work,daily28,daily17,daily6,fitsParty};`);
   const r=probe(document,sessionStorage,{randomUUID:()=>"t"});
   for(const id of ["b1","z1","z3","h1","h2","h3"])assert.ok(!r.work.includes(id),"Trabajo sin "+id);
   assert.ok(r.work.includes("z2"),"Trabajo con mocasines");
   assert.ok(!r.daily17.some(id=>["h1","h2","h3"].includes(id)),"A 17 °C, sin gorros ni sombreros");
   assert.ok(!r.daily28.includes("h1"),"Gorro de lana nunca con calor");
   assert.ok(r.daily6.every(id=>!["h2","h3"].includes(id)),"Con frío, sin gorra ni sombrero");
+  assert.deepEqual(r.fitsParty,[false,false],"Fiesta (y sugerencias con IA): sin gorra ni sombrero");
   console.log("PASS: #99 work looks without casual pieces; headwear only when it makes sense");
 }
