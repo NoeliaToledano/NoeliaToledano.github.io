@@ -374,3 +374,15 @@ p.notice-card{display:block}
  #outfitSheet .outfit-item{gap:9px;padding:9px;grid-template-columns:60px minmax(0,1fr)}
  #outfitSheet .outfit-item img{width:60px;height:78px}
 }
+
+/* Mis looks · progressive disclosure of optional controls */
+.looks-tools{margin:10px 0 18px;border:1px solid var(--line);border-radius:15px;background:var(--surface)}
+.looks-tools>summary{cursor:pointer;font-size:13px;font-weight:600;padding:14px 16px;list-style-position:inside;color:var(--muted)}
+.looks-tools[open]>summary{border-bottom:1px solid var(--line)}
+.looks-tools-body{padding:10px 14px 14px}
+.looks-tools .taste-card{margin:8px 0 0}
+.look-secondary-actions{margin:0 10px 8px;border-top:1px solid var(--line)}
+.look-secondary-actions>summary{cursor:pointer;padding:9px 1px;font-size:11px;color:var(--muted)}
+.look-secondary-actions .tile-tools{padding:0 0 8px;justify-content:flex-start;gap:8px}
+.look-secondary-actions .chip-button{background:transparent;border-color:var(--line);min-width:0;white-space:normal}
+.look-secondary-actions .chip-button.on{background:var(--bg)}
