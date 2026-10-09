@@ -1293,8 +1293,11 @@ function renderToday(root){
   '<details class="today-unified-options"><summary>Más opciones</summary><div class="today-options-content"><section class="today-ia-section"><h2>Ideas con IA</h2>'+
   '<div class="filter-grid"><label class="field"><span>Ocasión</span><select id="prefOccasion">'+optionList(Object.entries(occasions),p.occasion)+'</select></label>'+
   '<label class="field"><span>Temporada</span><select id="prefSeason">'+optionList(Object.entries(seasons),p.season)+'</select></label></div>'+
-  '<label class="field"><span>Temperatura exterior (°C; por defecto '+DEFAULT_TEMPERATURE+')</span><input id="prefTemperature" type="number" min="-30" max="55" step="1" placeholder="Si lo dejas vacío, uso '+DEFAULT_TEMPERATURE+' °C" value="'+fx(currentTemperature())+'"></label>'+
-  '<div class="weather-line"><button type="button" class="chip-button" id="useWeather">📍 Usar el tiempo de hoy</button>'+(p.autoWeather?'<button type="button" class="chip-button" id="stopWeather">Volver a '+DEFAULT_TEMPERATURE+' °C</button>':'')+'</div>'+(info?'<p class="helper">'+fx(info)+'</p>':'')+
+  '<div class="today-weather"><div class="today-weather-heading"><strong>Temperatura para tu look</strong><span class="muted">'+(p.autoWeather&&p.weatherDay===dayISO()?'Según el tiempo de hoy':p.autoWeather?'Actualizando tiempo de hoy':'Ajustada manualmente')+'</span></div>'+
+  '<div class="today-weather-controls"><label class="field" for="prefTemperature"><span>Grados Celsius</span><span class="today-temperature-input"><input id="prefTemperature" type="number" min="-30" max="55" step="1" inputmode="numeric" value="'+fx(currentTemperature())+'"><span>°C</span></span></label>'+
+  '<button type="button" class="secondary" id="useWeather">Usar tiempo de hoy</button></div>'+
+  (p.autoWeather?'<button type="button" class="link-button today-weather-reset" id="stopWeather">Restablecer a '+DEFAULT_TEMPERATURE+' °C</button>':'')+
+  (info?'<p class="helper" role="status">'+fx(info)+'</p>':'')+'</div>'+
   '<label class="switch-line"><input id="prefAvoid" type="checkbox"'+(p.avoidRepeats?' checked':'')+'> Evitar repetir combinaciones recientes</label>'+
   '<button class="primary wide" id="suggestSmart">✦ Generar looks con mi ropa</button>'+
   '<p class="helper">Se envían solo los nombres y atributos de tus prendas, nunca las fotos. Sugerencias con IA hoy: '+u.looks+' de '+AI_LIMITS.looks+'.</p></section>'+
@@ -1315,7 +1318,7 @@ function renderToday(root){
  $$("[data-rescue]",root).forEach(b=>b.addEventListener("click",()=>{ui.aroundId=b.dataset.rescue;ui.stylistTab="around";setView("stylist")}));
  $("#useWeather")?.addEventListener("click",async e=>{e.target.disabled=true;e.target.textContent="Consultando…";
   try{const w=await fetchTodayTemperature(true);toast("Hoy: entre "+w.min+" y "+w.max+" °C (media "+w.mean+" °C)");render()}
-  catch(err){console.warn("WEATHER",err);toast(err?.code===1?"Sin permiso de ubicación: sigo usando "+DEFAULT_TEMPERATURE+" °C":"No se pudo consultar el tiempo");e.target.disabled=false;e.target.textContent="📍 Usar el tiempo de hoy"}});
+  catch(err){console.warn("WEATHER",err);toast(err?.code===1?"Sin permiso de ubicación: sigo usando "+DEFAULT_TEMPERATURE+" °C":"No se pudo consultar el tiempo");e.target.disabled=false;e.target.textContent="Usar tiempo de hoy"}});
  $("#stopWeather")?.addEventListener("click",async()=>{Object.assign(p,{autoWeather:false,temperature:DEFAULT_TEMPERATURE,weatherDay:null,weatherPlace:null});await saveState();render()});
 }
 const aiLookCache=new Map();

@@ -424,3 +424,19 @@ p.notice-card{display:block}
 .wardrobe-summary>summary{cursor:pointer;padding:12px 2px;color:var(--muted);font-size:13px}
 .wardrobe-summary-body{display:flex;flex-wrap:wrap;gap:8px;padding:0 2px 15px}
 .wardrobe-summary-body p{flex-basis:100%;margin:0 0 4px}
+
+/* Hoy: temperatura clara, editable y sin dos botones compitiendo. */
+.today-weather{border:1px solid var(--line);border-radius:13px;padding:14px 16px;margin:14px 0;background:var(--surface)}
+.today-weather-heading{display:flex;justify-content:space-between;gap:8px;align-items:baseline;flex-wrap:wrap;margin-bottom:10px}
+.today-weather-heading strong{font-size:13px;font-weight:650}
+.today-weather-heading .muted{font-size:12px}
+.today-weather-controls{display:flex;align-items:end;gap:10px;flex-wrap:wrap}
+.today-weather-controls>.field{flex:0 0 124px;min-width:0;margin:0}
+.today-weather-controls>.field>span:first-child{font-size:11px;color:var(--muted)}
+.today-temperature-input{display:flex;align-items:center;gap:6px}
+.today-temperature-input input{min-width:0;width:100%;font-size:16px}
+.today-temperature-input>span{color:var(--muted);font-size:13px}
+.today-weather-controls>button{min-height:44px;flex:1}
+.today-weather-reset{margin-top:12px;font-size:12px}
+.today-weather .helper{margin:10px 0 0}
+@media(max-width:390px){.today-weather{padding:12px}.today-weather-controls>.field{flex-basis:105px}}
