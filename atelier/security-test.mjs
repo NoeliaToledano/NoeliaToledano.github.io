@@ -240,3 +240,13 @@ const s6=s6Probe(document,sessionStorage,{randomUUID:()=>"t"});
 assert.equal(s6.stale,"kept,new","Más de 90 días sin conexión: lo borrado en otro móvil no vuelve; lo nuevo se conserva");
 assert.equal(s6.normal,3,"Sin caducidad: la fusión normal no cambia");
 console.log("PASS: S6 long-offline devices don't resurrect deletions");
+// R3: el Worker de fotos se construye con las funciones de atelier.js y la CSP lo permite sin bloquear el service worker
+{
+  const probe=new Function("document","sessionStorage","crypto",src+`return photoWorkerSource()`);
+  const ws=probe(document,sessionStorage,{randomUUID:()=>"t"});
+  new Function(ws); // sintaxis válida
+  for(const fn of ["garmentMask","whiteBackground","retouchOnly","isCatalogPhoto","enhancePhotoHere","mkCanvas","toJpeg","labArrays","applyTone","sharpen","quantile","curveLUT","SRGB_LIN","MASK_MAX"])assert.ok(ws.includes(fn),"Worker incluye "+fn);
+  const html=fs.readFileSync(new URL("./index.html",import.meta.url),"utf8");
+  assert.ok(/worker-src &#39;self&#39; blob:/.test(html),"CSP: Worker de fotos (blob:) y service worker ('self')");
+  console.log("PASS: R3 photo Worker source and CSP");
+}

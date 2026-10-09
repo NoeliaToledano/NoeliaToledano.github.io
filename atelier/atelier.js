@@ -174,6 +174,9 @@ function readImage(file){
 const WHITE_W=800,WHITE_H=1000,MASK_MAX=480;
 const SRGB_LIN=Float32Array.from({length:256},(_,i)=>{const c=i/255;return c<=.04045?c/12.92:Math.pow((c+.055)/1.055,2.4)});
 const origKey=id=>"orig:"+appState.profile.id+":"+id;  // foto original, solo en este dispositivo
+/* R3: el retoque usa estos dos helpers para funcionar igual en la página y en el Worker (OffscreenCanvas) */
+function mkCanvas(w,h){if(typeof document==="undefined")return new OffscreenCanvas(w,h);const c=document.createElement("canvas");c.width=w;c.height=h;return c}
+async function toJpeg(c,q){if(c.toDataURL)return c.toDataURL("image/jpeg",q);return new FileReaderSync().readAsDataURL(await c.convertToBlob({type:"image/jpeg",quality:q}))}
 function loadImg(src){return new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error("INVALID_IMAGE"));i.src=src})}
 function labArrays(d,n){
  const L=new Float32Array(n),A=new Float32Array(n),B=new Float32Array(n),f=t=>t>.008856?Math.cbrt(t):7.787*t+.137931;
@@ -280,12 +283,12 @@ async function whiteBackground(src){
  try{
   const img=await loadImg(src),W=img.naturalWidth||img.width,H=img.naturalHeight||img.height;
   const k=Math.min(1,MASK_MAX/Math.max(W,H)),w=Math.max(1,Math.round(W*k)),h=Math.max(1,Math.round(H*k));
-  const c=document.createElement("canvas");c.width=w;c.height=h;const cx=c.getContext("2d",{willReadFrequently:true});cx.drawImage(img,0,0,w,h);
+  const c=mkCanvas(w,h),cx=c.getContext("2d",{willReadFrequently:true});cx.drawImage(img,0,0,w,h);
   const small=cx.getImageData(0,0,w,h).data,m=garmentMask(small,w,h);if(!m)return null;
   // Recorte de la prenda con margen, a la resolución completa de la foto
   const s=W/w,pad=.04*Math.max(m.x1-m.x0,m.y1-m.y0);
   const fx0=Math.max(0,Math.floor((m.x0-pad)*s)),fy0=Math.max(0,Math.floor((m.y0-pad)*s)),fx1=Math.min(W,Math.ceil((m.x1+1+pad)*s)),fy1=Math.min(H,Math.ceil((m.y1+1+pad)*s));
-  const cw=fx1-fx0,ch=fy1-fy0,fc=document.createElement("canvas");fc.width=cw;fc.height=ch;
+  const cw=fx1-fx0,ch=fy1-fy0,fc=mkCanvas(cw,ch);
   const fcx=fc.getContext("2d",{willReadFrequently:true});fcx.drawImage(img,-fx0,-fy0);
   const id=fcx.getImageData(0,0,cw,ch),p=id.data,bgc=m.rgb;
   const a=(x,y)=>{x=Math.min(m.w-1,Math.max(0,x));y=Math.min(m.h-1,Math.max(0,y));return m.alpha[y*m.w+x]};
@@ -303,26 +306,26 @@ async function whiteBackground(src){
   applyTone(p,curveLUT(gain,0,1));
   fcx.putImageData(id,0,0);
   // Centrada sobre un lienzo blanco de proporción fija (4:5), como una ficha de producto
-  const out=document.createElement("canvas");out.width=WHITE_W;out.height=WHITE_H;const o=out.getContext("2d",{willReadFrequently:true});
+  const out=mkCanvas(WHITE_W,WHITE_H),o=out.getContext("2d",{willReadFrequently:true});
   o.fillStyle="#fff";o.fillRect(0,0,WHITE_W,WHITE_H);o.imageSmoothingQuality="high";
   const sc=Math.min(WHITE_W*.86/cw,WHITE_H*.86/ch,2.2),dw=cw*sc,dh=ch*sc;
   o.drawImage(fc,(WHITE_W-dw)/2,(WHITE_H-dh)/2,dw,dh);
   sharpen(o,WHITE_W,WHITE_H);
-  return {image:out.toDataURL("image/jpeg",.86),doubtful:!!m.doubtful};
+  return {image:await toJpeg(out,.86),doubtful:!!m.doubtful};
  }catch(e){console.warn("WHITE_BG",e);return null}
 }
 /* Solo retoque, cuando no se puede quitar el fondo: niveles de luz (sin pasarse), curva suave, color y nitidez */
 async function retouchOnly(src){
  try{
   const img=await loadImg(src),W=img.naturalWidth||img.width,H=img.naturalHeight||img.height;
-  const c=document.createElement("canvas");c.width=W;c.height=H;const cx=c.getContext("2d",{willReadFrequently:true});cx.drawImage(img,0,0);
+  const c=mkCanvas(W,H),cx=c.getContext("2d",{willReadFrequently:true});cx.drawImage(img,0,0);
   const id=cx.getImageData(0,0,W,H),p=id.data,lum=[];
   for(let j=0;j<p.length;j+=28)lum.push(.299*p[j]+.587*p[j+1]+.114*p[j+2]);
   const lo=Math.min(30,quantile(lum,.005)),hi=quantile(lum,.995);
   // Foto oscura (nada pasa de gris medio): se aclara algo más, hasta un 38 %
   const scale=hi-lo>20?Math.min(hi>120?1.3:1.38,Math.max(1,(246-lo*.3)/(hi-lo))):1;
   applyTone(p,curveLUT([1,1,1],lo,scale));cx.putImageData(id,0,0);sharpen(cx,W,H);
-  return c.toDataURL("image/jpeg",.86);
+  return await toJpeg(c,.86);
  }catch(e){console.warn("RETOUCH",e);return null}
 }
 /* Mejora completa: fondo blanco si se puede; si no, solo retoque. → {image, white} o null */
@@ -332,7 +335,7 @@ async function retouchOnly(src){
 async function isCatalogPhoto(src){
  try{
   const img=await loadImg(src),W=img.naturalWidth||img.width,H=img.naturalHeight||img.height,k=Math.min(1,160/Math.max(W,H));
-  const w=Math.max(8,Math.round(W*k)),h=Math.max(8,Math.round(H*k)),n=w*h,c=document.createElement("canvas");c.width=w;c.height=h;
+  const w=Math.max(8,Math.round(W*k)),h=Math.max(8,Math.round(H*k)),n=w*h,c=mkCanvas(w,h);
   const cx=c.getContext("2d",{willReadFrequently:true});cx.drawImage(img,0,0,w,h);const d=cx.getImageData(0,0,w,h).data;
   const white=new Uint8Array(n);for(let i=0;i<n;i++){const j=i*4,mn=Math.min(d[j],d[j+1],d[j+2]),mx=Math.max(d[j],d[j+1],d[j+2]);white[i]=mn>=236&&mx-mn<=14?1:0}
   const b=Math.max(2,Math.round(Math.min(w,h)*.04));let edge=0,edgeWhite=0;
@@ -350,13 +353,48 @@ async function isCatalogPhoto(src){
 }
 /* Mejora completa: si ya parece de catálogo se deja tal cual; si no, fondo blanco o solo retoque.
    → {image, white, asIs} o null */
-async function enhancePhoto(src){ // → {image, white, asIs?, doubtfulWhite?} o null
+async function enhancePhotoHere(src){ // → {image, white, asIs?, doubtfulWhite?} o null
 
  if(await isCatalogPhoto(src))return {image:src,white:true,asIs:true};
  const white=await whiteBackground(src);if(white&&!white.doubtful)return {image:white.image,white:true};
  // Recorte dudoso: por defecto solo retoque; el fondo blanco se ofrece aparte (doubtfulWhite) para que decida la usuaria
  const tuned=await retouchOnly(src);return tuned?{image:tuned,white:false,doubtfulWhite:white?.image||null}:null;
 }
+/* R3: el retoque se hace en un Worker para no congelar la app (sobre todo con «Mejorar todas»). El Worker se
+   construye con estas mismas funciones (no hay otro archivo que mantener). Si el navegador no lo permite
+   (sin OffscreenCanvas, por ejemplo) o falla, se hace en la página como antes. */
+const PHOTO_FNS=[labArrays,garmentMask,applyTone,sharpen,whiteBackground,retouchOnly,isCatalogPhoto,enhancePhotoHere,mkCanvas,toJpeg];
+let photoWorker=null,photoWorkerOff=false,photoJobs=new Map(),photoSeq=0;
+function photoWorkerSource(){
+ return "const SRGB_LIN=Float32Array.from("+JSON.stringify(Array.from(SRGB_LIN))+");const MASK_MAX="+MASK_MAX+",WHITE_W="+WHITE_W+",WHITE_H="+WHITE_H+";"+
+  "const quantile="+quantile+";const curveLUT="+curveLUT+";const loadImg=async s=>s;\n"+PHOTO_FNS.join("\n")+
+  "\nconst JOBS={enhancePhoto:enhancePhotoHere,whiteBackground};"+
+  "onmessage=async e=>{const {id,fn,bmp}=e.data;try{if(!new OffscreenCanvas(1,1).getContext(\"2d\"))throw new Error(\"NO_2D\");"+
+  "const r=await JOBS[fn](bmp);if(r&&r.asIs)r.image=null;postMessage({id,r})}catch(err){postMessage({id,error:String(err&&err.message||err)})}finally{bmp.close&&bmp.close()}};";
+}
+function stopPhotoWorker(){photoWorkerOff=true;try{photoWorker?.terminate()}catch{}photoWorker=null;for(const j of photoJobs.values())j.reject(new Error("WORKER_OFF"));photoJobs.clear()}
+function getPhotoWorker(){
+ if(photoWorker||photoWorkerOff)return photoWorker;
+ try{
+  if(typeof Worker==="undefined"||typeof OffscreenCanvas==="undefined"||typeof createImageBitmap==="undefined")throw new Error("NO_WORKER");
+  const url=URL.createObjectURL(new Blob([photoWorkerSource()],{type:"text/javascript"}));
+  photoWorker=new Worker(url);URL.revokeObjectURL(url);
+  photoWorker.onmessage=e=>{const j=photoJobs.get(e.data.id);if(!j)return;photoJobs.delete(e.data.id);clearTimeout(j.timer);e.data.error?j.reject(new Error(e.data.error)):j.resolve(e.data.r)};
+  photoWorker.onerror=e=>{console.warn("PHOTO_WORKER",e.message);stopPhotoWorker()};
+ }catch(e){console.warn("PHOTO_WORKER",e.message);photoWorkerOff=true;photoWorker=null}
+ return photoWorker;
+}
+async function photoJob(fn,src,here){
+ const w=getPhotoWorker();if(!w)return here(src);
+ try{
+  const bmp=await createImageBitmap(await loadImg(src)),id=++photoSeq;
+  const r=await new Promise((resolve,reject)=>{const timer=setTimeout(()=>{photoJobs.delete(id);reject(new Error("WORKER_TIMEOUT"))},30000);
+   photoJobs.set(id,{resolve,reject,timer});w.postMessage({id,fn,bmp},[bmp])});
+  if(r?.asIs)r.image=src;
+  return r;
+ }catch(e){if(e.message==="INVALID_IMAGE")return null;console.warn("PHOTO_WORKER",e.message);stopPhotoWorker();return here(src)}
+}
+const enhancePhoto=src=>photoJob("enhancePhoto",src,enhancePhotoHere);
 async function loadState(){
  appState.data=emptyData();storedImages=new Map();let migrate=false;
  try{
@@ -820,7 +858,7 @@ function renderPhotoControls(){
   if(ph.busy||!ph.original)return;
   ph.busy=true;renderPhotoControls();
   try{
-   const candidate=await whiteBackground(ph.original);
+   const candidate=await photoJob("whiteBackground",ph.original,whiteBackground);
    if(sheetPhoto!==ph)return;
    if(candidate?.image){ph.altWhite=candidate.image;ph.mode="alt";ph.changed=true}
    else toast("No se pudo separar la prenda del fondo en esta foto");
