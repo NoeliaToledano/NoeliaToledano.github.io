@@ -56,10 +56,27 @@ def main():
     parser.add_argument("--output", required=True)
     parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument("--batch-size", type=int, default=8)
+    parser.add_argument("--ids", help="Optional comma-separated garment IDs for a small authorized pilot")
     args = parser.parse_args()
     if args.batch_size <= 0 or args.batch_size > 64:
         parser.error("--batch-size must be between 1 and 64")
-    items = read_items(args.labels, args.images_root)
+    if args.ids:
+        requested = {x.strip() for x in args.ids.split(",") if x.strip()}
+        if not requested:
+            parser.error("--ids must contain at least one item ID")
+        data = json.loads(Path(args.labels).read_text(encoding="utf-8"))
+        present = {x.get("id") for x in data if isinstance(x, dict)}
+        absent = requested - present
+        if absent:
+            parser.error("unknown --ids: " + ", ".join(sorted(absent)))
+        # Only inspect the requested photos: a pilot need not own all 86 originals.
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory() as td:
+            selected = Path(td) / "selected.json"
+            selected.write_text(json.dumps([x for x in data if x.get("id") in requested]), encoding="utf-8")
+            items = read_items(selected, args.images_root)
+    else:
+        items = read_items(args.labels, args.images_root)
     try:
         import torch
         from PIL import Image
