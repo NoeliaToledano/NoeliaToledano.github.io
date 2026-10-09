@@ -1474,7 +1474,7 @@ function renderLooks(root){
 /* Complementos en las propuestas: calzado y bolso se pueden quitar (preferencia por perfil).
    En «Estar en casa» y «Playa y piscina» el calzado no se añade nunca. */
 const NO_SHOES_OCCASIONS=new Set(["home","beach"]);
-function lookExtras(){const p=appState.data.preferences;return {shoes:p.lookShoes!==false&&!NO_SHOES_OCCASIONS.has(p.occasion),bag:p.lookBag!==false}}
+function lookExtras(){const occasion=appState.data.preferences.occasion||"daily";return {shoes:!NO_SHOES_OCCASIONS.has(occasion),bag:occasion!=="home"}}
 function extrasTogglesHtml(){
  const p=appState.data.preferences,auto=NO_SHOES_OCCASIONS.has(p.occasion);
  return '<div class="extras-line" role="group" aria-label="Qué incluir en las propuestas"><label class="switch-line"><input type="checkbox" data-extra-pref="lookShoes"'+(p.lookShoes!==false?' checked':'')+(auto?' disabled':'')+'> Incluir calzado</label><label class="switch-line"><input type="checkbox" data-extra-pref="lookBag"'+(p.lookBag!==false?' checked':'')+'> Incluir bolso</label></div>'+
