@@ -395,3 +395,53 @@ Idea ligera a ensayar: prototipos de looks preferidos/descartados por perfil, as
 La revisión de Deldjoo et al., *A Review of Modern Fashion Recommender Systems* (ACM CSUR 2024), diferencia tareas de generación, recomendación, completado de looks, compatibilidad y evaluación, que no deben mezclarse bajo una sola métrica: https://iris.poliba.it/handle/11589/270980 . La revisión de Selwon y Szymański (ACM CSUR 2024) enfatiza reproducibilidad, explicabilidad y sesgos de los datos: https://doi.org/10.1145/3664614 .
 
 A/B a estudiar: (1) robustez del color ante diferentes iluminaciones; (2) MMR frente a top-3 por score puro; (3) preguntas adaptativas frente a perfiles sin feedback; (4) casos disjoint entre armarios y prendas; (5) consistencia de motivos y sustituciones. Mantener los casos del test reservados, sin ajustar el motor sobre ellos. La diversidad, apariencia fotográfica y novedad no deben considerarse sinónimos de calidad estética.
+
+
+## 30. Sexta ronda: vestir un armario real, no un catálogo de venta
+
+**Hallazgo externo:** Eckmann y Reisch, *Shifting Toward Quality: How Communicating Cost per Wear Influences Consumer Preference for Clothing* (Psychology & Marketing, publicado 2025, volumen 2026), investigan en seis experimentos preregistrados cómo explicar el coste por uso modifica decisiones de consumo. https://doi.org/10.1002/mar.70061 . No demuestra directamente que un recomendador de looks deba maximizar usos: es evidencia para incorporar una función opcional y transparente de **aprovechamiento del armario**.
+
+**Diferenciar tres objetivos**, a menudo mezclados en sistemas de moda:
+1. **Calidad del look**: estética, función, comodidad, ocasión, preferencias.
+2. **Gestión del armario**: visibilizar prendas olvidadas y variar rotaciones sin forzar conjuntos malos.
+3. **Asesoramiento de compra**: complementar combinaciones existentes, evitar redundancias y evaluar versatilidad; no recomendar compras cuando el usuario quiere vestirse con lo que tiene.
+
+La frecuencia de uso debe ser señal *blanda*: hay prendas de fiesta con pocos usos completamente razonables; una prenda nueva no es superior por ser nueva; no castigar un favorito usado repetidamente si la persona lo prefiere. Proponer experimentos A/B de “look más adecuado” separados de “look que aprovecha mejor el armario”.
+
+## 31. Calidad de metadatos y robustez del motor
+
+Los sistemas reales reciben fotos y fichas incompletas. *Using Large Multimodal Models to Predict Outfit Compatibility* (Decision Support Systems, 2025) estudia fusión de características visuales para la compatibilidad de conjuntos: https://doi.org/10.1016/j.dss.2025.114457 . *Explainable Fashion Compatibility Prediction: An Attribute-Augmented Neural Framework* (ECRA, 2024) destaca el conocimiento de interacciones entre atributos: https://doi.org/10.1016/j.elerap.2024.101451 . Ambos apoyan investigar la representación multimodal y los atributos, **no** implican que haya que hacer una llamada a un modelo por cada recomendación.
+
+**Experimento de degradación controlada**: evaluar el mismo banco con metadatos completos, 25% de campos desconocidos, 50% desconocidos, color mal identificado y fotografías iluminadas de forma distinta. Medir estabilidad top-3 y regresiones graves. Reservar distinción entre “desconocido” y un valor neutro real; calibrar incertidumbre según la calidad de la entrada. No permitir que una etiqueta incorrecta persistente se convierta en una preferencia aprendida.
+
+## 32. Reproducibilidad y personalización indirecta
+
+Liao et al., *Reproducibility companion paper: Recommendation of Mix-and-Match Clothing by Modeling Indirect Personal Compatibility* (ICMR 2024), se centra explícitamente en permitir reproducir experimentos y resultados de recomendación personalizados: https://ira.lib.polyu.edu.hk/handle/10397/109214 .
+
+**Aplicación a Atelier:** al evaluar una decisión guardar versión de código, corpus de prendas/etiquetas, seed, perfil sintético, ocasión, temporada, restricciones y versión de algoritmo. Usar perfiles sintéticos con preferencias contrastantes para medir sensibilidad: clásico, creativo, minimalista, deportivo, gusto por estampados y comodidad. El motor no debe ofrecer el mismo top-3 para todos si las preferencias aportan información, ni inventar preferencias cuando no existen.
+
+## 33. Criterios para distinguir especialización profesional de reglas populares
+
+No existen normas científicas universales que prueben que el número de estampados, el tipo de cuerpo, la necesidad de marcar cintura o la exigencia de tacones determinan por sí solos la calidad estética de un look. Diferenciar en cada regla:
+- **Restricción funcional**: disponibilidad, código de vestimenta explícito, temperatura peligrosa, necesidad de calzado funcional.
+- **Convención cultural contextual**: formalidad, etiqueta, adecuación social, temporadas locales.
+- **Preferencia subjetiva**: maximalismo, silueta holgada, contraste, preferencia por neutros.
+- **Heurística visual**: un principio de composición, útil en contexto y con excepciones.
+
+Cada motivo generado por Atelier debería indicar su tipo internamente. Una norma flexible jamás debe transformarse silenciosamente en un veto. Si el perfil elige “experimental” y los datos muestran preferencia por estampados, el motor debería explorar esas combinaciones aunque se aparten de la opción convencional.
+
+## 34. Experimentos prioritarios para la siguiente etapa
+
+| Experimento | Hipótesis | Fallo que queremos detectar |
+| --- | --- | --- |
+| Armario pequeño (12–20 prendas) | Top-3 diverso sin pérdida de calidad | repetición forzada de looks idénticos |
+| Armario mediano (50–100) | descubrir combinaciones no obvias | priorizar solo looks visualmente similares |
+| Armario grande (300–500) | filtrado eficiente y reranking | latencia elevada/explosión de combinaciones |
+| Preferencias opuestas con mismas prendas | la sesión modifica el ranking | recomendar siempre lo mismo |
+| Prenda favorita repetida | no penalizar excesivamente reutilización | variedad artificial |
+| Pieza olvidada apta | recuperarla cuando resulte coherente | castigar todas las prendas poco usadas |
+| Atributos parcialmente desconocidos | suavizar incertidumbre | expulsar prendas por metadatos ausentes |
+| Outfit elegante no convencional | aceptar coherencia creativa | estilo rígido y sesgado |
+| Color inferido incorrectamente | resultados estables o advertencia | falso veto por tono inventado |
+
+**Decisión pendiente:** no cambiar pesos del motor hasta disponer de baseline reproducible y del test independiente de Claude. Evaluar estética y aprovechamiento del armario por separado; los dos objetivos pueden entrar en conflicto.
