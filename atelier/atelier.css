@@ -443,7 +443,6 @@ p.notice-card{display:block}
 
 /* Mis looks: las composiciones complejas necesitan toda la fila en móvil y tablet. */
 @media(max-width:999px){
- .grid:has(>.look-tile){grid-auto-flow:dense}
  .grid>.look-tile:has(.look-mixed-board[data-count="5"]),
  .grid>.look-tile:has(.look-mixed-board[data-count="6"]),
  .grid>.look-tile:has(.look-mixed-board[data-count="7"]){grid-column:1/-1}
