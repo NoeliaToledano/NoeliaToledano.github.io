@@ -68,7 +68,7 @@ export default async function handler(req, res) {
             { type: "input_image", image_url: image, detail: "low" }
           ]
         }],
-        max_output_tokens: outfit ? 520 : 350
+        max_output_tokens: outfit ? 720 : 350
       })
     });
 
