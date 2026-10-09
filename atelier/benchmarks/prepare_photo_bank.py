@@ -39,14 +39,14 @@ def main():
     (out/"images").mkdir(parents=True,exist_ok=True)
     data=load_dataset("Marqo/polyvore",split="train",streaming=True)
     data=data.shuffle(seed=args.seed,buffer_size=2000)
-    per=max(1,args.limit//len(CATEGORY))
     counts={cat:0 for cat,_ in CATEGORY}
+    quota={cat:args.limit//len(CATEGORY)+(i<args.limit%len(CATEGORY)) for i,(cat,_) in enumerate(CATEGORY)}
     selected=[]
     for row in data:
         text=str(row.get("text") or row.get("name") or "")
         raw_cat=str(row.get("category") or "")
         cat=classify(raw_cat+" "+text)
-        if not cat or counts[cat]>=per: continue
+        if not cat or counts[cat]>=quota[cat]: continue
         img=row.get("image")
         if img is None: continue
         try:
@@ -67,7 +67,7 @@ def main():
                          "raw_category":raw_cat,"style":"","season":"","color":"",
                          "reviewed":False})
         counts[cat]+=1
-        if len(selected)>=args.limit or all(v>=per for v in counts.values()):
+        if len(selected)>=args.limit or all(counts[c]>=quota[c] for c in quota):
             break
     (out/"garments.json").write_text(json.dumps(selected,ensure_ascii=False,indent=2),encoding="utf-8")
     print(json.dumps({"selected":len(selected),"categories":counts,"output":str(out)},ensure_ascii=False))
