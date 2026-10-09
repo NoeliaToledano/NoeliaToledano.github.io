@@ -312,3 +312,14 @@ p.notice-card{display:block}
 [data-look] .look-chip-name{font-size:11px;line-height:1.2}
 .look-tile .tile-tools{flex-wrap:wrap;min-width:0}
 .look-tile .tile-tools .chip-button{flex:1 1 auto;min-width:0;white-space:nowrap;padding-inline:8px}
+
+/* V66 · Sistema de iconos monocromos y menor densidad visual. */
+.bottom-nav .nav-icon{display:block;width:20px;height:20px;margin:0 auto 5px;stroke:currentColor;flex:none}
+.bottom-nav .nav-btn{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0;letter-spacing:0;font-weight:500}
+.bottom-nav .nav-btn.active{font-weight:650}
+.bottom-nav .nav-btn.active .nav-icon{stroke-width:2}
+.category-choices button{font-size:13px;line-height:1.3;text-align:center}
+.look-tile .tile-tools{gap:7px}
+.look-tile .tile-tools+.tile-tools{border-top:1px solid var(--line);padding-top:8px;margin-top:3px;justify-content:flex-end}
+.look-tile .tile-tools+.tile-tools .chip-button{flex:0 0 auto;min-width:44px;background:transparent;border-color:transparent}
+.look-tile .tile-tools+.tile-tools .chip-button.on{background:var(--bg);border-color:var(--line)}
