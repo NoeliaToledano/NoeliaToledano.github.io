@@ -1807,7 +1807,7 @@ function buyCheckHtml(){
   '<div class="photo-buttons"><button type="button" class="primary" data-photo-pick="buyCamera">📷 Hacer foto</button><button type="button" class="secondary" data-photo-pick="buyImage">🖼️ Galería</button></div>'+
   '<input id="buyCamera" class="file-hidden" type="file" tabindex="-1" accept="image/*" capture="environment" aria-label="Hacer foto con la cámara"><input id="buyImage" class="file-hidden" type="file" tabindex="-1" accept="image/*" aria-label="Elegir foto de la galería">';
  if(!c)return html+'</div>';
- if(c.loading)return html+'<p class="muted">Analizando la prenda…</p></div>';
+ if(c.loading)return html+'<p class="muted">Preparando la foto…</p></div>';
  const r=evaluateCandidate(c);
  html+='<div class="buy-head">'+(validImage(c.image)?'<img class="buy-img" src="'+c.image+'" alt="Prenda que estás valorando">':'')+
   '<div class="buy-fields"><label class="field"><span>Nombre</span><input id="buyName" maxlength="80" value="'+fx(c.name)+'"></label>'+
@@ -1817,12 +1817,14 @@ function buyCheckHtml(){
   '<label class="field"><span>Temporada</span><select id="buySeason">'+optionList(Object.entries(seasons),c.season||"all")+'</select></label>'+
   '<label class="field"><span>Precio (€)</span><input id="buyPrice" type="number" min="0" step=".01" inputmode="decimal" value="'+fx(c.price??"")+'"></label></div></div></div>'+
   (c.analyzeFailed?'<p class="error">No se pudo analizar la foto. Completa categoría y color a mano para ver el veredicto.</p>':'')+
+  (!c.analyzed?'<div class="notice-card"><p>'+(c.category?'Revisa los datos: el color lo he estimado en tu móvil.':'Elige la categoría para que el veredicto sea fiable. El color lo he estimado en tu móvil.')+'</p>'+
+   '<button type="button" class="secondary wide" id="buyAnalyze"'+(c.analyzing?' disabled':'')+'>'+(c.analyzing?'Reconociendo…':'✦ Reconocer con IA')+'</button><p class="helper">Rellena categoría, estilo y detalles. Usa 1 de tus '+AI_LIMITS.analyze+' análisis de hoy.</p></div>':'')+
   '<div class="verdict '+r.tone+'"><strong>'+fx(r.verdict)+'</strong>'+r.reasons.map(x=>'<p>'+fx(x)+'</p>').join("")+'</div>'+
   '<h3 class="mini-title">Combina con ('+r.compatible.length+')</h3>'+(r.compatible.length?thumbs(r.compatible):'<p class="muted">Ninguna prenda de tu armario.</p>')+
   (r.duplicates.length?'<h3 class="mini-title">Se parece a ('+r.duplicates.length+')</h3>'+thumbs(r.duplicates):'')+
   '<button class="secondary wide" id="buyLooks"'+(r.compatible.length?'':' disabled')+'>✦ Ver looks con la IA</button>'+
   (c.looks?c.looks.length?'<div class="grid buy-looks">'+c.looks.map(l=>{const gs=l.ids.map(id=>id==="__nueva__"?{name:c.name||"Prenda nueva",image:c.image,category:c.category,bgWhite:!!c.bgWhite}:myGarments().find(g=>g.id===id)).filter(Boolean);return '<article class="card">'+outfitBoard(gs)+'<div class="card-body"><div class="card-title">'+fx(l.why)+'</div><div class="look-items">'+gs.map(g=>'<span class="look-chip">'+fx(g.name)+'</span>').join("")+'</div></div></article>'}).join("")+'</div>':'<p class="muted">La IA no ha propuesto looks con esta prenda. Prueba a cambiar la ocasión en Estilista.</p>':'')+
-  '<p class="helper">El veredicto se calcula en tu móvil con reglas de color, categoría, estilo y temporada; es orientativo y no gasta tokens.</p>'+
+  '<p class="helper">El veredicto se calcula en tu móvil con reglas de color, categoría, estilo y temporada; es orientativo y no gasta tokens. Solo «Reconocer con IA» y «Ver looks con la IA» usan la IA, cuando los pulsas.</p>'+
   '<div class="actions"><button class="secondary" id="buyWish">♡ A la wishlist</button><button class="primary" id="buyAdd">Lo he comprado</button></div>'+
   '<button class="secondary small wide" id="buyReset">Valorar otra prenda</button></div>';
  return html;
@@ -1833,6 +1835,43 @@ function readBuyFields(){
  buyCheck.style=$("#buyStyle")?.value||"";buyCheck.season=$("#buySeason")?.value||"all";
  const p=$("#buyPrice")?.value;buyCheck.price=p===""||p==null?null:Math.max(0,Number(p)||0);
 }
+/* B5: «¿Lo compro?» no llama a la IA sola. El color se estima en el móvil (media de la prenda, sin el fondo
+   blanco, comparada en Lab con la paleta); la categoría la elige la usuaria o «Reconocer con IA», bajo demanda. */
+/* Nombre de color a partir de Lab: sin color (negro, gris, blanco), tonos tierra (beige, marrón) y por tono (hue) */
+function colorName(L,a,b){
+ const C=Math.hypot(a,b),h=(Math.atan2(b,a)*180/Math.PI+360)%360;
+ if(C<9)return L<30?"Negro":L>80?"Blanco":"Gris";
+ if(C<24&&h>=35&&h<105)return L>62?"Beige":"Marrón";
+ if(h<40||h>=335)return L>68&&C<45?"Rosa":"Rojo";
+ if(h<70)return L<58?"Marrón":C>45?"Amarillo":"Beige";
+ if(h<105)return C>35?"Amarillo":"Beige";
+ if(h<200)return "Verde";
+ if(h<312)return C<28&&L>32&&L<68?"Vaquero":"Azul";
+ return L>70?"Rosa":"Morado";
+}
+async function guessColor(src){
+ try{
+  const img=await loadImg(src),c=mkCanvas(40,50),x=c.getContext("2d",{willReadFrequently:true});x.drawImage(img,0,0,40,50);
+  const d=x.getImageData(8,8,24,34).data,n=d.length/4,[L,A,B]=labArrays(d,n),idx=[];
+  for(let i=0;i<n;i++){const j=i*4,mn=Math.min(d[j],d[j+1],d[j+2]),mx=Math.max(d[j],d[j+1],d[j+2]);if(!(mn>=236&&mx-mn<=14))idx.push(i)}
+  if(idx.length<20)return "Blanco";
+  // Varios colores vivos repartidos (estampado de flores, rayas de colores): Multicolor
+  const bins=new Array(6).fill(0);let vivid=0;for(const i of idx){if(Math.hypot(A[i],B[i])<18)continue;vivid++;bins[Math.floor(((Math.atan2(B[i],A[i])*180/Math.PI+360)%360)/60)]++}
+  const sorted=[...bins].sort((p,q)=>q-p);if(vivid>idx.length*.3&&sorted[1]>vivid*.25&&sorted[0]<vivid*.6)return "Multicolor";
+  const med=arr=>quantile(idx.map(i=>arr[i]),.5);
+  return colorName(med(L),med(A),med(B));
+ }catch{return ""}
+}
+async function buyAnalyze(){
+ const c=buyCheck;if(!c||c.loading||c.analyzing)return;readBuyFields();
+ c.analyzing=true;c.analyzeFailed=false;render();
+ try{const out=await api("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image:c.image})});const d=mapAnalysis(out.garment||out.result||out);
+  if(buyCheck!==c)return;
+  const keep={price:c.price,name:c.name||d.name};Object.assign(c,d,{season:d.season||"all",notes:undefined},keep,{analyzed:true,looks:null})}
+ catch(e){console.error("BUY_ANALYZE",e);if(e.message==="SESSION_EXPIRED"){buyCheck=null;return}c.analyzeFailed=e.message!=="AI_QUOTA"}
+ finally{c.analyzing=false}
+ if(buyCheck===c)render();
+}
 async function startBuyCheck(file){
  let image;
  try{image=await readImage(file)}catch(e){return toast(e.message==="IMAGE_TOO_LARGE"?"La imagen es demasiado grande":"No se pudo leer la imagen")}
@@ -1841,9 +1880,7 @@ async function startBuyCheck(file){
  let bgWhite=false;const original=image;
  let photoFx=false,catalogPhoto=false;
  if(appState.data.preferences.autoWhite!==false){const r=await enhancePhoto(image);if(buyCheck?.token!==token)return;if(r){image=r.image;bgWhite=r.white;photoFx=!r.asIs;catalogPhoto=!!r.asIs}}
- const c={image,original,bgWhite,photoFx,catalogPhoto,token,name:"",category:"",color:"",style:"",season:"all",price:null,looks:null,analyzeFailed:false};
- try{const out=await api("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image})});const d=mapAnalysis(out.garment||out.result||out);Object.assign(c,d,{season:d.season||"all",notes:undefined})}
- catch(e){console.error("BUY_ANALYZE",e);c.analyzeFailed=true;if(e.message==="SESSION_EXPIRED"){buyCheck=null;return}}
+ const c={image,original,bgWhite,photoFx,catalogPhoto,token,name:"",category:"",color:await guessColor(image),style:"",season:"all",price:null,looks:null,analyzeFailed:false,analyzed:false};
  if(buyCheck?.token===token){buyCheck=c;render();$("#buyCheck")?.scrollIntoView?.({block:"start",behavior:"smooth"})}
 }
 async function buyLooks(){
@@ -1961,7 +1998,7 @@ function renderShopping(root){
  // ¿Lo compro?
  for(const id of ["buyImage","buyCamera"])$("#"+id)?.addEventListener("change",e=>{const f=e.target.files[0];if(f)startBuyCheck(f)});
  for(const id of ["buyName","buyColor","buyPrice","buyCategory","buyStyle","buySeason"])$("#"+id)?.addEventListener("change",()=>{readBuyFields();buyCheck.looks=null;render()});
- $("#buyLooks")?.addEventListener("click",buyLooks);
+ $("#buyLooks")?.addEventListener("click",buyLooks);$("#buyAnalyze")?.addEventListener("click",buyAnalyze);
  $("#buyReset")?.addEventListener("click",()=>{buyCheck=null;render()});
  $("#buyWish")?.addEventListener("click",async()=>{readBuyFields();const c=buyCheck,r=evaluateCandidate(c);
   await mutate(()=>appState.data.wishlist.unshift({id:uid(),name:c.name||"Prenda sin nombre",price:Number(c.price)||0,category:c.category,url:"",bought:false,addedAt:dayISO(),verdict:r.verdict,updatedAt:new Date().toISOString()}),"Añadida a la wishlist")});
