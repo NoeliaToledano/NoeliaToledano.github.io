@@ -768,7 +768,7 @@ const BOARD_SLOTS={Capas:{x:0,y:3,w:50,h:60,z:1},Arriba:{x:24,y:1,w:52,h:46,z:3}
 function outfitBoard(pieces){
  const items=pieces.filter(g=>validImage(g.image)).slice(0,7);
  if(!items.length)return "";
- if(!items.every(g=>g.bgWhite))return collage(items.map(photoUrl),items.length-4);
+ if(!items.every(g=>g.bgWhite))return '<div class="look-mixed-board" role="group" aria-label="Prendas del conjunto">'+items.map(g=>'<div class="look-mixed-item"><img src="'+photoUrl(g)+'" alt="'+fx(g.name||g.category||"Prenda")+'" loading="lazy"></div>').join("")+'</div>';
  if(items.length===1)return '<div class="board"><img src="'+photoUrl(items[0])+'" alt="'+fx(items[0].name||"Prenda del conjunto")+'" loading="lazy" style="left:8%;top:5%;width:84%;height:90%"></div>';
  const layer=items.some(g=>g.category==="Capas"),count={};
  return '<div class="board">'+items.map(g=>{
