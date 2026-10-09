@@ -33,6 +33,29 @@ try{
  await page.locator("#password").fill("test");
  await page.locator("#loginBtn").click();
  await page.getByRole("heading",{name:"Hoy",exact:true}).waitFor({timeout:6000}).catch(async e=>{console.log("LOGIN_DIAGNOSTIC",{error:await page.locator("#authError").textContent(),authVisible:await page.locator("#auth").isVisible(),appVisible:await page.locator("#app").isVisible(),browserErrors:errors});throw e});
+
+ // Regresión visual del collage (1–7 prendas): todas las fotos deben permanecer
+ // visibles y dentro de su tarjeta, con las piezas principales por delante.
+ const collageAudit=await page.evaluate(()=>{
+  const img="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/pVYAAAAASUVORK5CYII=";
+  const categories=["Arriba","Capas","Abajo","Zapatos","Bolsos","Accesorios","Vestidos"];
+  const records=categories.map((category,i)=>({id:"audit-"+i,category,name:"Pieza "+i,image:img,bgWhite:i===0}));
+  const host=document.createElement("div");host.style.cssText="position:absolute;left:0;top:0;width:340px;visibility:hidden";document.body.append(host);
+  const failures=[];
+  for(let count=1;count<=7;count++){
+   host.innerHTML=outfitBoard(records.slice(0,count));
+   const board=host.querySelector(".look-mixed-board"),cards=[...host.querySelectorAll(".look-mixed-item")];
+   if(!board||cards.length!==count||board.dataset.count!==String(count)){failures.push("Cantidad "+count);continue}
+   const outer=board.getBoundingClientRect();
+   for(const card of cards){
+    const rect=card.getBoundingClientRect();
+    if(rect.width<1||rect.height<1||rect.left<outer.left-1||rect.top<outer.top-1||rect.right>outer.right+1||rect.bottom>outer.bottom+1)failures.push("Tarjeta fuera de rejilla: "+count);
+   }
+   if(count>=2&&cards[0].querySelector("img")?.alt!=="Pieza 0")failures.push("La prenda principal no protagoniza "+count);
+  }
+  host.remove();return failures;
+ });
+ assert.deepEqual(collageAudit,[],"Collage de looks fuera de su rejilla u orden incorrecto");
  await page.locator(".daily-look").waitFor(); // «Tu look de hoy» nada más entrar
  assert.equal(await page.locator("#app").isVisible(),true);
  assert.equal(await page.locator("#auth").isVisible(),false);
