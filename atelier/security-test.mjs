@@ -189,6 +189,12 @@ console.log("PASS: Styling engine (20/100/500 prendas): capas según tiempo, var
   appState.data=normalizeData({garments:[G("t","Arriba","Blusa","Azul",{style:"party",formality:"party"}),G("p","Abajo","Falda","Azul",{style:"party",formality:"party"}),
    G("z","Zapatos","Tacones","Negro",{style:"party",formality:"party"}),G("b","Bolsos","Mochila","Naranja",{style:"sport",formality:"sport",pattern:"graphic"})]});
   out.badBag=rankOutfits({max:1,occasion:"party",temp:22,date:"2026-07-15",extras:{shoes:true,bag:true}})[0].ids;
+  // 8) «Combina con»: el filtro contextual no presenta la misma prenda ni temporadas ajenas.
+  appState.data=normalizeData({garments:[G("base","Arriba","Camisa","Blanco",{season:"all"}),G("summer","Abajo","Pantalón","Negro",{season:"summer"}),G("winter","Abajo","Pantalón","Negro",{season:"winter"})]});
+  const summerCtx=engineContext({occasion:"daily",temp:23,date:"2026-07-15"});
+  const winterCtx=engineContext({occasion:"daily",temp:12,date:"2026-01-15"});
+  out.contextSummer=garmentPairsForContext(by("base"),"daily",summerCtx).map(x=>x.g.id);
+  out.contextWinter=garmentPairsForContext(by("base"),"daily",winterCtx).map(x=>x.g.id);
   return out;`);
   const r=probe(document,sessionStorage,{randomUUID:()=>"t"});
   assert.ok(r.ct>=.6&&r.cp<.6,"La americana de cuadros combina con la camisa ("+r.ct+") pero no con el pantalón de rayas ("+r.cp+")");
@@ -201,6 +207,8 @@ console.log("PASS: Styling engine (20/100/500 prendas): capas según tiempo, var
   assert.deepEqual(r.remote,["",  "two-patterns"].map(x=>x),"Una edición con fecha anterior al máximo recalcula la relación ("+r.remote+")");
   assert.ok(r.mono.length&&r.mono.every(ids=>!ids.includes("j")&&!ids.includes("t"))&&r.monoNucleus.join()==="m","El mono es núcleo de una sola pieza ("+JSON.stringify(r.mono)+")");
   assert.ok(!r.badBag.includes("b"),"Bolso que choca: mejor sin bolso ("+r.badBag+")");
+  assert.ok(!r.contextSummer.includes("winter")&&!r.contextSummer.includes("base"),"El filtro de verano excluye prendas de invierno y la propia prenda");
+  assert.ok(!r.contextWinter.includes("summer")&&!r.contextWinter.includes("base"),"El filtro de invierno excluye prendas de verano y la propia prenda");
   console.log("PASS: Stylist brain: weakest link, third piece vs all, intentional mix, no filler pieces, honest shoe warning");
 }
 
