@@ -43,6 +43,15 @@ export async function dailyQuota(profile, kind, max) {
   return { ok: Number(n) <= max, count: Number(n) };
 }
 
+// Intentos fallidos de login, compartidos entre instancias (#48). Cada fallo renueva la ventana de 5 min.
+export async function failures(key, op, ttlSeconds) {
+  const k = `atelier:v1:login:${key}`;
+  if (op === "clear") return redis(["DEL", k]);
+  if (op === "add") { const [n] = await pipeline([["INCR", k], ["EXPIRE", k, String(ttlSeconds)]]); return { count: Number(n) }; }
+  const [n, ttl] = await pipeline([["GET", k], ["TTL", k]]);
+  return { count: Number(n || 0), ttl: Number(ttl) };
+}
+
 // Claves por perfil
 export const keys = profile => ({
   rev: `atelier:v1:${profile}:rev`,

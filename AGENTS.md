@@ -39,7 +39,8 @@ Reglas de la app:
 - Al modificar una prenda o look, actualiza `updatedAt`: la sincronización se queda con la versión más reciente.
 - Mi semana (`plans`): cada plan guarda su propia copia de prendas. Planificado no es usado: solo «Me lo he puesto» añade a `wearLog`.
 - Sincronización: las preferencias y los 👍/👎 se fusionan **por clave** con las marcas de `stamps` (las pone `saveState`). Un `tomb` solo borra si es posterior al `updatedAt` del elemento. `normalizeData` conserva las claves que no conoce: no las elimines.
-- El plan de un día tiene id fijo `plan:AAAA-MM-DD`.
+- El plan de un día tiene id fijo `plan:AAAA-MM-DD`. Los planes antiguos se migran solos (`onePlanPerDay`).
+- Motor de estilismo (`rankOutfits`, `scoreOutfit`): los estilos se combinan por afinidad (`styleAffinity`); solo es imposible deporte con fiesta. «¿Cómo quieres vestirte hoy?» es `preferences.dressStyle` ∈ `elegante | arreglada | informal | deporte | comoda` o `null`.
 - La CSP de `index.html` solo permite conectar con el backend de Vercel y `api.open-meteo.com`.
 
 Pruebas: `atelier/security-test.mjs` (Node), `atelier/smoke-test.mjs` (Chrome) y `atelier/webkit-v3-test.mjs` (Safari/WebKit).
@@ -49,6 +50,7 @@ Pruebas: `atelier/security-test.mjs` (Node), `atelier/smoke-test.mjs` (Chrome) y
 - `/api/login`, `/api/session`: contraseñas scrypt y sesiones firmadas de 30 días. Para añadir un perfil, ver «Añadir un perfil nuevo» en `atelier-api/README.md`.
 - `/api/analyze`: analiza una foto con OpenAI (`detail: low`).
 - `/api/looks`: crea looks con los IDs recibidos; tiene en cuenta `liked` y `disliked`; máximo 24 prendas.
-- `/api/analyze` y `/api/looks` tienen límite diario **por perfil en el servidor** (`dailyQuota` en Redis: 40 y 20) y validan todo lo que entra en el prompt.
+- `/api/analyze` y `/api/looks` tienen límite diario **por perfil en el servidor** (`dailyQuota` en Redis: 40 y 20, contado solo para peticiones válidas) y validan todo lo que entra en el prompt.
+- `/api/login`: límite de intentos en Redis (5 por perfil e IP de Vercel y 20 por perfil en 5 min), compartido entre instancias.
 - `/api/sync`, `/api/sync-image`: guardan el armario y las fotos en Upstash Redis. Sin las variables de Upstash devuelven 503 y la app sigue funcionando solo en local.
 - Mantén las instrucciones a la IA cortas: cada palabra del prompt se paga en cada llamada.
