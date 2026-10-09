@@ -42,6 +42,7 @@ Reglas de la app:
 - El plan de un día tiene id fijo `plan:AAAA-MM-DD`. Los planes antiguos se migran solos (`onePlanPerDay`).
 - Motor de estilismo (`rankOutfits`, `scoreOutfit`): los estilos se combinan por afinidad (`styleAffinity`); solo es imposible deporte con fiesta. «¿Cómo quieres vestirte hoy?» es `preferences.dressStyle` ∈ `elegante | arreglada | informal | deporte | comoda` o `null`.
 - La CSP de `index.html` solo permite conectar con el backend de Vercel y `api.open-meteo.com`.
+- El retoque de fotos (`enhancePhoto`) se hace en un Worker creado desde las propias funciones de `atelier.js` (`PHOTO_FNS`, CSP `worker-src 'self' blob:`). Si una función de retoque usa otra función nueva, añádela a `PHOTO_FNS`; usa `mkCanvas`/`toJpeg`, no `document`.
 
 Pruebas: `atelier/security-test.mjs` (Node), `atelier/smoke-test.mjs` (Chrome) y `atelier/webkit-v3-test.mjs` (Safari/WebKit).
 
