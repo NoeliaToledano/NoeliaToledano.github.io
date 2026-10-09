@@ -773,7 +773,11 @@ function outfitBoard(pieces){
  const sorted=pieces.filter(g=>validImage(g.image)).sort((a,b)=>(categoryOrder[a.category]??7)-(categoryOrder[b.category]??7));
  const items=sorted.slice(0,7);
  if(!items.length)return "";
- if(!items.every(g=>g.bgWhite)){
+ // Composición sobre blanco si las prendas que forman la silueta (arriba, abajo, vestido) tienen fondo blanco;
+ // las demás con fondo (calzado, capa, complementos) van como una pequeña ficha en su sitio (.board-tile).
+ const core=items.filter(g=>["Arriba","Abajo","Vestidos"].includes(g.category));
+ const flat=items.every(g=>g.bgWhite)||core.length>0&&core.every(g=>g.bgWhite);
+ if(!flat){
   // El primer hueco del collage es el protagonista: priorizar prendas estructurales.
   // Los complementos van en espacios secundarios, independientemente del orden de selección.
   const visualPriority={Vestidos:0,Capas:1,Arriba:2,Abajo:3,Zapatos:4,Bolsos:5,Accesorios:6};
@@ -790,7 +794,8 @@ function outfitBoard(pieces){
   const s={...(BOARD_SLOTS[g.category]||{x:66,y:74,w:30,h:23,z:4})},k=count[g.category]=(count[g.category]||0)+1;
   if(layer&&["Arriba","Abajo","Vestidos"].includes(g.category))s.x+=12;
   if(k>1){s.x=Math.min(100-s.w,s.x+12*(k-1));s.y=Math.min(100-s.h,s.y+5*(k-1));s.z+=k}
-  return '<img src="'+photoUrl(g)+'" alt="'+fx(g.name)+'" loading="lazy" style="left:'+s.x+'%;top:'+s.y+'%;width:'+s.w+'%;height:'+s.h+'%;z-index:'+s.z+'">';
+  if(!g.bgWhite){const t=Math.min(s.w,s.h*.8);s.x+=(s.w-t)/2;s.y+=(s.h-t*1.25)/2;s.w=t;s.h=t*1.25}
+  return '<img'+(g.bgWhite?'':' class="board-tile"')+' src="'+photoUrl(g)+'" alt="'+fx(g.name)+'" loading="lazy" style="left:'+s.x+'%;top:'+s.y+'%;width:'+s.w+'%;height:'+s.h+'%;z-index:'+s.z+'">';
  }).join("")+'</div>';
 }
 function thumbs(list,max=12){
