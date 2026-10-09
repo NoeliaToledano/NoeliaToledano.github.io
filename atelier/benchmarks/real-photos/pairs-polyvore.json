@@ -1,0 +1,707 @@
+[
+ {
+  "id": "p01",
+  "occasion": "work",
+  "temp": 17,
+  "a": [
+   "pv-190213626_2",
+   "pv-212695761_2",
+   "pv-199670397_5",
+   "pv-215711344_1",
+   "pv-215711790_5"
+  ],
+  "b": [
+   "pv-190213626_2",
+   "pv-116422943_5",
+   "pv-179568102_2",
+   "pv-211489172_3",
+   "pv-139512660_5"
+  ],
+  "better": "a",
+  "kind": "formalidad",
+  "hard": false,
+  "why": "Trabajo: pantalón negro, salones y blazer frente a vaqueros lavados, deportivas doradas y mochila de montaña"
+ },
+ {
+  "id": "p02",
+  "occasion": "party",
+  "temp": 17,
+  "a": [
+   "pv-166550094_1",
+   "pv-215711911_3",
+   "pv-194269563_5",
+   "pv-199627775_5",
+   "pv-215711344_1"
+  ],
+  "b": [
+   "pv-166550094_1",
+   "pv-116477566_3",
+   "pv-196810800_4",
+   "pv-139552098_4",
+   "pv-215711344_1"
+  ],
+  "better": "b",
+  "kind": "complementos",
+  "hard": true,
+  "why": "Dos complementos animal print (serpiente y cebra) recargan; mejor complementos lisos"
+ },
+ {
+  "id": "p03",
+  "occasion": "daily",
+  "temp": 8,
+  "a": [
+   "pv-185255553_1",
+   "pv-212695761_2",
+   "pv-214556482_4",
+   "pv-179549303_2"
+  ],
+  "b": [
+   "pv-212699039_1",
+   "pv-194229161_3",
+   "pv-214556482_4",
+   "pv-179549303_2"
+  ],
+  "better": "a",
+  "kind": "estampados",
+  "hard": true,
+  "why": "Tres estampados (rayas, cuadros, rayas) frente a uno con básicos"
+ },
+ {
+  "id": "p04",
+  "occasion": "daily",
+  "temp": 28,
+  "a": [
+   "pv-179512724_1",
+   "pv-116422943_5",
+   "pv-214556482_4",
+   "pv-208349871_3"
+  ],
+  "b": [
+   "pv-179512724_1",
+   "pv-204621726_2",
+   "pv-173772158_3",
+   "pv-208349871_3"
+  ],
+  "better": "b",
+  "kind": "temperatura",
+  "hard": false,
+  "why": "Botas de terciopelo y vaqueros a 28 °C"
+ },
+ {
+  "id": "p05",
+  "occasion": "daily",
+  "temp": 17,
+  "a": [
+   "pv-139611402_1",
+   "pv-212695761_2",
+   "pv-209894763_5"
+  ],
+  "b": [
+   "pv-139611402_1",
+   "pv-116422943_5",
+   "pv-209894763_5"
+  ],
+  "better": "a",
+  "kind": "color",
+  "hard": true,
+  "why": "Camisa vaquera con vaquero lavado al ácido: doble vaquero sin contraste"
+ },
+ {
+  "id": "p06",
+  "occasion": "work",
+  "temp": 8,
+  "a": [
+   "pv-190213626_2",
+   "pv-212695761_2",
+   "pv-209894763_5",
+   "pv-213720966_1"
+  ],
+  "b": [
+   "pv-190213626_2",
+   "pv-212695761_2",
+   "pv-209894763_5",
+   "pv-179549303_2"
+  ],
+  "better": "b",
+  "kind": "ocasión",
+  "hard": true,
+  "why": "Abrigo de leopardo de pelo para la oficina frente a abrigo gris"
+ },
+ {
+  "id": "p07",
+  "occasion": "party",
+  "temp": 28,
+  "a": [
+   "pv-212677928_1",
+   "pv-214553732_2",
+   "pv-211528547_4"
+  ],
+  "b": [
+   "pv-212677928_1",
+   "pv-179568102_2",
+   "pv-211528547_4"
+  ],
+  "better": "a",
+  "kind": "formalidad",
+  "hard": false,
+  "why": "Vestido largo de lentejuelas con deportivas"
+ },
+ {
+  "id": "p08",
+  "occasion": "beach",
+  "temp": 28,
+  "a": [
+   "pv-100060207_1",
+   "pv-215711911_3",
+   "pv-208349871_3"
+  ],
+  "b": [
+   "pv-100060207_1",
+   "pv-173772158_3",
+   "pv-208349871_3"
+  ],
+  "better": "b",
+  "kind": "ocasión",
+  "hard": false,
+  "why": "Tacones en la playa"
+ },
+ {
+  "id": "p09",
+  "occasion": "work",
+  "temp": 28,
+  "a": [
+   "pv-190201135_1",
+   "pv-199670397_5",
+   "pv-216212189_5"
+  ],
+  "b": [
+   "pv-190201135_1",
+   "pv-173772158_3",
+   "pv-216783524_8"
+  ],
+  "better": "a",
+  "kind": "formalidad",
+  "hard": false,
+  "why": "Trabajo: salones y reloj frente a sandalias de goma y gafas rosas"
+ },
+ {
+  "id": "p10",
+  "occasion": "daily",
+  "temp": 8,
+  "a": [
+   "pv-156441712_1",
+   "pv-206756107_2",
+   "pv-214556482_4",
+   "pv-215716977_2"
+  ],
+  "b": [
+   "pv-212677930_1",
+   "pv-206756107_2",
+   "pv-214556482_4",
+   "pv-215716977_2"
+  ],
+  "better": "b",
+  "kind": "temperatura",
+  "hard": true,
+  "why": "Top corto sin mangas a 8 °C, aunque lleve abrigo"
+ },
+ {
+  "id": "p11",
+  "occasion": "party",
+  "temp": 17,
+  "a": [
+   "pv-190213626_2",
+   "pv-212694076_2",
+   "pv-194255813_4",
+   "pv-196810800_4"
+  ],
+  "b": [
+   "pv-190213626_2",
+   "pv-212694076_2",
+   "pv-194255813_4",
+   "pv-204666648_5"
+  ],
+  "better": "a",
+  "kind": "estampados",
+  "hard": true,
+  "why": "Bolso de camuflaje con falda de cuadros"
+ },
+ {
+  "id": "p12",
+  "occasion": "daily",
+  "temp": 17,
+  "a": [
+   "pv-204623786_1",
+   "pv-204670394_3",
+   "pv-209889118_3",
+   "pv-211486050_1"
+  ],
+  "b": [
+   "pv-204623786_1",
+   "pv-212695761_2",
+   "pv-209889118_3",
+   "pv-211489172_3"
+  ],
+  "better": "b",
+  "kind": "estampados",
+  "hard": true,
+  "why": "Rayas + palazzo estampado + cárdigan estampado: tres estampados"
+ },
+ {
+  "id": "p13",
+  "occasion": "work",
+  "temp": 17,
+  "a": [
+   "pv-190213626_2",
+   "pv-212694076_2",
+   "pv-209894763_5",
+   "pv-215711344_1"
+  ],
+  "b": [
+   "pv-209866475_1",
+   "pv-212694076_2",
+   "pv-209889118_3",
+   "pv-215711344_1"
+  ],
+  "better": "a",
+  "kind": "formalidad",
+  "hard": false,
+  "why": "Sudadera gráfica y Vans en el trabajo"
+ },
+ {
+  "id": "p14",
+  "occasion": "daily",
+  "temp": 28,
+  "a": [
+   "pv-194322157_1",
+   "pv-212698635_2",
+   "pv-216209314_8"
+  ],
+  "b": [
+   "pv-194322157_1",
+   "pv-212698635_2",
+   "pv-216783524_8"
+  ],
+  "better": "b",
+  "kind": "temperatura",
+  "hard": true,
+  "why": "Fedora de lana a 28 °C"
+ },
+ {
+  "id": "p15",
+  "occasion": "daily",
+  "temp": 8,
+  "a": [
+   "pv-156454235_4",
+   "pv-185255553_1",
+   "pv-214556482_4",
+   "pv-215222673_2"
+  ],
+  "b": [
+   "pv-156454235_4",
+   "pv-185202779_1",
+   "pv-214556482_4",
+   "pv-215222673_2"
+  ],
+  "better": "a",
+  "kind": "estampados",
+  "hard": true,
+  "why": "Jersey de cuadros bajo abrigo de cuadros distintos"
+ },
+ {
+  "id": "p16",
+  "occasion": "party",
+  "temp": 17,
+  "a": [
+   "pv-211526863_1",
+   "pv-209894763_5",
+   "pv-139435554_4",
+   "pv-212677928_5"
+  ],
+  "b": [
+   "pv-211526863_1",
+   "pv-166546072_3",
+   "pv-211528547_4",
+   "pv-139552098_4"
+  ],
+  "better": "b",
+  "kind": "formalidad",
+  "hard": true,
+  "why": "Fiesta: salón y cartera frente a botín informal y bolso de diario"
+ },
+ {
+  "id": "p17",
+  "occasion": "work",
+  "temp": 8,
+  "a": [
+   "pv-185255553_1",
+   "pv-212695761_2",
+   "pv-209894763_5",
+   "pv-179549303_2"
+  ],
+  "b": [
+   "pv-139611402_1",
+   "pv-194229161_3",
+   "pv-209894763_5",
+   "pv-179549303_2"
+  ],
+  "better": "a",
+  "kind": "estampados",
+  "hard": true,
+  "why": "Pantalón de cuadros con abrigo de rayas"
+ },
+ {
+  "id": "p18",
+  "occasion": "daily",
+  "temp": 28,
+  "a": [
+   "pv-185168090_1",
+   "pv-100119147_2",
+   "pv-206765050_3"
+  ],
+  "b": [
+   "pv-116477566_1",
+   "pv-100119147_2",
+   "pv-173772158_3"
+  ],
+  "better": "b",
+  "kind": "color",
+  "hard": true,
+  "why": "Shorts de flores con camiseta roja y deportivas rosas: demasiado color; mejor top neutro"
+ },
+ {
+  "id": "p19",
+  "occasion": "daily",
+  "temp": 17,
+  "a": [
+   "pv-148480489_1",
+   "pv-209894763_5",
+   "pv-215711344_1",
+   "pv-212677928_5"
+  ],
+  "b": [
+   "pv-148480489_1",
+   "pv-209894763_5",
+   "pv-215712583_2",
+   "pv-199627775_5"
+  ],
+  "better": "a",
+  "kind": "estampados",
+  "hard": true,
+  "why": "Vestido de flores con pendientes de cebra y chaqueta roja"
+ },
+ {
+  "id": "p20",
+  "occasion": "party",
+  "temp": 28,
+  "a": [
+   "pv-204622684_1",
+   "pv-190234379_2",
+   "pv-215711790_5"
+  ],
+  "b": [
+   "pv-204622684_1",
+   "pv-190234379_2",
+   "pv-204665878_4"
+  ],
+  "better": "b",
+  "kind": "complementos",
+  "hard": true,
+  "why": "Fiesta: cartera de fiesta frente a bolso de hombro rojo de diario con vestido rosa"
+ },
+ {
+  "id": "p21",
+  "occasion": "work",
+  "temp": 17,
+  "a": [
+   "pv-216211597_1",
+   "pv-199670397_5",
+   "pv-215711344_1",
+   "pv-139435554_4"
+  ],
+  "b": [
+   "pv-216211597_1",
+   "pv-199670397_5",
+   "pv-194271847_1",
+   "pv-139435554_4"
+  ],
+  "better": "a",
+  "kind": "ocasión",
+  "hard": true,
+  "why": "Chaleco de flecos en el trabajo"
+ },
+ {
+  "id": "p22",
+  "occasion": "daily",
+  "temp": 8,
+  "a": [
+   "pv-179487123_1",
+   "pv-156454235_4",
+   "pv-214556482_4",
+   "pv-213720966_1"
+  ],
+  "b": [
+   "pv-185255553_1",
+   "pv-156454235_4",
+   "pv-214556482_4",
+   "pv-213720966_1"
+  ],
+  "better": "b",
+  "kind": "temperatura",
+  "hard": true,
+  "why": "Top de hombros al aire a 8 °C"
+ },
+ {
+  "id": "p23",
+  "occasion": "beach",
+  "temp": 28,
+  "a": [
+   "pv-204656536_1",
+   "pv-166546072_2",
+   "pv-173772158_3",
+   "pv-206738267_5"
+  ],
+  "b": [
+   "pv-204656536_1",
+   "pv-166546072_2",
+   "pv-214556482_4",
+   "pv-206738267_5"
+  ],
+  "better": "a",
+  "kind": "temperatura",
+  "hard": false,
+  "why": "Botas en la playa a 28 °C"
+ },
+ {
+  "id": "p24",
+  "occasion": "party",
+  "temp": 17,
+  "a": [
+   "pv-213732908_1",
+   "pv-212695761_2",
+   "pv-215711911_3",
+   "pv-196810800_4"
+  ],
+  "b": [
+   "pv-190213626_2",
+   "pv-212695761_2",
+   "pv-215711911_3",
+   "pv-196810800_4"
+  ],
+  "better": "b",
+  "kind": "formalidad",
+  "hard": true,
+  "why": "Sudadera con tacones y cartera de fiesta"
+ },
+ {
+  "id": "p25",
+  "occasion": "daily",
+  "temp": 17,
+  "a": [
+   "pv-216204869_1",
+   "pv-156454235_4",
+   "pv-209889118_3",
+   "pv-139512660_5"
+  ],
+  "b": [
+   "pv-216204869_1",
+   "pv-156454235_4",
+   "pv-166546072_3",
+   "pv-139512660_5"
+  ],
+  "better": "a",
+  "kind": "coherencia",
+  "hard": true,
+  "why": "Sudadera y mochila de montaña con stilettos"
+ },
+ {
+  "id": "p26",
+  "occasion": "work",
+  "temp": 28,
+  "a": [
+   "pv-215211356_1",
+   "pv-212695761_2",
+   "pv-199670397_5",
+   "pv-215711790_5"
+  ],
+  "b": [
+   "pv-116477566_1",
+   "pv-212695761_2",
+   "pv-199670397_5",
+   "pv-215711790_5"
+  ],
+  "better": "b",
+  "kind": "ocasión",
+  "hard": true,
+  "why": "Top bustier en el trabajo"
+ },
+ {
+  "id": "p27",
+  "occasion": "daily",
+  "temp": 8,
+  "a": [
+   "pv-212677930_1",
+   "pv-212695761_2",
+   "pv-214556482_4",
+   "pv-179549303_2"
+  ],
+  "b": [
+   "pv-212677930_1",
+   "pv-212695761_2",
+   "pv-212698635_2",
+   "pv-179549303_2"
+  ],
+  "better": "a",
+  "kind": "temperatura",
+  "hard": false,
+  "why": "Sandalias a 8 °C"
+ },
+ {
+  "id": "p28",
+  "occasion": "daily",
+  "temp": 17,
+  "a": [
+   "pv-194239656_1",
+   "pv-156454235_4",
+   "pv-209894763_5",
+   "pv-206718069_2"
+  ],
+  "b": [
+   "pv-194239656_1",
+   "pv-156454235_4",
+   "pv-209894763_5",
+   "pv-215711344_1"
+  ],
+  "better": "b",
+  "kind": "estampados",
+  "hard": true,
+  "why": "Camisa de cuadros con chaleco de punto estampado"
+ },
+ {
+  "id": "p29",
+  "occasion": "party",
+  "temp": 28,
+  "a": [
+   "pv-194235491_2",
+   "pv-214553732_2",
+   "pv-196810800_4",
+   "pv-212677928_5"
+  ],
+  "b": [
+   "pv-194235491_2",
+   "pv-214553732_2",
+   "pv-194269563_5",
+   "pv-199627775_5",
+   "pv-209900097_5"
+  ],
+  "better": "a",
+  "kind": "complementos",
+  "hard": true,
+  "why": "Vestido dorado con cartera de serpiente, pendientes de cebra y reloj multicolor: recargado"
+ },
+ {
+  "id": "p30",
+  "occasion": "work",
+  "temp": 8,
+  "a": [
+   "pv-185255553_1",
+   "pv-212695761_2",
+   "pv-179568102_2",
+   "pv-215222673_2"
+  ],
+  "b": [
+   "pv-185255553_1",
+   "pv-212695761_2",
+   "pv-209894763_5",
+   "pv-215222673_2"
+  ],
+  "better": "b",
+  "kind": "formalidad",
+  "hard": false,
+  "why": "Deportivas doradas en el trabajo"
+ },
+ {
+  "id": "p31",
+  "occasion": "daily",
+  "temp": 28,
+  "a": [
+   "pv-100060207_1",
+   "pv-173772158_3",
+   "pv-208349871_3"
+  ],
+  "b": [
+   "pv-100060207_1",
+   "pv-209889118_3",
+   "pv-139512660_5"
+  ],
+  "better": "a",
+  "kind": "coherencia",
+  "hard": true,
+  "why": "Vestido con mochila de montaña"
+ },
+ {
+  "id": "p32",
+  "occasion": "party",
+  "temp": 17,
+  "a": [
+   "pv-190213626_2",
+   "pv-212695761_2",
+   "pv-209889118_3",
+   "pv-196810800_4",
+   "pv-215711344_1"
+  ],
+  "b": [
+   "pv-190213626_2",
+   "pv-212695761_2",
+   "pv-194255813_4",
+   "pv-196810800_4",
+   "pv-215711344_1"
+  ],
+  "better": "b",
+  "kind": "formalidad",
+  "hard": false,
+  "why": "Fiesta con Vans"
+ },
+ {
+  "id": "p33",
+  "occasion": "daily",
+  "temp": 8,
+  "a": [
+   "pv-185202779_1",
+   "pv-212695761_2",
+   "pv-214556482_4",
+   "pv-215716977_2"
+  ],
+  "b": [
+   "pv-185202779_1",
+   "pv-204670394_3",
+   "pv-214556482_4",
+   "pv-215716977_2"
+  ],
+  "better": "a",
+  "kind": "estampados",
+  "hard": true,
+  "why": "Jersey de cuadros con palazzo estampado"
+ },
+ {
+  "id": "p34",
+  "occasion": "work",
+  "temp": 17,
+  "a": [
+   "pv-139611402_1",
+   "pv-206756107_2",
+   "pv-209894763_5",
+   "pv-215711344_1"
+  ],
+  "b": [
+   "pv-139611402_1",
+   "pv-212695761_2",
+   "pv-199670397_5",
+   "pv-215711344_1"
+  ],
+  "better": "b",
+  "kind": "ocasión",
+  "hard": true,
+  "why": "Vaqueros rotos en el trabajo"
+ }
+]

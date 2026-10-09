@@ -1580,6 +1580,7 @@ function occasionFits(g,occ){
  if(["work","formal","event"].includes(occ)){
   // Con formalidad arreglada o formal, vale aunque el nombre diga «sandalia» o «mochila»; informal, se mira el tipo; deporte o fiesta, no
   if(occ==="work"&&["smartcasual","formal"].includes(g.formality))return true;
+  if(occ==="work"&&g.formality==="party"&&!occs.length&&smartFallbackShoes(g))return true; // salones o tacones lisos de «fiesta»: también de trabajo (banco A/B, #128); sandalias y brillos, no
   if(occ!=="work"&&g.formality)return formal>=2&&g.formality!=="sport";
   if(g.formality&&!["casual"].includes(g.formality))return false;
   if(WORK_NO.test(textOf(g))||g.category==="Abajo"&&g.length==="cropped"||occ==="work"&&isBackpack(g))return false; // P1/P8 (#99); mochila informal, no (revisión de Codex, #112)
