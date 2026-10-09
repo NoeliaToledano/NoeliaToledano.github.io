@@ -675,6 +675,7 @@ async function restoreSession(){
   appState.profile=p;appState.token=s.token;
   const check=await rawApi("/api/session");
   if(!check.authenticated||check.profileId!==p.id)throw new Error("SESSION_INVALID");
+  if(typeof check.token==="string"&&check.token){appState.token=check.token;try{localStorage.setItem("atelier-session",JSON.stringify({...s,token:check.token}))}catch{}} // renovación (B4)
   await enterApp();return true;
  }catch(e){
   // Sin conexión: se entra igualmente con los datos locales.

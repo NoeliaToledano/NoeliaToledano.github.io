@@ -36,12 +36,20 @@ export function getProfilePasswordHash(profileId) {
 }
 
 export const SESSION_SECONDS = 60 * 60 * 24 * 30;
+export const RENEW_AFTER_SECONDS = 60 * 60 * 24 * 7;
+
+// Revocar las sesiones de un perfil (B4): subir ATELIER_SESSION_VERSION_<PERFIL> en Vercel (por defecto "1").
+export function sessionVersion(profileId) {
+  const envName = PROFILE_HASH_ENV[profileId];
+  if (!envName) return null;
+  return String(process.env[envName.replace("PASSWORD", "SESSION_VERSION")] || "1").slice(0, 32);
+}
 
 export function issueSession(profileId) {
   const secret = process.env.ATELIER_SESSION_SECRET;
   if (!secret) throw new Error("ATELIER_SESSION_SECRET is not configured");
   const now = Math.floor(Date.now() / 1000);
-  const payload = { sub: profileId, iat: now, exp: now + SESSION_SECONDS };
+  const payload = { sub: profileId, v: sessionVersion(profileId), iat: now, exp: now + SESSION_SECONDS };
   const encoded = b64url(JSON.stringify(payload));
   const sig = crypto.createHmac("sha256", secret).update(encoded).digest("base64url");
   return encoded + "." + sig;
@@ -61,5 +69,7 @@ export function verifySession(req) {
   try { payload = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8")); }
   catch { return null; }
   if (!payload?.sub || !payload?.exp || payload.exp < Math.floor(Date.now() / 1000)) return null;
+  const version = sessionVersion(payload.sub);
+  if (!version || String(payload.v || "1") !== version) return null; // perfil desconocido o sesión revocada
   return payload;
 }

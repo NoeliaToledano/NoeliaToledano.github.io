@@ -70,7 +70,7 @@ export default async function handler(req, res) {
     const data = await response.json();
     if (!response.ok) {
       console.error("OpenAI error", response.status, data);
-      return res.status(502).json({ error: "La IA no ha podido analizar la prenda.", detail: data?.error?.message || null });
+      return res.status(502).json({ error: "La IA no ha podido analizar la prenda." });
     }
 
     const text = data.output_text || (data.output || [])

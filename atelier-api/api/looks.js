@@ -42,7 +42,7 @@ export default async function handler(req,res){
   try{
     const r=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{"Authorization":`Bearer ${process.env.OPENAI_API_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({model:process.env.OPENAI_LOOK_MODEL||"gpt-4o-mini",input:prompt,max_output_tokens:40+need*45})});
     const data=await r.json();
-    if(!r.ok) return res.status(502).json({error:"La IA no ha podido crear los looks.",detail:data?.error?.message||null});
+    if(!r.ok){console.error("OpenAI error",r.status,data?.error?.message);return res.status(502).json({error:"La IA no ha podido crear los looks."})}
     const text=data.output_text||(data.output||[]).flatMap(x=>x.content||[]).filter(x=>x.type==="output_text").map(x=>x.text).join("");
     const clean=String(text||"").replace(/^\`\`\`(?:json)?\s*/i,"").replace(/\s*\`\`\`$/i,"").trim();
     const a=clean.indexOf("{"),b=clean.lastIndexOf("}"); if(a<0||b<=a) throw new Error("JSON inválido");
