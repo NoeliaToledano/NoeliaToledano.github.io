@@ -323,3 +323,11 @@ p.notice-card{display:block}
 .look-tile .tile-tools+.tile-tools{border-top:1px solid var(--line);padding-top:8px;margin-top:3px;justify-content:flex-end}
 .look-tile .tile-tools+.tile-tools .chip-button{flex:0 0 auto;min-width:44px;background:transparent;border-color:transparent}
 .look-tile .tile-tools+.tile-tools .chip-button.on{background:var(--bg);border-color:var(--line)}
+
+/* Estilista: estado vacío deliberado; una acción principal y mucho espacio. */
+.stylist-locked{max-width:490px;margin:clamp(30px,9vh,85px) auto 45px;text-align:center;padding:18px 18px 32px}
+.stylist-lock-symbol{width:58px;height:58px;display:grid;place-items:center;margin:0 auto 22px;border:1px solid var(--line);background:var(--surface);border-radius:50%;font-size:34px;color:var(--muted)}
+.stylist-locked h2{font-family:Georgia,serif;font-size:clamp(25px,6vw,33px);font-weight:500;line-height:1.12;margin:0 0 14px}
+.stylist-locked p{color:var(--muted);line-height:1.55;margin:0 auto 24px;max-width:350px}
+.stylist-locked .primary{display:block;width:100%;max-width:290px;margin:0 auto;min-height:48px}
+.stylist-locked .link-button{display:block;margin:18px auto 0;text-decoration:underline;text-underline-offset:4px}
