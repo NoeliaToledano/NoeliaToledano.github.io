@@ -1410,7 +1410,7 @@ function swapOptions(l,oldId,max=6){
  if(!old)return [];
  // Motor común: misma categoría, compatible con el resto y puntuado como look completo (fecha del plan si la hay)
  const rest=gs.filter(g=>g.id!==oldId),fb=appState.data.feedback||{},saved=new Map(myLooks().map(x=>[lookSig(x.garmentIds||[]),x]));
- const ctx=engineContext({occasion:null,date:validDay(l.date)?l.date:undefined});
+ const ctx=engineContext({occasion:l.occasion in occasions?l.occasion:null,date:validDay(l.date)?l.date:undefined}); // con la ocasión del look (revisión de Codex, #133)
  const ok=g=>rest.every(r=>(!related(g,r)||stylesOk(g,r))&&(pairColor(g,r).s>=.45||!BIG.includes(g.category)||!BIG.includes(r.category)));
  return myGarments().filter(g=>g.id!==oldId&&g.category===old.category&&!rest.some(r=>r.id===g.id)&&ok(g)).map(g=>{
   const look=[...rest,g],ids=look.map(x=>x.id),ex=saved.get(lookSig(ids)),r=scoreOutfit(look,ctx),why=[...r.reasons];
@@ -1666,6 +1666,7 @@ function scoreOutfit(gs,ctx){
   else if(d>tol+.05){context-=Math.min(.3,(d-tol-.05));if(d>tol+.2)warnings.push("Quizá demasiado abrigo para "+ctx.temp+" °C")}}
  if(ctx.extras.shoes&&!gs.some(g=>g.category==="Zapatos")){context-=.25;warnings.push("No hay calzado que combine")}
  if(ctx.occasion&&gs.every(g=>occasionFits(g,ctx.occasion)))context+=.2;
+ const issues=lookIssues(gs,ctx);if(issues.length){context-=Math.min(.6,.3*issues.length);warnings.push(...issues.slice(0,2))}
  // Personal (10): favoritas, olvidadas, usado hace poco, Tus gustos
  let personal=.5;const fav=gs.filter(g=>g.favorite).length,forg=gs.filter(g=>ctx.forgotten.has(g.id));
  personal+=Math.min(.3,fav*.1)+Math.min(.3,forg.length*.15)-gs.reduce((t,g)=>t+(ctx.avoid.has(g.id)?(BIG.includes(g.category)?.45:.1):0),0);
@@ -1729,6 +1730,20 @@ const fallbackOccOk=(g,occ)=>!(Array.isArray(g.occasions)&&g.occasions.length)||
 /* Contexto de bolsos y abrigos (evaluación Polyvore v88/v92) */
 const hasSkirtOrDress=gs=>gs.some(g=>g.category==="Vestidos"||g.category==="Abajo"&&/falda|skirt/i.test(textOf(g)));
 const outdoorPack=g=>isBackpack(g)&&isOutdoor(g); // mochila de montaña o técnica: no con vestido ni falda
+/* Restricciones que rankOutfits aplica al generar, también para puntuar looks hechos a mano, de la IA o de «Cambiar prenda» (#128) */
+function lookIssues(gs,ctx){
+ const out=[],t=ctx.temp,nm=g=>g.name||g.type||g.category,occ=ctx.occasion;
+ for(const g of gs){
+  if(occ&&!occasionFits(g,occ))out.push(nm(g)+": no es para «"+(occasions[occ]||occ).toLowerCase()+"»");
+  else if(Number.isFinite(t)&&(!thermalOk(g,t)||heavyKnitInHeat(g,t)))out.push(nm(g)+(t>=20?": demasiado abrigo para ":": poco abrigo para ")+t+" °C");
+  else if(Number.isFinite(t)&&bootInHeat(g,t))out.push(nm(g)+": botas con "+t+" °C");
+  else if(Number.isFinite(t)&&!weatherCompatible(g,gs.filter(x=>x!==g),ctx))out.push(nm(g)+": no va con "+t+" °C");
+  else if(g.category==="Accesorios"&&HEADWEAR.test([g.type,g.subtype,g.name].filter(Boolean).join(" "))&&!headwearMakesSense(g,ctx))out.push(nm(g)+": sin motivo (ni sol ni frío)");
+  if(outdoorPack(g)&&hasSkirtOrDress(gs))out.push("Mochila de montaña con vestido o falda");
+ }
+ if(gs.some(g=>isPatterned(g)&&!BIG.includes(g.category))&&gs.filter(isPatterned).length>=2)out.push("Complemento estampado con otra prenda estampada");
+ return out;
+}
 const PUFFER=/plum[ií]fero|plumas|anorak|acolchad|puffer|quilted|parka|cortavientos|softshell|forro polar|fleece/i;
 const casualCoat=g=>g.category==="Capas"&&PUFFER.test(textOf(g))&&formalLevel(g)<2; // en el trabajo, mejor abrigo de paño, gabardina o blazer
 function vividColorRepeat(gs){
