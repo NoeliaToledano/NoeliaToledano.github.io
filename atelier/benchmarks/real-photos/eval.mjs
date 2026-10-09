@@ -76,5 +76,7 @@ Object.assign(pat,{
  "con bolso":r=>gsOf(r).some(g=>g.category==="Bolsos"),
  "abrigo de pelo/estampado con estampado":r=>gsOf(r).filter(g=>g.pattern&&g.pattern!=="plain").length>=2
 });
+// Cada fila guarda los patrones que cumple (r.patterns), para compare.mjs (#129)
+const withPatterns=report.map(r=>({...r,patterns:Object.entries(pat).filter(([,f])=>f(r)).map(([k])=>k)}));fs.writeFileSync(OUT+"/report.json",JSON.stringify(withPatterns,null,1));
 for(const [k,f] of Object.entries(pat))console.log(k+":",report.filter(f).length);const by={};for(const r of bad)for(const i of r.issues)by[i]=(by[i]||0)+1;console.log(by);
 await b.close();
