@@ -1095,6 +1095,11 @@ const COLOR_WORDS=[
  ["morado",["morado","morada","lila","violeta","berenjena","lavanda"]]
 ];
 const colorCache=new Map();
+/* Paleta del look (regla de tres colores, #136 §3; Noelia: «las opciones me parecen bastante horribles», 09/10):
+   los neutros cuentan cada uno (negro, blanco, beige…), los vivos por familia; los metales (dorado, plateado) no cuentan. */
+const METAL=/dorad|platead|\boro\b|\bplata\b|gold|silver|metal/i;
+const colorKey=g=>{if(METAL.test(g.color||""))return "";const c=colorInfo(g.color,g.pattern);return c.fam==="neutro"?c.word.replace(/a$/,"o"):c.fam==="estampado"?"estampado:"+norm(g.color||g.pattern):c.fam};
+const paletteOf=gs=>new Set(gs.map(colorKey).filter(Boolean));
 function colorInfo(text,pattern){
  if(pattern&&pattern!=="plain")return {fam:"estampado",word:"estampado-"+pattern};
  const key=String(text||"");if(colorCache.has(key))return colorCache.get(key);
@@ -1583,6 +1588,16 @@ function thermal(g){
  return Math.max(0,t);
 }
 /* ¿Va con esta temperatura? Manga larga y gruesa no con calor; shorts y minifaldas no con frío */
+/* Con frío (<12 °C) nadie se pone un top sin mangas, corto o de hombros al aire, aunque lleve abrigo (Noelia, 09/10).
+   Regla dura salvo en fiesta, evento o formal (vestido de noche con abrigo). La ficha manda; sin dato, el nombre. */
+const COLD_TOP_TEXT=/tirantes|sin mangas|sleeveless|\btank\b|palabra de honor|strapless|halter|off.?shoulder|hombros al aire|bandeau|bustier|cors[eé]/i;
+function coldExposed(g,temp,occ){
+ if(!Number.isFinite(temp)||temp>=12||["party","event","formal"].includes(occ)||!["Arriba","Vestidos"].includes(g.category))return false;
+ const txt=textOf(g),sleeveless=g.sleeve&&g.sleeve!=="no aplica"?g.sleeve==="sin mangas":COLD_TOP_TEXT.test(txt);
+ return sleeveless||g.category==="Arriba"&&(g.length&&g.length!=="na"?g.length==="cropped":/\bcrop/i.test(txt))||/off.?shoulder|hombros al aire/i.test(txt);
+}
+/* Prenda de arriba sin manga indicada y con nombre genérico («Top», «Body»): con frío no se sabe si abriga; se evita si hay otras */
+const uncertainColdTop=(g,temp)=>temp<12&&g.category==="Arriba"&&!(g.sleeve&&g.sleeve!=="no aplica")&&/\btop\b|\bbody\b|camiseta de tirantes/i.test(textOf(g));
 function thermalOk(g,temp){
  const t=thermal(g);if(t===null)return true;
  if(["Arriba","Vestidos"].includes(g.category))return !(temp>=24&&t>=5)&&!(temp>=28&&t>=4);
@@ -1625,6 +1640,8 @@ function cloOf(g){
  if(g.category==="Accesorios")return /bufanda|scarf|fular|pashmina|foulard/i.test(txt)?.05:/gorro|beanie/i.test(txt)?.03:/guantes|gloves/i.test(txt)?.02:0;
  return 0;
 }
+/* Un complemento con un color nuevo cuando el look ya tiene tres colores: mejor otro que repita un color o sea neutro */
+const newColorOverflow=(x,l)=>{const k=colorKey(x),pal=paletteOf(l);return !!k&&!pal.has(k)&&pal.size>=3};
 /* Abrigo del look completo (suma de prendas + ropa interior, ISO 9920) y lo que pide la temperatura exterior:
    1,35 clo a 5 °C → 0,3 clo a 28 °C (calibrado con looks de calle típicos: abrigo+jersey+pantalón+botas ≈ 1,1–1,2 a 8 °C;
    camisa+vaqueros+chaqueta ≈ 0,85 a 17 °C; camiseta+shorts ≈ 0,2–0,3 a 28 °C) */
@@ -1706,6 +1723,9 @@ function scoreOutfit(gs,ctx){
  // Una buena relación entre complementos puede acompañar la base, nunca maquillar
  // el choque entre dos prendas principales. Solo puede restar hasta un 15 %.
  const color=baseN?Math.min(baseColor,.85*baseColor+.15*accessoryColor):accessoryColor,patterns=gs.filter(g=>colorInfo(g.color,g.pattern).fam==="estampado").length;
+ const pal=paletteOf(gs),extraColors=Math.max(0,pal.size-3);let colorAdj=-.1*extraColors;
+ const mainKeys=new Set(big.map(colorKey).filter(k=>k&&!["negro","blanco","gris"].includes(k))),echo=gs.find(g=>!BIG.includes(g.category)&&mainKeys.has(colorKey(g)));
+ if(echo&&!extraColors)colorAdj+=.05; // el bolso o el calzado repite un color del look: ritmo
  const tonal=kinds.find(k=>k.startsWith("tonal:")&&!k.endsWith("~"));
  if(tonal)reasons.push("Tono sobre tono en "+tonal.slice(6).replace(/~$/,"")+"s");
  else if(kinds.includes("opposite~"))reasons.push("Un toque de color en contraste");
@@ -1755,7 +1775,7 @@ function scoreOutfit(gs,ctx){
  const clamp=v=>Math.max(0,Math.min(1,v));
  // Lo usado hace poco resta aparte (hasta 15 puntos), para que «distinto cada día» pese de verdad
  const recent=Math.min(1,personal<0?-personal:0);
- const score=Math.round(25*clamp(color)+25*clamp(sil)+20*clamp(style)+20*clamp(context)+10*clamp(personal)-15*recent-(patterns>=3&&!ctx.likes?.has("pattern")?12:0)-(ctx.likes?.has("vividmono")?0:12)*vividColorRepeat(gs)); // gusto: solo si te gusta el tono sobre tono en color vivo (no basta con «monocromático»)
+ const score=Math.round(25*clamp(color+colorAdj)+25*clamp(sil)+20*clamp(style)+20*clamp(context)+10*clamp(personal)-15*recent-(patterns>=3&&!ctx.likes?.has("pattern")?12:0)-(ctx.likes?.has("vividmono")?0:12)*vividColorRepeat(gs)); // gusto: solo si te gusta el tono sobre tono en color vivo (no basta con «monocromático»)
  return {score,reasons:[...new Set(reasons)].slice(0,3),warnings};
 }
 /* Contexto común (se calcula una vez por llamada: usos, olvidadas y gustos) */
@@ -1804,7 +1824,9 @@ function smartFallbackShoes(g){
 /* Botas y botines con calor (≥ 26 °C): solo si no hay otro calzado (evaluación Polyvore: botines a 28 °C con vestido sin mangas) */
 const closedBoot=g=>g.category==="Zapatos"&&/\bbot(a|as|ines?|[ií]n)\b|\bboots?\b/i.test(textOf(g))&&!/sandal|peep.?toe|open.?toe/i.test(textOf(g));
 const bootInHeat=(g,temp)=>temp>=26&&closedBoot(g);
-const isPatterned=g=>colorInfo(g.color,g.pattern).fam==="estampado";
+/* Estampado: la ficha manda; sin dato, el color o el nombre (camuflaje, leopardo, rayas…) (prueba de degradación) */
+const PATTERN_TEXT=/camufla|\bcamo\b|leopard|cebra|zebra|serpiente|snake|animal print|estampad|\bprint\b|rayas|stripe|cuadros|plaid|tartan|check|flores|floral|lunares|polka|\bdots\b|paisley|cachemir/i;
+const isPatterned=g=>g.pattern?g.pattern!=="plain":colorInfo(g.color).fam==="estampado"||PATTERN_TEXT.test(textOf(g));
 /* Calzado de reserva de todo el armario: si la ficha indica ocasiones, mandan (revisión de Codex, #117) */
 const fallbackOccOk=(g,occ)=>!(Array.isArray(g.occasions)&&g.occasions.length)||occasionFits(g,occ);
 /* Contexto de bolsos y abrigos (evaluación Polyvore v88/v92) */
@@ -1815,6 +1837,7 @@ function lookIssues(gs,ctx){
  const out=[],t=ctx.temp,nm=g=>g.name||g.type||g.category,occ=ctx.occasion;
  for(const g of gs){
   if(occ&&!occasionFits(g,occ))out.push(nm(g)+": no es para «"+(occasions[occ]||occ).toLowerCase()+"»");
+  else if(coldExposed(g,t,occ))out.push(nm(g)+": sin mangas o corto para "+t+" °C");
   else if(Number.isFinite(t)&&(!thermalOk(g,t)||heavyKnitInHeat(g,t)))out.push(nm(g)+(t>=20?": demasiado abrigo para ":": poco abrigo para ")+t+" °C");
   else if(Number.isFinite(t)&&bootInHeat(g,t))out.push(nm(g)+": botas con "+t+" °C");
   else if(Number.isFinite(t)&&!weatherCompatible(g,gs.filter(x=>x!==g),ctx))out.push(nm(g)+": no va con "+t+" °C");
@@ -1837,8 +1860,8 @@ function vividColorRepeat(gs){
 }
 function completeOutfitGreedy(base,pool,ctx,used=new Map(),firstPick=null){
  const l=[...base],rule=layerRule(ctx.temp),home=ctx.occasion==="home",beach=ctx.occasion==="beach";
- const fits=x=>!l.includes(x)&&!(l.some(g=>isBackpack(g)&&(isOutdoor(g)||formalLevel(g)<2))&&formalLevel(x)>=2)&&!heavyKnitInHeat(x,ctx.temp)&&!insufficientColdLayer(x,ctx.temp)&&weatherCompatible(x,l,ctx)&&l.every(p=>!related(x,p)||stylesOk(x,p))&&l.every(p=>pairColor(x,p).s>=.45||!BIG.includes(p.category)||!BIG.includes(x.category)||ctx.likes?.has("pattern")&&pairColor(x,p).k==="two-patterns")&&!(isPatterned(x)&&!BIG.includes(x.category)&&l.some(isPatterned));
- const pref=x=>(x.favorite?.5:0)+1/(1+(ctx.worn.get(x.id)||0))+(ctx.forgotten.has(x.id)?.5:0)-(ctx.avoid.has(x.id)?2:0)-(used.get(x.id)||0)*1.5+
+ const fits=x=>!l.includes(x)&&!(l.some(g=>isBackpack(g)&&(isOutdoor(g)||formalLevel(g)<2))&&formalLevel(x)>=2)&&!heavyKnitInHeat(x,ctx.temp)&&!insufficientColdLayer(x,ctx.temp)&&weatherCompatible(x,l,ctx)&&l.every(p=>!related(x,p)||stylesOk(x,p))&&l.every(p=>pairColor(x,p).s>=.45||!BIG.includes(p.category)||!BIG.includes(x.category)||ctx.likes?.has("pattern")&&pairColor(x,p).k==="two-patterns")&&!(isPatterned(x)&&!BIG.includes(x.category)&&l.some(isPatterned))&&!(["Bolsos","Accesorios"].includes(x.category)&&newColorOverflow(x,l));
+ const pref=x=>(x.favorite?.5:0)+(["Bolsos","Accesorios","Zapatos"].includes(x.category)&&colorKey(x)&&paletteOf(l).has(colorKey(x))?.6:0)+ /* repetir un color del look: ritmo (regla de tres colores) */1/(1+(ctx.worn.get(x.id)||0))+(ctx.forgotten.has(x.id)?.5:0)-(ctx.avoid.has(x.id)?2:0)-(used.get(x.id)||0)*1.5+
   l.reduce((t,p)=>t+pairColor(x,p).s,0)/Math.max(1,l.length);
  const plan=[ctx.extras.shoes&&!home&&!beach?"Zapatos":beach&&ctx.extras.shoes?"Zapatos":null,!home&&rule.max>=0?"Capas":null,ctx.extras.bag&&!home?"Bolsos":null,!home?"Accesorios":null];
  for(const cat of plan){
@@ -1859,6 +1882,7 @@ function completeOutfitGreedy(base,pool,ctx,used=new Map(),firstPick=null){
    c.sort((a,b)=>tier(a)-tier(b)||pref(b)-pref(a))}
   else c.sort((a,b)=>pref(b)-pref(a));
   if(cat==="Zapatos"&&c.some(x=>!bootInHeat(x,ctx.temp)))c=c.filter(x=>!bootInHeat(x,ctx.temp));
+  if(cat==="Zapatos"&&c.some(x=>!newColorOverflow(x,l)))c=c.filter(x=>!newColorOverflow(x,l)); // calzado: sin cuarto color si hay alternativa
   if(cat==="Bolsos"&&l.some(p=>formalLevel(p)>=2))c=c.filter(x=>!isBackpack(x)||formalLevel(x)>=2&&!isOutdoor(x)); // Q3 (#108): mochila de vestir sí
   if(cat==="Bolsos"&&hasSkirtOrDress(l))c=c.filter(x=>!outdoorPack(x)); // sin bolso antes que mochila de montaña con vestido
   if(cat==="Bolsos"&&["party","event","formal"].includes(ctx.occasion)){const lv=x=>Array.isArray(x.occasions)&&x.occasions.includes(ctx.occasion)?3:formalLevel(x),top=Math.max(0,...c.map(lv));if(top>=2)c=c.filter(x=>lv(x)>=top)} // fiesta: el bolso más arreglado que haya (de fiesta antes que de diario)
@@ -1903,7 +1927,8 @@ function rankOutfits(o={}){
   if(req)bases=bases.filter(b=>b.every(p=>!related(req,p)||stylesOk(req,p))&&(!isBackpack(req)||!isOutdoor(req)&&formalLevel(req)>=2||b.every(p=>formalLevel(p)<2))).map(b=>[...b,req]); // mochila elegida: sin prendas smart ni party (revisión de Codex, #111)
   if(req&&outdoorPack(req)&&bases.some(b=>!hasSkirtOrDress(b)))bases=bases.filter(b=>!hasSkirtOrDress(b)); // mochila de montaña: con pantalón
  }
- bases=bases.filter(b=>b.length&&!b.some(g=>heavyKnitInHeat(g,ctx.temp)||!thermalOk(g,ctx.temp))&&b.every((x,i)=>b.every((y,j)=>i===j||!related(x,y)||stylesOk(x,y))));
+ bases=bases.filter(b=>b.length&&!b.some(g=>heavyKnitInHeat(g,ctx.temp)||!thermalOk(g,ctx.temp)||coldExposed(g,ctx.temp,ctx.occasion)&&g.id!==o.required)&&b.every((x,i)=>b.every((y,j)=>i===j||!related(x,y)||stylesOk(x,y))));
+ if(bases.some(b=>!b.some(g=>uncertainColdTop(g,ctx.temp))))bases=bases.filter(b=>!b.some(g=>uncertainColdTop(g,ctx.temp)&&g.id!==o.required)); // sin dato de manga y con frío: solo si no hay otra cosa
  // Bolso o complemento estampado elegido: bases lisas si las hay (revisión de Codex, #117)
  if(req&&isPatterned(req)&&!BIG.includes(req.category)){const plain=bases.filter(b=>!b.some(p=>p!==req&&isPatterned(p)));if(plain.length)bases=plain}
  // Puntuación y selección variada: valor = puntuación − solapamiento con las ya elegidas (prendas principales pesan más)

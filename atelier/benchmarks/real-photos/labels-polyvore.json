@@ -12,7 +12,16 @@
 "file": "img/pv-215222673_2.jpg",
 "source": "Marqo/polyvore item_ID 215222673_2 · Coats · alexander mcqueen double-breasted collarless coat",
 "thickness": "grueso",
-"formality": "smartcasual"
+"formality": "smartcasual",
+"sleeve": "larga",
+"length": "regular",
+"fabric": "wool",
+"occasions": [
+"daily",
+"work"
+],
+"subtype": "abrigo de cuadros",
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-194322157_1",
@@ -26,8 +35,17 @@
 "file": "img/pv-194322157_1.jpg",
 "source": "Marqo/polyvore item_ID 194322157_1 · Day Dresses · balenciaga sleeveless dress",
 "sleeve": "sin mangas",
-"length": "midi",
-"formality": "casual"
+"length": "regular",
+"formality": "smartcasual",
+"thickness": "medio",
+"warmth": "bajo",
+"fabric": "mixed",
+"occasions": [
+"work",
+"event",
+"daily"
+],
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-190213626_2",
@@ -40,7 +58,20 @@
 "name": "Blusa karen millen high neck lace bl",
 "file": "img/pv-190213626_2.jpg",
 "source": "Marqo/polyvore item_ID 190213626_2 · Blouses · karen millen high neck lace blouse black",
-"formality": "smartcasual"
+"formality": "smartcasual",
+"sleeve": "sin mangas",
+"length": "regular",
+"thickness": "ligero",
+"warmth": "bajo",
+"fabric": "mixed",
+"occasions": [
+"work",
+"event",
+"party"
+],
+"neckline": "alto",
+"subtype": "blusa de encaje sin mangas",
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-199627775_5",
@@ -59,14 +90,19 @@
 "id": "pv-209889118_3",
 "category": "Zapatos",
 "type": "Deportivas",
-"style": "sport",
+"style": "casual",
 "season": "all",
 "pattern": "plain",
 "color": "Negro",
 "name": "Deportivas vans women's authentic lo pro ",
 "file": "img/pv-209889118_3.jpg",
 "source": "Marqo/polyvore item_ID 209889118_3 · Sneakers · vans women's authentic lo pro black black m us men m us wome",
-"formality": "sport"
+"formality": "casual",
+"occasions": [
+"daily"
+],
+"subtype": "zapatillas de lona",
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-179512724_1",
@@ -81,7 +117,16 @@
 "source": "Marqo/polyvore item_ID 179512724_1 · Tank Tops · tank olive",
 "sleeve": "sin mangas",
 "thickness": "ligero",
-"formality": "casual"
+"formality": "casual",
+"length": "regular",
+"warmth": "bajo",
+"fabric": "cotton",
+"occasions": [
+"daily",
+"beach"
+],
+"subtype": "camiseta de tirantes",
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-215711911_3",
@@ -95,7 +140,13 @@
 "file": "img/pv-215711911_3.jpg",
 "source": "Marqo/polyvore item_ID 215711911_3 · Pumps · pigalle follies patent leather women shoes christian loubout",
 "fabric": "leather",
-"formality": "party"
+"formality": "party",
+"occasions": [
+"party",
+"event"
+],
+"subtype": "salones de charol",
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-116477566_3",
@@ -108,21 +159,38 @@
 "name": "Tacones chinese laundry perfect high h",
 "file": "img/pv-116477566_3.jpg",
 "source": "Marqo/polyvore item_ID 116477566_3 · Pumps · chinese laundry perfect high heels beige",
-"formality": "party"
+"formality": "party",
+"fabric": "leather",
+"occasions": [
+"party",
+"event",
+"work"
+],
+"subtype": "salones de plataforma",
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-212694076_2",
 "category": "Abajo",
 "type": "Falda",
 "style": "smart",
-"season": "all",
+"season": "cold",
 "pattern": "checks",
 "color": "Negro",
 "name": "Falda flared checked skirt",
 "file": "img/pv-212694076_2.jpg",
 "source": "Marqo/polyvore item_ID 212694076_2 · Knee Length Skirts · flared checked skirt",
 "length": "midi",
-"formality": "smartcasual"
+"formality": "smartcasual",
+"sleeve": "no aplica",
+"thickness": "medio",
+"warmth": "medio",
+"fabric": "wool",
+"occasions": [
+"work",
+"daily"
+],
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-166550094_1",
@@ -135,21 +203,41 @@
 "name": "Vestido corto chicwish fancy waterfall dress",
 "file": "img/pv-166550094_1.jpg",
 "source": "Marqo/polyvore item_ID 166550094_1 · Cocktail Dresses · chicwish fancy waterfall dress peach pink",
-"formality": "party"
+"formality": "party",
+"sleeve": "sin mangas",
+"length": "midi",
+"thickness": "medio",
+"warmth": "bajo",
+"fabric": "satin",
+"occasions": [
+"party",
+"event"
+],
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-204670394_3",
 "category": "Abajo",
 "type": "Pantalón",
 "style": "smart",
-"season": "all",
+"season": "warm",
 "pattern": "graphic",
 "color": "Vaquero",
 "name": "Pantalón printed palazzo trousers",
 "file": "img/pv-204670394_3.jpg",
 "source": "Marqo/polyvore item_ID 204670394_3 · Pants · printed palazzo trousers",
 "length": "long",
-"formality": "smartcasual"
+"formality": "casual",
+"sleeve": "no aplica",
+"thickness": "ligero",
+"warmth": "bajo",
+"fabric": "synthetic",
+"occasions": [
+"daily",
+"beach"
+],
+"subtype": "palazzo",
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-179549303_2",
@@ -157,27 +245,43 @@
 "type": "Abrigo",
 "style": "smart",
 "season": "cold",
-"pattern": "stripes",
+"pattern": "plain",
 "color": "Gris",
 "name": "Abrigo shein sheinside grey long slee",
 "warmth": "alto",
 "file": "img/pv-179549303_2.jpg",
 "source": "Marqo/polyvore item_ID 179549303_2 · Coats · shein sheinside grey long sleeve striped faux fur coat",
 "thickness": "grueso",
-"formality": "smartcasual"
+"formality": "smartcasual",
+"sleeve": "larga",
+"length": "regular",
+"fabric": "synthetic",
+"occasions": [
+"daily",
+"party"
+],
+"subtype": "chaqueta de pelo sintético",
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-214553732_2",
 "category": "Zapatos",
 "type": "Sandalias",
 "style": "party",
-"season": "warm",
+"season": "all",
 "pattern": "plain",
 "color": "Gris",
 "name": "Sandalias dolce gabbana dolce gabbana cr",
 "file": "img/pv-214553732_2.jpg",
 "source": "Marqo/polyvore item_ID 214553732_2 · Sandals · dolce gabbana dolce gabbana crystal embellished sandals",
-"formality": "party"
+"formality": "party",
+"fabric": "mixed",
+"occasions": [
+"party",
+"event"
+],
+"subtype": "sandalias joya de tacón",
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-194255813_4",
@@ -190,7 +294,14 @@
 "name": "Tacones kurt geiger london black",
 "file": "img/pv-194255813_4.jpg",
 "source": "Marqo/polyvore item_ID 194255813_4 · Pumps · kurt geiger london black",
-"formality": "party"
+"formality": "party",
+"fabric": "mixed",
+"occasions": [
+"party",
+"event"
+],
+"subtype": "tacones con cordones",
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-212698635_2",
@@ -204,7 +315,14 @@
 "file": "img/pv-212698635_2.jpg",
 "source": "Marqo/polyvore item_ID 212698635_2 · Sandals · burberry leather sandals",
 "fabric": "leather",
-"formality": "party"
+"formality": "party",
+"occasions": [
+"party",
+"event",
+"work"
+],
+"subtype": "sandalias de tacón ancho",
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-196810800_4",
@@ -226,13 +344,22 @@
 "style": "smart",
 "season": "all",
 "pattern": "plain",
-"color": "Blanco",
+"color": "Beige",
 "name": "Blazer cream lightweight blazer",
 "warmth": "medio",
 "file": "img/pv-215711344_1.jpg",
 "source": "Marqo/polyvore item_ID 215711344_1 · Blazers · cream lightweight blazer",
 "thickness": "ligero",
-"formality": "smartcasual"
+"formality": "smartcasual",
+"sleeve": "larga",
+"length": "regular",
+"fabric": "synthetic",
+"occasions": [
+"work",
+"daily",
+"event"
+],
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-166546072_3",
@@ -245,7 +372,14 @@
 "name": "Tacones shein sheinside black high hee",
 "file": "img/pv-166546072_3.jpg",
 "source": "Marqo/polyvore item_ID 166546072_3 · Pumps · shein sheinside black high heel buckle pumps",
-"formality": "party"
+"formality": "party",
+"fabric": "mixed",
+"occasions": [
+"party",
+"event"
+],
+"subtype": "merceditas de plataforma",
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-216783524_8",
@@ -265,14 +399,24 @@
 "category": "Arriba",
 "type": "Top",
 "style": "casual",
-"season": "all",
+"season": "warm",
 "pattern": "stripes",
 "color": "Gris",
 "name": "Top choies monochrome stripe sleev",
 "file": "img/pv-204623786_1.jpg",
 "source": "Marqo/polyvore item_ID 204623786_1 · Tops · choies monochrome stripe sleeveless crop top",
 "sleeve": "sin mangas",
-"formality": "casual"
+"formality": "casual",
+"length": "cropped",
+"thickness": "ligero",
+"warmth": "bajo",
+"fabric": "cotton",
+"occasions": [
+"daily",
+"beach"
+],
+"subtype": "top corto de rayas",
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-204656536_1",
@@ -280,14 +424,22 @@
 "type": "Camiseta",
 "style": "casual",
 "season": "all",
-"pattern": "plain",
-"color": "Negro",
+"pattern": "graphic",
+"color": "Gris",
 "name": "Camiseta womens boho galaxy yang peace ",
 "file": "img/pv-204656536_1.jpg",
 "source": "Marqo/polyvore item_ID 204656536_1 · T-Shirts · womens boho galaxy yang peace festival shirt trendy tumblr t",
-"sleeve": "sin mangas",
+"sleeve": "corta",
 "thickness": "ligero",
-"formality": "casual"
+"formality": "casual",
+"length": "regular",
+"warmth": "bajo",
+"fabric": "cotton",
+"occasions": [
+"daily",
+"home"
+],
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-209900097_5",
@@ -307,14 +459,20 @@
 "id": "pv-179568102_2",
 "category": "Zapatos",
 "type": "Deportivas",
-"style": "sport",
+"style": "casual",
 "season": "all",
 "pattern": "plain",
 "color": "Dorado",
 "name": "Deportivas steve madden trainers gold",
 "file": "img/pv-179568102_2.jpg",
 "source": "Marqo/polyvore item_ID 179568102_2 · Sneakers · steve madden trainers gold",
-"formality": "sport"
+"formality": "casual",
+"fabric": "mixed",
+"occasions": [
+"daily"
+],
+"subtype": "zapatillas de plataforma",
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-212677928_1",
@@ -329,7 +487,18 @@
 "source": "Marqo/polyvore item_ID 212677928_1 · Gowns · rotita strapless sequin gold prom dress",
 "sleeve": "sin mangas",
 "length": "long",
-"formality": "party"
+"formality": "party",
+"thickness": "medio",
+"warmth": "bajo",
+"fabric": "synthetic",
+"occasions": [
+"party",
+"formal",
+"event"
+],
+"neckline": "palabra de honor",
+"details": "lentejuelas",
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-204665878_4",
@@ -369,7 +538,16 @@
 "file": "img/pv-179474941_2.jpg",
 "source": "Marqo/polyvore item_ID 179474941_2 · Shorts · current/elliott boyfriend shorts",
 "length": "cropped",
-"formality": "casual"
+"formality": "casual",
+"sleeve": "no aplica",
+"thickness": "medio",
+"warmth": "bajo",
+"fabric": "denim",
+"occasions": [
+"daily",
+"beach"
+],
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-190201135_1",
@@ -383,7 +561,16 @@
 "file": "img/pv-190201135_1.jpg",
 "source": "Marqo/polyvore item_ID 190201135_1 · Day Dresses · roland mouret stretch-crepe dress",
 "length": "midi",
-"formality": "casual"
+"formality": "smartcasual",
+"sleeve": "tres cuartos",
+"thickness": "medio",
+"warmth": "medio",
+"fabric": "synthetic",
+"occasions": [
+"work",
+"event"
+],
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-139435554_4",
@@ -403,14 +590,20 @@
 "id": "pv-206765050_3",
 "category": "Zapatos",
 "type": "Deportivas",
-"style": "sport",
+"style": "casual",
 "season": "all",
 "pattern": "plain",
 "color": "Rosa",
 "name": "Deportivas miu miu women's metal cap toe ",
 "file": "img/pv-206765050_3.jpg",
 "source": "Marqo/polyvore item_ID 206765050_3 · Sneakers · miu miu women's metal cap toe slip-on sneaker pink size",
-"formality": "sport"
+"formality": "casual",
+"fabric": "leather",
+"occasions": [
+"daily"
+],
+"subtype": "zapatillas slip-on",
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-204666648_5",
@@ -451,8 +644,15 @@
 "source": "Marqo/polyvore item_ID 212677930_1 · Sweaters · yoins burgundy casual knit round neck irregular hem sweater",
 "sleeve": "larga",
 "fabric": "knit",
-"thickness": "grueso",
-"formality": "casual"
+"thickness": "medio",
+"formality": "casual",
+"length": "regular",
+"warmth": "medio",
+"occasions": [
+"daily",
+"work"
+],
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-206738267_5",
@@ -472,16 +672,23 @@
 "category": "Capas",
 "type": "Cárdigan",
 "style": "casual",
-"season": "all",
+"season": "cold",
 "pattern": "graphic",
 "color": "Gris",
 "name": "Cárdigan missoni wool blend cape cardig",
-"warmth": "bajo",
+"warmth": "alto",
 "file": "img/pv-211486050_1.jpg",
 "source": "Marqo/polyvore item_ID 211486050_1 · Cardigans · missoni wool blend cape cardigan",
 "fabric": "wool",
 "thickness": "grueso",
-"formality": "casual"
+"formality": "casual",
+"sleeve": "no aplica",
+"length": "regular",
+"occasions": [
+"daily"
+],
+"subtype": "capa de punto",
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-139552098_4",
@@ -501,13 +708,19 @@
 "category": "Zapatos",
 "type": "Botines",
 "style": "casual",
-"season": "all",
+"season": "cold",
 "pattern": "plain",
 "color": "Gris",
 "name": "Botines platform buckle zip ankle boot",
 "file": "img/pv-209894763_5.jpg",
 "source": "Marqo/polyvore item_ID 209894763_5 · Ankle Booties · platform buckle zip ankle boots",
-"formality": "casual"
+"formality": "casual",
+"fabric": "leather",
+"occasions": [
+"daily",
+"work"
+],
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-116422943_5",
@@ -522,7 +735,14 @@
 "source": "Marqo/polyvore item_ID 116422943_5 · Skinny Jeans · forever bold acid wash skinny jeans",
 "length": "long",
 "fabric": "denim",
-"formality": "casual"
+"formality": "casual",
+"sleeve": "no aplica",
+"thickness": "medio",
+"warmth": "medio",
+"occasions": [
+"daily"
+],
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-204621726_2",
@@ -537,7 +757,15 @@
 "source": "Marqo/polyvore item_ID 204621726_2 · Shorts · rag bone cut denim shorts",
 "length": "cropped",
 "fabric": "denim",
-"formality": "casual"
+"formality": "casual",
+"sleeve": "no aplica",
+"thickness": "medio",
+"warmth": "bajo",
+"occasions": [
+"daily",
+"beach"
+],
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-215711790_5",
@@ -558,14 +786,21 @@
 "category": "Zapatos",
 "type": "Tacones",
 "style": "party",
-"season": "all",
+"season": "warm",
 "pattern": "plain",
 "color": "Beige",
 "name": "Tacones la leather pumps",
 "file": "img/pv-199670397_5.jpg",
 "source": "Marqo/polyvore item_ID 199670397_5 · Pumps · la leather pumps",
 "fabric": "leather",
-"formality": "party"
+"formality": "party",
+"occasions": [
+"party",
+"event",
+"work"
+],
+"subtype": "sandalias destalonadas de tacón",
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-211528547_4",
@@ -607,35 +842,62 @@
 "file": "img/pv-194229161_3.jpg",
 "source": "Marqo/polyvore item_ID 194229161_3 · Pants · chloé checked wide-leg crepe trousers",
 "length": "long",
-"formality": "smartcasual"
+"formality": "smartcasual",
+"sleeve": "no aplica",
+"thickness": "medio",
+"warmth": "medio",
+"fabric": "wool",
+"occasions": [
+"work",
+"daily"
+],
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-148480489_1",
 "category": "Vestidos",
 "type": "Vestido midi",
 "style": "casual",
-"season": "all",
+"season": "warm",
 "pattern": "floral",
 "color": "Negro",
 "name": "Vestido midi black lace contrast floral pri",
 "file": "img/pv-148480489_1.jpg",
 "source": "Marqo/polyvore item_ID 148480489_1 · Day Dresses · black lace contrast floral print belted skater dress",
-"length": "midi",
-"formality": "casual"
+"length": "regular",
+"formality": "casual",
+"sleeve": "sin mangas",
+"thickness": "ligero",
+"warmth": "bajo",
+"fabric": "synthetic",
+"occasions": [
+"daily",
+"event"
+],
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-209866475_1",
 "category": "Arriba",
 "type": "Sudadera",
 "style": "casual",
-"season": "cold",
+"season": "all",
 "pattern": "graphic",
 "color": "Negro",
 "name": "Sudadera raglan sleeve graphic pullover",
 "file": "img/pv-209866475_1.jpg",
 "source": "Marqo/polyvore item_ID 209866475_1 · Sweatshirts · raglan sleeve graphic pullover sweatshirt",
 "sleeve": "larga",
-"formality": "casual"
+"formality": "casual",
+"length": "regular",
+"thickness": "medio",
+"warmth": "medio",
+"fabric": "cotton",
+"occasions": [
+"daily",
+"home"
+],
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-216212189_5",
@@ -664,21 +926,38 @@
 "source": "Marqo/polyvore item_ID 116477566_1 · Tank Tops · lord taylor plus tank top",
 "sleeve": "sin mangas",
 "thickness": "ligero",
-"formality": "casual"
+"formality": "casual",
+"length": "regular",
+"warmth": "bajo",
+"fabric": "cotton",
+"occasions": [
+"daily"
+],
+"subtype": "camiseta de tirantes",
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-202234015_2",
 "category": "Abajo",
 "type": "Falda",
 "style": "casual",
-"season": "all",
+"season": "warm",
 "pattern": "plain",
-"color": "Verde",
+"color": "Amarillo",
 "name": "Falda versace stretch-cotton mini sk",
 "file": "img/pv-202234015_2.jpg",
 "source": "Marqo/polyvore item_ID 202234015_2 · Mini Skirts · versace stretch-cotton mini skirt",
 "length": "cropped",
-"formality": "casual"
+"formality": "casual",
+"sleeve": "no aplica",
+"thickness": "medio",
+"warmth": "bajo",
+"fabric": "mixed",
+"occasions": [
+"daily"
+],
+"subtype": "minifalda",
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-194256512_3",
@@ -706,7 +985,16 @@
 "file": "img/pv-215716977_2.jpg",
 "source": "Marqo/polyvore item_ID 215716977_2 · Coats · miss selfridge blush faux fur collar coat",
 "thickness": "grueso",
-"formality": "smartcasual"
+"formality": "smartcasual",
+"sleeve": "larga",
+"length": "regular",
+"fabric": "wool",
+"occasions": [
+"work",
+"daily",
+"event"
+],
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-214556482_4",
@@ -715,11 +1003,19 @@
 "style": "casual",
 "season": "cold",
 "pattern": "plain",
-"color": "Negro",
+"color": "Burdeos",
 "name": "Botas kendall kylie dark velvet wome",
 "file": "img/pv-214556482_4.jpg",
 "source": "Marqo/polyvore item_ID 214556482_4 · Boots · kendall kylie dark velvet women's shoes",
-"formality": "casual"
+"formality": "smartcasual",
+"fabric": "mixed",
+"occasions": [
+"daily",
+"work",
+"party"
+],
+"subtype": "botas de terciopelo",
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-213720966_1",
@@ -734,21 +1030,41 @@
 "file": "img/pv-213720966_1.jpg",
 "source": "Marqo/polyvore item_ID 213720966_1 · Coats · grey black plus size faux fur coat",
 "thickness": "grueso",
-"formality": "smartcasual"
+"formality": "casual",
+"sleeve": "larga",
+"length": "long",
+"fabric": "synthetic",
+"occasions": [
+"daily",
+"party",
+"work"
+],
+"subtype": "abrigo de pelo sintético",
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-216204869_1",
 "category": "Arriba",
 "type": "Sudadera",
 "style": "casual",
-"season": "cold",
+"season": "all",
 "pattern": "plain",
 "color": "Gris",
 "name": "Sudadera yoins grey long sleeves lace-u",
 "file": "img/pv-216204869_1.jpg",
 "source": "Marqo/polyvore item_ID 216204869_1 · Hoodies · yoins grey long sleeves lace-up design hoodie",
 "sleeve": "larga",
-"formality": "casual"
+"formality": "casual",
+"length": "regular",
+"thickness": "medio",
+"warmth": "medio",
+"fabric": "cotton",
+"occasions": [
+"daily",
+"home",
+"sport"
+],
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-173772158_3",
@@ -761,21 +1077,38 @@
 "name": "Sandalias womens shoes strap jelly sanda",
 "file": "img/pv-173772158_3.jpg",
 "source": "Marqo/polyvore item_ID 173772158_3 · Sandals · womens shoes strap jelly sandal heritage",
-"formality": "casual"
+"formality": "casual",
+"fabric": "synthetic",
+"occasions": [
+"daily",
+"beach"
+],
+"subtype": "sandalias planas",
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-194235491_2",
 "category": "Vestidos",
 "type": "Vestido midi",
 "style": "casual",
-"season": "all",
+"season": "warm",
 "pattern": "plain",
 "color": "Dorado",
 "name": "Vestido midi gold metallic backless formal ",
 "file": "img/pv-194235491_2.jpg",
 "source": "Marqo/polyvore item_ID 194235491_2 · Dresses · gold metallic backless formal evening cocktail party maxi dr",
-"length": "midi",
-"formality": "casual"
+"length": "long",
+"formality": "party",
+"sleeve": "sin mangas",
+"thickness": "ligero",
+"warmth": "bajo",
+"fabric": "satin",
+"occasions": [
+"party",
+"formal",
+"event"
+],
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-166529236_1",
@@ -790,7 +1123,15 @@
 "source": "Marqo/polyvore item_ID 166529236_1 · Tank Tops · lipsy essentials vest top",
 "sleeve": "sin mangas",
 "thickness": "ligero",
-"formality": "casual"
+"formality": "casual",
+"length": "regular",
+"warmth": "bajo",
+"fabric": "cotton",
+"occasions": [
+"daily"
+],
+"subtype": "camiseta de tirantes",
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-190234379_2",
@@ -803,7 +1144,13 @@
 "name": "Tacones michael antonio lily patent wo",
 "file": "img/pv-190234379_2.jpg",
 "source": "Marqo/polyvore item_ID 190234379_2 · Pumps · michael antonio lily patent women's shoes white",
-"formality": "party"
+"formality": "party",
+"fabric": "leather",
+"occasions": [
+"party",
+"event"
+],
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-194269563_5",
@@ -840,39 +1187,65 @@
 "pattern": "plain",
 "color": "Marrón",
 "name": "Chaleco fringed suede vest",
-"warmth": "medio",
+"warmth": "bajo",
 "file": "img/pv-194271847_1.jpg",
 "source": "Marqo/polyvore item_ID 194271847_1 · Vests · fringed suede vest",
-"formality": "casual"
+"formality": "casual",
+"sleeve": "no aplica",
+"length": "regular",
+"thickness": "medio",
+"fabric": "leather",
+"occasions": [
+"daily"
+],
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-211526863_1",
 "category": "Vestidos",
 "type": "Vestido midi",
 "style": "casual",
-"season": "all",
+"season": "cold",
 "pattern": "plain",
 "color": "Negro",
 "name": "Vestido midi velvet dress",
 "file": "img/pv-211526863_1.jpg",
 "source": "Marqo/polyvore item_ID 211526863_1 · Day Dresses · velvet dress",
-"length": "midi",
-"formality": "casual"
+"length": "regular",
+"formality": "party",
+"sleeve": "sin mangas",
+"thickness": "medio",
+"warmth": "medio",
+"fabric": "mixed",
+"occasions": [
+"party",
+"event"
+],
+"subtype": "vestido de terciopelo",
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-156441712_1",
 "category": "Arriba",
 "type": "Camiseta",
 "style": "casual",
-"season": "all",
+"season": "warm",
 "pattern": "plain",
 "color": "Blanco",
 "name": "Camiseta cream ribbed wrap crop top",
 "file": "img/pv-156441712_1.jpg",
 "source": "Marqo/polyvore item_ID 156441712_1 · T-Shirts · cream ribbed wrap crop top",
-"sleeve": "sin mangas",
+"sleeve": "corta",
 "thickness": "ligero",
-"formality": "casual"
+"formality": "casual",
+"length": "cropped",
+"warmth": "bajo",
+"fabric": "cotton",
+"occasions": [
+"daily"
+],
+"subtype": "camiseta corta de canalé",
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-206756107_2",
@@ -887,7 +1260,14 @@
 "source": "Marqo/polyvore item_ID 206756107_2 · Jeans · washed blue distressed jeans",
 "length": "long",
 "fabric": "denim",
-"formality": "casual"
+"formality": "casual",
+"sleeve": "no aplica",
+"thickness": "medio",
+"warmth": "medio",
+"occasions": [
+"daily"
+],
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-216211597_1",
@@ -900,8 +1280,18 @@
 "name": "Vestido midi bowknot round neck cotton skat",
 "file": "img/pv-216211597_1.jpg",
 "source": "Marqo/polyvore item_ID 216211597_1 · Day Dresses · bowknot round neck cotton skater dress",
-"length": "midi",
-"formality": "casual"
+"length": "regular",
+"formality": "smartcasual",
+"sleeve": "sin mangas",
+"thickness": "medio",
+"warmth": "bajo",
+"fabric": "mixed",
+"occasions": [
+"event",
+"party",
+"daily"
+],
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-194239656_1",
@@ -914,21 +1304,41 @@
 "name": "Top rails hunter burgundy plaid fl",
 "file": "img/pv-194239656_1.jpg",
 "source": "Marqo/polyvore item_ID 194239656_1 · Tops · rails hunter burgundy plaid flannel shirt",
-"formality": "casual"
+"formality": "casual",
+"sleeve": "larga",
+"length": "regular",
+"thickness": "medio",
+"warmth": "medio",
+"fabric": "cotton",
+"occasions": [
+"daily"
+],
+"neckline": "camisero",
+"subtype": "camisa de cuadros",
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-100060207_1",
 "category": "Vestidos",
 "type": "Vestido midi",
 "style": "casual",
-"season": "all",
+"season": "warm",
 "pattern": "plain",
 "color": "Amarillo",
 "name": "Vestido midi atelier pleat shift tunic",
 "file": "img/pv-100060207_1.jpg",
 "source": "Marqo/polyvore item_ID 100060207_1 · Day Dresses · atelier pleat shift tunic",
-"length": "midi",
-"formality": "casual"
+"length": "regular",
+"formality": "casual",
+"sleeve": "sin mangas",
+"thickness": "ligero",
+"warmth": "bajo",
+"fabric": "synthetic",
+"occasions": [
+"daily",
+"event"
+],
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-212695761_2",
@@ -942,20 +1352,39 @@
 "file": "img/pv-212695761_2.jpg",
 "source": "Marqo/polyvore item_ID 212695761_2 · Pants · women high waist line slim cotton pencil pant",
 "length": "long",
-"formality": "smartcasual"
+"formality": "smartcasual",
+"sleeve": "no aplica",
+"thickness": "medio",
+"warmth": "medio",
+"fabric": "synthetic",
+"occasions": [
+"work",
+"daily"
+],
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-204622684_1",
 "category": "Vestidos",
 "type": "Vestido corto",
 "style": "party",
-"season": "all",
+"season": "warm",
 "pattern": "plain",
 "color": "Rosa",
 "name": "Vestido corto london strappy fit flare prom ",
 "file": "img/pv-204622684_1.jpg",
 "source": "Marqo/polyvore item_ID 204622684_1 · Cocktail Dresses · london strappy fit flare prom dress",
-"formality": "party"
+"formality": "party",
+"sleeve": "sin mangas",
+"length": "midi",
+"thickness": "medio",
+"warmth": "bajo",
+"fabric": "synthetic",
+"occasions": [
+"party",
+"event"
+],
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-139593313_4",
@@ -970,14 +1399,21 @@
 "source": "Marqo/polyvore item_ID 139593313_4 · Jeans · high-waisted acid wash jeans",
 "length": "long",
 "fabric": "denim",
-"formality": "casual"
+"formality": "casual",
+"sleeve": "no aplica",
+"thickness": "medio",
+"warmth": "medio",
+"occasions": [
+"daily"
+],
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-215211356_1",
 "category": "Arriba",
 "type": "Top",
 "style": "casual",
-"season": "all",
+"season": "warm",
 "pattern": "plain",
 "color": "Negro",
 "name": "Top womens bustier tank crop top",
@@ -985,7 +1421,17 @@
 "source": "Marqo/polyvore item_ID 215211356_1 · Tops · womens bustier tank crop top",
 "sleeve": "sin mangas",
 "thickness": "ligero",
-"formality": "casual"
+"formality": "casual",
+"length": "cropped",
+"warmth": "bajo",
+"fabric": "knit",
+"occasions": [
+"daily",
+"party"
+],
+"neckline": "halter",
+"subtype": "top corto halter",
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-139611402_1",
@@ -998,7 +1444,19 @@
 "name": "Blusa j.crew petite chambray shirt",
 "file": "img/pv-139611402_1.jpg",
 "source": "Marqo/polyvore item_ID 139611402_1 · Blouses · j.crew petite chambray shirt",
-"formality": "smartcasual"
+"formality": "casual",
+"sleeve": "larga",
+"length": "regular",
+"thickness": "ligero",
+"warmth": "bajo",
+"fabric": "denim",
+"occasions": [
+"daily",
+"work"
+],
+"neckline": "camisero",
+"subtype": "camisa vaquera",
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-166566352_1",
@@ -1013,7 +1471,15 @@
 "source": "Marqo/polyvore item_ID 166566352_1 · Tank Tops · black tank top",
 "sleeve": "sin mangas",
 "thickness": "ligero",
-"formality": "casual"
+"formality": "casual",
+"length": "regular",
+"warmth": "bajo",
+"fabric": "cotton",
+"occasions": [
+"daily"
+],
+"subtype": "camiseta de tirantes",
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-212687720_3",
@@ -1028,7 +1494,14 @@
 "source": "Marqo/polyvore item_ID 212687720_3 · Boyfriend Jeans · boohoo low rise ripped distressed boyfriend jeans boohoo",
 "length": "long",
 "fabric": "denim",
-"formality": "casual"
+"formality": "casual",
+"sleeve": "no aplica",
+"thickness": "medio",
+"warmth": "medio",
+"occasions": [
+"daily"
+],
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-215712583_2",
@@ -1037,12 +1510,20 @@
 "style": "casual",
 "season": "all",
 "pattern": "plain",
-"color": "Rojo",
+"color": "Teja",
 "name": "Chaqueta dorothy perkins faux suede wes",
 "warmth": "medio",
 "file": "img/pv-215712583_2.jpg",
 "source": "Marqo/polyvore item_ID 215712583_2 · Jackets · dorothy perkins faux suede western jacket",
-"formality": "casual"
+"formality": "casual",
+"sleeve": "larga",
+"length": "regular",
+"thickness": "medio",
+"fabric": "leather",
+"occasions": [
+"daily"
+],
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-211489172_3",
@@ -1053,17 +1534,26 @@
 "pattern": "plain",
 "color": "Morado",
 "name": "Chaqueta oliver purple plus size open j",
-"warmth": "medio",
+"warmth": "bajo",
 "file": "img/pv-211489172_3.jpg",
 "source": "Marqo/polyvore item_ID 211489172_3 · Jackets · oliver purple plus size open jacket",
-"formality": "casual"
+"formality": "casual",
+"sleeve": "tres cuartos",
+"length": "long",
+"thickness": "ligero",
+"fabric": "synthetic",
+"occasions": [
+"daily"
+],
+"subtype": "cárdigan largo",
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-206718069_2",
 "category": "Capas",
 "type": "Chaleco",
 "style": "casual",
-"season": "all",
+"season": "cold",
 "pattern": "graphic",
 "color": "Marrón",
 "name": "Chaleco miu miu wool sweater vest",
@@ -1071,8 +1561,14 @@
 "file": "img/pv-206718069_2.jpg",
 "source": "Marqo/polyvore item_ID 206718069_2 · Vests · miu miu wool sweater vest",
 "fabric": "wool",
-"thickness": "grueso",
-"formality": "casual"
+"thickness": "medio",
+"formality": "casual",
+"sleeve": "no aplica",
+"length": "regular",
+"occasions": [
+"daily"
+],
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-100119147_2",
@@ -1086,7 +1582,16 @@
 "file": "img/pv-100119147_2.jpg",
 "source": "Marqo/polyvore item_ID 100119147_2 · Shorts · holiday shorts shop shorts boutique online boutique",
 "length": "cropped",
-"formality": "casual"
+"formality": "casual",
+"sleeve": "no aplica",
+"thickness": "ligero",
+"warmth": "bajo",
+"fabric": "synthetic",
+"occasions": [
+"daily",
+"beach"
+],
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-156454235_4",
@@ -1099,9 +1604,16 @@
 "name": "Vaqueros j brand cropped mid rise skinn",
 "file": "img/pv-156454235_4.jpg",
 "source": "Marqo/polyvore item_ID 156454235_4 · Skinny Jeans · j brand cropped mid rise skinny jeans",
-"length": "long",
+"length": "regular",
 "fabric": "denim",
-"formality": "casual"
+"formality": "casual",
+"sleeve": "no aplica",
+"thickness": "medio",
+"warmth": "medio",
+"occasions": [
+"daily"
+],
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-212699039_1",
@@ -1114,9 +1626,16 @@
 "name": "Jersey golden stripes side slit sweat",
 "file": "img/pv-212699039_1.jpg",
 "source": "Marqo/polyvore item_ID 212699039_1 · Sweaters · golden stripes side slit sweater",
-"sleeve": "larga",
-"thickness": "grueso",
-"formality": "casual"
+"sleeve": "tres cuartos",
+"thickness": "medio",
+"formality": "casual",
+"length": "regular",
+"warmth": "medio",
+"fabric": "knit",
+"occasions": [
+"daily"
+],
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-185202779_1",
@@ -1131,8 +1650,14 @@
 "source": "Marqo/polyvore item_ID 185202779_1 · Sweaters · chloé cashmere check sweater",
 "sleeve": "larga",
 "fabric": "wool",
-"thickness": "grueso",
-"formality": "casual"
+"thickness": "medio",
+"formality": "casual",
+"length": "regular",
+"warmth": "medio",
+"occasions": [
+"daily"
+],
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-179487123_1",
@@ -1146,8 +1671,17 @@
 "file": "img/pv-179487123_1.jpg",
 "source": "Marqo/polyvore item_ID 179487123_1 · Tops · off-shoulder cropped knit top",
 "fabric": "knit",
-"thickness": "grueso",
-"formality": "casual"
+"thickness": "medio",
+"formality": "casual",
+"sleeve": "larga",
+"length": "cropped",
+"warmth": "medio",
+"occasions": [
+"daily",
+"party"
+],
+"subtype": "top de hombros al aire",
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-166546072_2",
@@ -1161,7 +1695,16 @@
 "file": "img/pv-166546072_2.jpg",
 "source": "Marqo/polyvore item_ID 166546072_2 · Shorts · pieces washed shorts",
 "length": "cropped",
-"formality": "casual"
+"formality": "casual",
+"sleeve": "no aplica",
+"thickness": "medio",
+"warmth": "bajo",
+"fabric": "denim",
+"occasions": [
+"daily",
+"beach"
+],
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-185255553_1",
@@ -1176,22 +1719,38 @@
 "source": "Marqo/polyvore item_ID 185255553_1 · Sweaters · parker faux merino wool sweater",
 "sleeve": "larga",
 "fabric": "wool",
-"thickness": "grueso",
-"formality": "casual"
+"thickness": "medio",
+"formality": "casual",
+"length": "regular",
+"warmth": "medio",
+"occasions": [
+"daily",
+"work"
+],
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-213732908_1",
 "category": "Arriba",
 "type": "Sudadera",
 "style": "casual",
-"season": "cold",
+"season": "all",
 "pattern": "plain",
 "color": "Rosa",
 "name": "Sudadera shein sheinside pink drawstrin",
 "file": "img/pv-213732908_1.jpg",
 "source": "Marqo/polyvore item_ID 213732908_1 · Sweatshirts · shein sheinside pink drawstring hooded sweatshirt",
 "sleeve": "larga",
-"formality": "casual"
+"formality": "casual",
+"length": "regular",
+"thickness": "medio",
+"warmth": "medio",
+"fabric": "cotton",
+"occasions": [
+"daily",
+"home"
+],
+"labeledBy": "Claude, revisión visual 09/10/2026"
 },
 {
 "id": "pv-185168090_1",
@@ -1200,12 +1759,20 @@
 "style": "casual",
 "season": "all",
 "pattern": "plain",
-"color": "Rojo",
+"color": "Burdeos",
 "name": "Camiseta zara t-shirt",
 "file": "img/pv-185168090_1.jpg",
 "source": "Marqo/polyvore item_ID 185168090_1 · T-Shirts · zara t-shirt",
-"sleeve": "sin mangas",
+"sleeve": "corta",
 "thickness": "ligero",
-"formality": "casual"
+"formality": "casual",
+"length": "regular",
+"warmth": "bajo",
+"fabric": "cotton",
+"occasions": [
+"daily"
+],
+"neckline": "pico",
+"labeledBy": "Claude, revisión visual 09/10/2026"
 }
 ]

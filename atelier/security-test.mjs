@@ -473,7 +473,7 @@ console.log("PASS: S6 long-offline devices don't resurrect deletions");
   const probe=new Function("document","sessionStorage","crypto",src+`
   const G=(id,category,type,extra={})=>({id,name:type,category,type,color:"Negro",style:"casual",season:"all",updatedAt:"x",...extra});
   appState.profile={id:"noelia"};
-  appState.data=normalizeData({garments:[G("v1","Vestidos","Vestido midi",{style:"smart",formality:"smartcasual",sleeve:"sin mangas"}),
+  appState.data=normalizeData({garments:[G("v1","Vestidos","Vestido midi",{style:"smart",formality:"smartcasual",sleeve:"sin mangas"}),G("v2","Vestidos","Vestido midi",{name:"Vestido de punto",style:"smart",formality:"smartcasual",sleeve:"larga",season:"cold"}),
    G("z1","Zapatos","Botines",{formality:"casual"}),G("z2","Zapatos","Deportivas",{style:"sport",formality:"sport"}),G("z3","Zapatos","Tacones",{name:"Salones de piel",style:"party",formality:"party"}),
    G("z4","Zapatos","Tacones",{name:"Tacones con purpurina",style:"party",formality:"party"})]});
   const shoesAt=(occ,temp)=>rankOutfits({max:1,occasion:occ,date:temp>20?"2026-07-15":"2026-01-15",temp})[0]?.ids.filter(i=>i[0]==="z").join();
@@ -655,6 +655,26 @@ console.log("PASS: S6 long-offline devices don't resurrect deletions");
   assert.equal(r.coat.split(",")[0],"c1","Abrigo camel: primero mi abrigo camel");assert.equal(r.unknownPattern,true,"Sin estampado en el análisis, no se premia lo liso");assert.equal(r.floral,"t2","Blusa de flores: primero mi blusa de flores");assert.equal(r.boots,"","Sin zapatos en el armario: nada");
   assert.equal(r.jeans,"","Vaqueros azules frente a falda negra: no es parecida (mejor «no tengo nada parecido»)");
   console.log("PASS: Inspiration matches the closest garments by attributes and admits when nothing is similar");
+}
+
+// Frío y prudencia (Noelia, 09/10): nada sin mangas ni corto bajo 12 °C; «Top» sin manga indicada se evita; paleta de tres colores
+{
+  const probe=new Function("document","sessionStorage","crypto",src+`
+  const G=(id,category,type,color,extra={})=>({id,name:type+" "+color,category,type,color,style:"casual",season:"all",updatedAt:"x",...extra});
+  appState.profile={id:"noelia"};
+  appState.data=normalizeData({garments:[G("t1","Arriba","Top","Negro",{sleeve:"sin mangas"}),G("t2","Arriba","Top","Blanco"),G("t3","Arriba","Jersey","Gris",{sleeve:"larga"}),G("b1","Abajo","Pantalón","Negro"),G("z1","Zapatos","Botines","Negro"),G("c1","Capas","Abrigo","Camel")]});
+  const tops=occ=>rankOutfits({max:3,occasion:occ,date:"2026-01-15",temp:8}).flatMap(l=>l.ids.filter(i=>i[0]==="t"));
+  const daily=[...new Set(tops("daily"))].join(),warm=[...new Set(rankOutfits({max:3,occasion:"daily",date:"2026-07-15",temp:26}).flatMap(l=>l.ids.filter(i=>i[0]==="t")))].sort().join();
+  const issue=lookIssues([G("t1","Arriba","Top","Negro",{sleeve:"sin mangas"}),G("b1","Abajo","Pantalón","Negro")],engineContext({occasion:"daily",temp:8,date:"2026-01-15"})).join("|");
+  const party=coldExposed(G("d1","Vestidos","Vestido","Negro",{sleeve:"sin mangas"}),8,"party");
+  appState.data=normalizeData({garments:[G("a1","Arriba","Blusa","Negro"),G("a2","Abajo","Pantalón","Negro"),G("a3","Capas","Abrigo","Rosa"),G("a4","Zapatos","Mocasines","Negro"),G("bag1","Bolsos","Bolso","Rojo",{favorite:true}),G("bag2","Bolsos","Bolso","Rosa"),G("e1","Accesorios","Pendientes","Beige",{favorite:true})]});
+  const look=rankOutfits({max:1,occasion:"daily",date:"2026-01-15",temp:8})[0].ids;
+  return {daily,warm,issue,party,bag:look.filter(i=>i.startsWith("bag")).join(),pal:paletteOf(look.map(id=>myGarments().find(g=>g.id===id))).size};`);
+  const r=probe(document,sessionStorage,{randomUUID:()=>"t"});
+  assert.equal(r.daily,"t3","8 °C: solo el jersey de manga larga; ni el top sin mangas ni el «Top» sin dato");assert.match(r.warm,/t1/,"26 °C: el top sin mangas sí");
+  assert.match(r.issue,/sin mangas o corto para 8/);assert.equal(r.party,false,"En fiesta, vestido sin mangas con abrigo, sí");
+  assert.equal(r.bag,"bag2","Abrigo rosa: bolso rosa que repite color, no rojo aunque sea favorito");assert.ok(r.pal<=3,"Como mucho tres colores ("+r.pal+")");
+  console.log("PASS: Cold: no sleeveless/cropped tops below 12 °C, unknown-sleeve 'Top' avoided; three-colour palette for bags and accessories");
 }
 
 // Foto de look: el análisis devuelve también formalidad, manga y largo (perfil de prenda), solo con valores conocidos
