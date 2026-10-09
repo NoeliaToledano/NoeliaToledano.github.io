@@ -400,3 +400,10 @@ p.notice-card{display:block}
 .today-extra-body .section-head h2{font-size:16px}
 .today-extra-body .actions{margin:6px 0 12px}
 @media(max-width:390px){.today-extra-body .actions{flex-direction:column}.today-extra-body .actions>*{width:100%}}
+
+/* Estadísticas útiles integradas en Armario, sin pantalla independiente. */
+.wardrobe-summary{margin:4px 0 20px;border-bottom:1px solid var(--line)}
+.wardrobe-summary>summary{cursor:pointer;list-style-position:inside;padding:12px 2px;color:var(--muted);font-size:13px}
+.wardrobe-summary-body{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:0 2px 15px}
+.wardrobe-summary-body p{flex-basis:100%;margin:0 0 4px}
+.wardrobe-summary-body button{font-size:12px;min-height:40px}
