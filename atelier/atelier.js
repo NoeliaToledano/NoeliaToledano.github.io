@@ -766,14 +766,13 @@ function render(){
 /* ===================== 6. Armario, prendas y looks ===================== */
 /* Look como composición sobre blanco («flat lay»); las fotos con fondo mixto
    conservan la prenda completa en una cuadrícula editorial. */
-const BOARD_SLOTS={Capas:{x:0,y:3,w:50,h:60,z:1},Arriba:{x:24,y:1,w:52,h:46,z:3},Vestidos:{x:20,y:1,w:60,h:76,z:3},Abajo:{x:27,y:36,w:46,h:58,z:2},Zapatos:{x:1,y:70,w:38,h:28,z:5},Bolsos:{x:64,y:50,w:35,h:34,z:4},Accesorios:{x:68,y:3,w:31,h:26,z:4}};
 function outfitBoard(pieces){
  const categoryOrder={Capas:0,Arriba:1,Vestidos:2,Abajo:3,Zapatos:4,Bolsos:5,Accesorios:6};
  // Ordenar ANTES de limitar a siete para no perder piezas esenciales.
  const sorted=pieces.filter(g=>validImage(g.image)).sort((a,b)=>(categoryOrder[a.category]??7)-(categoryOrder[b.category]??7));
  const items=sorted.slice(0,7);
  if(!items.length)return "";
- if(!items.every(g=>g.bgWhite)){
+ // Cada prenda en su propio recuadro (decisión de Noelia, 09/10), tengan o no fondo blanco.
   // El primer hueco del collage es el protagonista: priorizar prendas estructurales.
   // Los complementos van en espacios secundarios, independientemente del orden de selección.
   const visualPriority={Vestidos:0,Capas:1,Arriba:2,Abajo:3,Zapatos:4,Bolsos:5,Accesorios:6};
@@ -783,15 +782,6 @@ function outfitBoard(pieces){
   const hero=items.find(g=>g.bgWhite&&(visualPriority[g.category]??7)<=3)||items[0];
   const arranged=[hero,...items.filter(g=>g!==hero)];
   return '<div class="look-mixed-board" data-count="'+arranged.length+'" role="group" aria-label="Prendas del conjunto">'+arranged.map(g=>'<div class="look-mixed-item"><img src="'+photoUrl(g)+'" alt="'+fx(g.name||g.category||"Prenda")+'" loading="lazy"></div>').join("")+'</div>';
- }
- if(items.length===1)return '<div class="board"><img src="'+photoUrl(items[0])+'" alt="'+fx(items[0].name||"Prenda del conjunto")+'" loading="lazy" style="left:8%;top:5%;width:84%;height:90%"></div>';
- const layer=items.some(g=>g.category==="Capas"),count={};
- return '<div class="board">'+items.map(g=>{
-  const s={...(BOARD_SLOTS[g.category]||{x:66,y:74,w:30,h:23,z:4})},k=count[g.category]=(count[g.category]||0)+1;
-  if(layer&&["Arriba","Abajo","Vestidos"].includes(g.category))s.x+=12;
-  if(k>1){s.x=Math.min(100-s.w,s.x+12*(k-1));s.y=Math.min(100-s.h,s.y+5*(k-1));s.z+=k}
-  return '<img src="'+photoUrl(g)+'" alt="'+fx(g.name)+'" loading="lazy" style="left:'+s.x+'%;top:'+s.y+'%;width:'+s.w+'%;height:'+s.h+'%;z-index:'+s.z+'">';
- }).join("")+'</div>';
 }
 function thumbs(list,max=12){
  if(!list.length)return "";

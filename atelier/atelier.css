@@ -169,8 +169,6 @@ p.notice-card{display:block}
 .look-collage{background:#fff;gap:0}
 .look-thumb{background-color:#fff;background-size:contain;background-origin:content-box;padding:6%}
 /* Look como composición sobre blanco: las prendas se funden con «multiply» */
-.board{position:relative;aspect-ratio:4/5;background:#fff;isolation:isolate;overflow:hidden;border-bottom:1px solid var(--line)}
-.board img{position:absolute;object-fit:contain;mix-blend-mode:multiply}
 
 /* Login en dos pasos: al seleccionar perfil solo aparece la contraseña */
 .auth-card:has(#passwordStep:not(.hidden)) .auth-prompt,.auth-card:has(#passwordStep:not(.hidden)) .profiles{display:none}
