@@ -769,7 +769,7 @@ function outfitBoard(pieces){
  const items=pieces.filter(g=>validImage(g.image)).slice(0,7);
  if(!items.length)return "";
  if(!items.every(g=>g.bgWhite))return collage(items.map(photoUrl),items.length-4);
- if(items.length===1)return '<div class="board"><img src="'+photoUrl(items[0])+'" alt=""'+fx(items[0].name)+'" loading="lazy" style="left:8%;top:5%;width:84%;height:90%"></div>';
+ if(items.length===1)return '<div class="board"><img src="'+photoUrl(items[0])+'" alt="'+fx(items[0].name||"Prenda del conjunto")+'" loading="lazy" style="left:8%;top:5%;width:84%;height:90%"></div>';
  const layer=items.some(g=>g.category==="Capas"),count={};
  return '<div class="board">'+items.map(g=>{
   const s={...(BOARD_SLOTS[g.category]||{x:66,y:74,w:30,h:23,z:4})},k=count[g.category]=(count[g.category]||0)+1;
@@ -1306,8 +1306,8 @@ function renderLooks(root){
   '<button class="secondary wide" id="aiLooks">✦ Sugerir nuevos looks</button>'+
   tasteCardHtml()+
   (looks.length?'<div class="grid">'+looks.map(l=>'<div class="look-tile">'+lookCard(l)+
-   '<div class="tile-tools"><button class="chip-button" data-look-fav="'+fx(l.id)+'">'+(l.favorite?'♥':'♡')+'</button><button class="chip-button" data-look-wear="'+fx(l.id)+'">✓ Llevado</button><button class="chip-button" data-look-swap="'+fx(l.id)+'">↻ Cambiar prenda</button></div>'+
-   '<div class="tile-tools"><button class="chip-button'+(fb[l.id]==="up"?' on':'')+'" data-feedback="'+fx(l.id)+'" data-vote="up" aria-label="Me gusta">👍</button><button class="chip-button'+(fb[l.id]==="down"?' on':'')+'" data-feedback="'+fx(l.id)+'" data-vote="down" aria-label="No me gusta">👎</button></div>'+
+   '<div class="tile-tools"><button class="chip-button" data-look-fav="'+fx(l.id)+'" aria-label="'+(l.favorite?'Quitar de favoritos':'Añadir a favoritos')+'" aria-pressed="'+!!l.favorite+'">'+(l.favorite?'♥':'♡')+'</button><button class="chip-button" data-look-wear="'+fx(l.id)+'">✓ Llevado</button><button class="chip-button" data-look-swap="'+fx(l.id)+'">↻ Cambiar prenda</button></div>'+
+   '<div class="tile-tools"><button class="chip-button'+(fb[l.id]==="up"?' on':'')+'" data-feedback="'+fx(l.id)+'" data-vote="up" aria-label="Me gusta" aria-pressed="'+(fb[l.id]==="up")+'">👍</button><button class="chip-button'+(fb[l.id]==="down"?' on':'')+'" data-feedback="'+fx(l.id)+'" data-vote="down" aria-label="No me gusta" aria-pressed="'+(fb[l.id]==="down")+'">👎</button></div>'+
    '<div class="tile-hints">'+(l.ai?"IA":"Manual")+'</div></div>').join("")+'</div>':'<div class="empty">Todavía no tienes looks para este filtro.</div>'));
  $("#newLook")?.addEventListener("click",()=>openLook());$("#aiLooks")?.addEventListener("click",()=>suggestLooks());
  $$("[data-look-filter]",root).forEach(b=>b.addEventListener("click",()=>{ui.lookFilter=b.dataset.lookFilter;render()}));
