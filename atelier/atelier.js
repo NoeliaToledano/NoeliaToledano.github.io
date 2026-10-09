@@ -655,7 +655,7 @@ async function api(path,options={}){
  let cacheKey=null,toLong=null;
  if(kind==="analyze"){
   if(typeof body.image==="string")body.image=await shrinkDataUrl(body.image,AI_IMAGE_MAX);
-  cacheKey=await sha(body.image||"");
+  cacheKey=await sha((body.mode||"")+(body.image||""));
   if(analyzeCache.has(cacheKey))return structuredClone(analyzeCache.get(cacheKey));
  }else{
   const toShort=new Map();toLong=new Map();
@@ -820,11 +820,11 @@ function renderWardrobe(root){
  root.innerHTML=heroHtml("Mi armario","Toda tu ropa, aprovechada al máximo.")+safetyBanner()+
   '<div class="stats">'+miniStat("prendas",myGarments().length)+miniStat("favoritas",myGarments().filter(g=>g.favorite).length)+miniStat("olvidadas",myGarments().filter(g=>forgottenStatus(g).forgotten).length)+miniStat("looks",myLooks().length)+'</div>'+
   '<div class="actions"><button type="button" class="secondary wide" id="wardrobeInsights">Mi armario en cifras · Estadísticas e historial</button></div>'+
-  '<div class="section-head"><h2>Prendas <span class="muted">('+gs.length+')</span></h2><button id="addGarment" class="primary">+ Añadir</button></div>'+filters+
+  '<div class="section-head"><h2>Prendas <span class="muted">('+gs.length+')</span></h2><span class="head-actions"><button class="secondary" data-outfit-photo aria-label="Guardar el look que llevo con una foto">📸 Mi look</button><button id="addGarment" class="primary">+ Añadir</button></span></div>'+filters+
   (gs.length?'<div class="grid">'+cards+'</div>':'<div class="empty"><h3>No hay prendas con estos filtros</h3><p class="muted">Prueba otro filtro o añade una prenda.</p><button class="primary" id="emptyAdd">Añadir prenda</button></div>');
  $("#bannerBackup")?.addEventListener("click",downloadBackup);
  $("#bannerHide")?.addEventListener("click",()=>setPref("installHintHidden",true));
- $("#addGarment")?.addEventListener("click",()=>openGarment());
+ $("#addGarment")?.addEventListener("click",()=>openGarment());bindOutfitPhoto(root);
  $("#emptyAdd")?.addEventListener("click",()=>openGarment());
  $("#wardrobeSearch")?.addEventListener("input",e=>{ui.search=e.target.value;const pos=e.target.selectionStart;renderWardrobe(root);const input=$("#wardrobeSearch");input.focus();input.setSelectionRange(pos,pos)});
  for(const [id,key] of [["filterCategory","category"],["filterSeason","season"],["filterSort","sort"],["onlyFavorites","onlyFavorites"],["onlyForgotten","onlyForgotten"]])
@@ -856,7 +856,7 @@ function renderPhotoControls(){
  const choices=modes.length>1?'<div class="seg-tabs photo-mode" role="group" aria-label="Elige la fotografía que quieres guardar">'+modes.map(([m,label])=>'<button type="button" class="seg-tab'+(ph.mode===m?' active':'')+'" data-photo-mode="'+m+'" aria-pressed="'+(ph.mode===m)+'">'+label+'</button>').join("")+'</div>':'';
  const tryWhite=ph.original&&!ph.altWhite&&!ph.editedWhite?'<button type="button" class="secondary wide" id="tryWhitePreview">Probar fondo blanco y comparar</button>':'';
  const improve=!ph.edited&&!ph.asIs?'<button type="button" class="secondary wide" id="makeWhite">✨ Mejorar foto</button>':'';
- box.innerHTML='<p class="helper">Compara los resultados y elige cuál guardar. Tu foto original siempre estará disponible.</p>'+choices+improve+tryWhite+(ph.failed?'<p class="helper">No he podido mejorar esta foto automáticamente.</p>':'')+note;
+ box.innerHTML=(ph.draft&&!ph.changed?'<p class="notice-card">Esta foto es un recorte de la foto de un look. Para verla como en una tienda, cámbiala por una foto de la prenda extendida sobre una superficie lisa.</p>':'')+'<p class="helper">Compara los resultados y elige cuál guardar. Tu foto original siempre estará disponible.</p>'+choices+improve+tryWhite+(ph.failed?'<p class="helper">No he podido mejorar esta foto automáticamente.</p>':'')+note;
  $$("[data-photo-mode]",box).forEach(b=>b.addEventListener("click",()=>{ph.mode=b.dataset.photoMode;ph.changed=true;renderPhotoControls()}));
  $("#makeWhite",box)?.addEventListener("click",()=>makeSheetWhite());
  $("#tryWhitePreview",box)?.addEventListener("click",async()=>{
@@ -960,6 +960,7 @@ function openGarment(id){
  $("#garmentTitle").textContent=g?"Editar prenda":"Nueva prenda";$("#garmentId").value=g?.id||"";$("#garmentName").value=g?.name||"";$("#garmentCategory").value=g?.category||"";$("#garmentColor").value=g?.color||"";$("#garmentNotes").value=g?.notes||"";$("#garmentSeason").value=g?.season||"all";$("#garmentStyle").value=g?.style||"";$("#garmentPrice").value=g?.price??"";$("#garmentBought").value=g?.boughtAt||"";$("#garmentFavorite").checked=!!g?.favorite;$("#garmentImage").value="";$("#garmentCamera").value="";
  const edited=!!(g?.photoFx||g?.bgWhite);
  sheetPhoto=validImage(g?.image)?(edited?{original:null,edited:g.image,editedWhite:!!g.bgWhite,asIs:!!g.catalogPhoto,mode:"edited",changed:false}:{original:g.image,edited:null,mode:"original",changed:false}):null;
+ if(sheetPhoto&&g.photoDraft)sheetPhoto.draft=true;
  if(sheetPhoto&&edited&&!g.catalogPhoto){const ph=sheetPhoto;dbGet(origKey(g.id)).then(o=>{if(sheetPhoto===ph&&validImage(o)){ph.original=o;renderPhotoControls()}}).catch(()=>{})}
  syncGarmentCategory();$("#garmentType").value=g?.type||"";
  $("#deleteGarment").classList.toggle("hidden",!g);
@@ -985,6 +986,7 @@ async function saveGarment(e){
  const kept=Object.fromEntries(Object.entries(old||{}).filter(([k])=>!META_KEYS.has(k)));
  const g={...kept,...readMetadata(),id,name:$("#garmentName").value.trim()||"Sin nombre",category:$("#garmentCategory").value,type:$("#garmentType").value,color:$("#garmentColor").value.trim(),notes:$("#garmentNotes").value.trim(),season:$("#garmentSeason").value,style:$("#garmentStyle").value,price:$("#garmentPrice").value===""?null:Number($("#garmentPrice").value),boughtAt:$("#garmentBought").value,favorite:$("#garmentFavorite").checked,createdAt:old?.createdAt||new Date().toISOString(),image,updatedAt:new Date().toISOString()};
  if(!validImage(image)&&old?.hasImage)g.hasImage=true;
+ if(changed)delete g.photoDraft; // ya no es el recorte de la foto de un look
  if(ph){g.bgWhite=edited&&(ph.mode==="alt"||!!ph.editedWhite);if(edited)g.photoFx=1;else delete g.photoFx;if(edited&&ph.asIs)g.catalogPhoto=1;else delete g.catalogPhoto}
  g.imageAt=changed?new Date().toISOString():old?.imageAt;if(!g.imageAt)delete g.imageAt;
  const i=myGarments().findIndex(x=>x.id===id);if(i>=0)myGarments()[i]=g;else myGarments().unshift(g);
@@ -1138,6 +1140,99 @@ function outfitBases(gs){
  const room=Math.max(0,400-bases.length),step=combos.length>room?combos.length/room:1;
  for(let i=0;i<combos.length&&bases.length<400;i+=step)bases.push(combos[Math.floor(i)]);
  return bases;
+}
+
+/* «Guardar el look que llevo»: una foto del look puesto → un solo análisis de IA (mode "outfit") devuelve cada
+   prenda con su recuadro. Se recorta cada una de la foto, se buscan parecidas en el armario y la usuaria revisa:
+   «Es mi …», «Prenda nueva» (con el recorte como foto provisional, photoDraft) o «No guardar». Después se guardan
+   las prendas nuevas, el look (si está completo) y, si quiere, el uso de hoy. */
+const OUTFIT_TYPES={top:"Arriba",bottom:"Abajo",dress:"Vestidos",outerwear:"Capas",shoes:"Zapatos",bag:"Bolsos",accessory:"Accesorios"};
+async function cropBox(src,box){
+ const img=await loadImg(src),W=img.naturalWidth||img.width,H=img.naturalHeight||img.height,[x,y,w,h]=box,m=5;
+ const x0=Math.max(0,(x-m)/100*W),y0=Math.max(0,(y-m)/100*H),x1=Math.min(W,(x+w+m)/100*W),y1=Math.min(H,(y+h+m)/100*H);
+ const cw=Math.max(8,Math.round(x1-x0)),ch=Math.max(8,Math.round(y1-y0)),c=mkCanvas(cw,ch);
+ c.getContext("2d").drawImage(img,x0,y0,cw,ch,0,0,cw,ch);return toJpeg(c,IMAGE_QUALITY);
+}
+const outfitMatches=it=>myGarments().filter(g=>g.category===it.category&&(isDuplicate(it,g)||!!it.color&&norm(g.color)===norm(it.color))).slice(0,4);
+let outfitDraft=null;
+function pickOutfitPhoto(){
+ const input=document.createElement("input");input.type="file";input.accept="image/*";
+ input.addEventListener("change",()=>{const f=input.files?.[0];if(f)startOutfitPhoto(f)});input.click();
+}
+function bindOutfitPhoto(root){$$("[data-outfit-photo]",root).forEach(b=>b.addEventListener("click",pickOutfitPhoto))}
+async function startOutfitPhoto(file){
+ let image;try{image=await readImage(file)}catch(e){return toast(e.message==="IMAGE_TOO_LARGE"?"La imagen es demasiado grande":"No se pudo leer la foto")}
+ if(!image)return;
+ outfitDraft={token:{},image,preview:true};renderOutfitSheet(); // primero vista previa: el análisis solo se gasta al confirmar
+}
+async function analyzeOutfit(){
+ const d0=outfitDraft;if(!d0?.image||d0.loading)return;
+ const token={},image=d0.image;outfitDraft={token,image,loading:true};renderOutfitSheet();
+ try{
+  const out=await api("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image,mode:"outfit"})});
+  if(outfitDraft?.token!==token)return;
+  const items=[];
+  for(const raw of Array.isArray(out.items)?out.items:[]){
+   const category=OUTFIT_TYPES[raw.type];if(!category||!Array.isArray(raw.box))continue;
+   const it={...mapAnalysis(raw),category,crop:await cropBox(image,raw.box).catch(()=>image)},matches=outfitMatches(it);
+   items.push({...it,matches,choice:matches[0]?.id||"new"});
+  }
+  if(outfitDraft?.token!==token)return;
+  outfitDraft=items.length?{token,image,items,name:"",wear:false}:{token,image,preview:true,error:"No he encontrado prendas en la foto. Prueba con una foto de cuerpo entero y con buena luz."};
+ }catch(e){
+  if(outfitDraft?.token!==token)return;
+  if(e.message==="SESSION_EXPIRED"){outfitDraft=null;$$("#outfitSheet").forEach(x=>x.remove());return}
+  outfitDraft={token,image,preview:true,error:e.message==="AI_QUOTA"?"Has llegado al límite de análisis de hoy.":"No he podido reconocer las prendas. Puedes reintentarlo."};
+ }
+ renderOutfitSheet();
+}
+function outfitSelection(d){
+ return d.items.filter(it=>it.choice!=="skip").map(it=>it.choice==="new"?it:myGarments().find(g=>g.id===it.choice)).filter(Boolean);
+}
+function renderOutfitSheet(){
+ const d=outfitDraft;if(!d)return;
+ let body;
+ if(d.loading)body='<p class="muted" role="status" aria-live="polite">Reconociendo las prendas…</p><button type="button" class="secondary wide" id="outfitCancel">Cancelar</button>';
+ else if(d.preview)body=(d.error?'<p class="error" role="alert">'+fx(d.error)+'</p>':'')+
+  '<p class="muted">Detectaré cada prenda y podrás revisarlas todas antes de guardar. Solo se guardan los recortes de las prendas que elijas; la foto completa no se guarda.</p>'+
+  '<div class="actions"><button type="button" class="secondary" id="outfitChange">Cambiar foto</button><button type="button" class="primary" id="outfitAnalyze">'+(d.error?'Reintentar':'Analizar prendas')+' · 1 análisis</button></div>';
+ else body='<p class="muted">Revisa cada prenda. Si ya está en tu armario, elígela; si es nueva, se guarda con su recorte de la foto y luego puedes cambiarlo por una foto de la prenda extendida.</p>'+
+  '<div class="outfit-items">'+d.items.map((it,i)=>'<div class="outfit-item"><img src="'+it.crop+'" alt=""><div class="outfit-item-body"><strong>'+fx(it.name||it.category)+'</strong><span class="muted">'+fx(it.category+(it.color?" · "+it.color:""))+'</span>'+
+   (it.choice==="new"?'<span class="badge-draft">Foto provisional</span>':'')+'<select data-outfit-choice="'+i+'" aria-label="'+fx("Qué hago con «"+(it.name||it.category)+"»")+'">'+optionList([...it.matches.map(g=>[g.id,"Es mi «"+g.name+"»"]),["new","Prenda nueva"],["skip","No guardar"]],it.choice)+'</select></div></div>').join("")+'</div>'+
+  '<label class="field"><span>Nombre del look</span><input id="outfitName" maxlength="80" placeholder="Mi look" value="'+fx(d.name)+'"></label>'+
+  '<label class="switch-line"><input type="checkbox" id="outfitWear"'+(d.wear?' checked':'')+'> Registrar que me lo he puesto hoy</label>'+
+  '<p class="helper">Los recortes de las prendas nuevas se sincronizan entre tus dispositivos, como el resto de fotos.</p>'+
+  '<p class="helper" id="outfitWarn"></p><button type="button" class="primary wide" id="outfitSave">Guardar</button>';
+ const {el,close}=showSheet("outfitSheet",'<div class="section-head"><h2 id="outfitSheetTitle">Guardar el look que llevo</h2><button type="button" class="secondary" data-close-sheet>Cerrar</button></div>'+
+  '<img class="outfit-photo" src="'+d.image+'" alt="Foto del look">'+body,()=>{if(outfitDraft===d)outfitDraft=null});
+ $("#outfitAnalyze",el)?.addEventListener("click",analyzeOutfit);
+ $("#outfitCancel",el)?.addEventListener("click",()=>{outfitDraft={token:{},image:d.image,preview:true};renderOutfitSheet()});
+ $("#outfitChange",el)?.addEventListener("click",()=>{close();pickOutfitPhoto()});
+ if(!d.items)return;
+ const warn=()=>{const sel=outfitSelection(d),w=$("#outfitWarn",el);if(w)w.textContent=!sel.length?"Elige al menos una prenda.":lookComplete(sel)?"Se guardará el look con "+plural(sel.length,"prenda","prendas")+".":BASE_MSG+": se guardarán las prendas, pero no el look."};
+ $$("[data-outfit-choice]",el).forEach(x=>x.addEventListener("change",()=>{d.name=$("#outfitName",el).value;d.wear=$("#outfitWear",el).checked;d.items[Number(x.dataset.outfitChoice)].choice=x.value;renderOutfitSheet()}));warn();
+ $("#outfitSave",el)?.addEventListener("click",async e=>{
+  const btn=e.currentTarget;if(d.saving)return;d.saving=true;btn.disabled=true; // sin doble guardado
+  d.name=$("#outfitName",el).value.trim();d.wear=$("#outfitWear",el).checked;
+  const now=new Date().toISOString(),ids=[],news=[];
+  for(const it of d.items){
+   if(it.choice==="skip")continue;
+   if(it.choice!=="new"){if(myGarments().some(g=>g.id===it.choice))ids.push(it.choice);continue}
+   const id=uid();ids.push(id);
+   news.push({...cleanAnalysis(it),id,name:it.name||it.garmentType||it.category,category:it.category,type:it.garmentType||"",color:it.color||"",style:it.style||"",season:it.season||"all",notes:"",favorite:false,createdAt:now,updatedAt:now,image:it.crop,imageAt:now,bgWhite:false,photoDraft:1});
+  }
+  const unique=[...new Set(ids)];if(!unique.length){d.saving=false;btn.disabled=false;return toast("Elige al menos una prenda")}
+  const all=unique.map(id=>news.find(g=>g.id===id)||myGarments().find(g=>g.id===id)),complete=lookComplete(all),lookId=uid(),today=dayISO();
+  const ok=await mutate(()=>{
+   myGarments().unshift(...news);
+   if(complete)myLooks().unshift({id:lookId,name:d.name||"Mi look",garmentIds:unique,occasion:appState.data.preferences.occasion||"daily",favorite:false,ai:false,fromPhoto:true,updatedAt:now});
+   if(d.wear&&!logs().some(l=>l.date===today&&lookSig(l.garmentIds||[])===lookSig(unique)))logs().unshift({id:uid(),date:today,garmentIds:unique,lookId:complete?lookId:null,updatedAt:now});
+  });
+  if(!ok){d.saving=false;btn.disabled=false;return}
+  outfitDraft=null;close();
+  const parts=[news.length?plural(news.length,"prenda nueva","prendas nuevas"):"",complete?"el look":"",d.wear?"el uso de hoy":""].filter(Boolean);
+  toast("Guardado: "+parts.join(", ").replace(/, ([^,]*)$/," y $1"));
+ });
 }
 
 /* ===================== 7. Estilista ===================== */
@@ -1321,7 +1416,7 @@ function renderLooks(root){
  if(ui.lookFilter==="ai")looks=looks.filter(l=>l.ai);
  const fb=appState.data.feedback;
  stylistShell(root,"Mis looks","Tus combinaciones guardadas y las sugeridas por la IA.",
-  '<div class="section-head"><h2>Conjuntos ('+looks.length+')</h2><button class="primary" id="newLook">+ Crear</button></div>'+
+  '<div class="section-head"><h2>Conjuntos ('+looks.length+')</h2><span class="head-actions"><button class="secondary" data-outfit-photo aria-label="Guardar el look que llevo con una foto">📸 Foto</button><button class="primary" id="newLook">+ Crear</button></span></div>'+
   '<div class="filter-tabs">'+[["all","Todos"],["favorites","Favoritos ♡"],["ai","Sugeridos por IA"]].map(([k,t])=>'<button class="chip-button'+(ui.lookFilter===k?' on':'')+'" data-look-filter="'+k+'">'+t+'</button>').join("")+'</div>'+
   '<button class="secondary wide" id="aiLooks">✦ Sugerir nuevos looks</button>'+
   tasteCardHtml()+
@@ -1329,7 +1424,7 @@ function renderLooks(root){
    '<div class="tile-tools"><button class="chip-button" data-look-fav="'+fx(l.id)+'" aria-label="'+(l.favorite?'Quitar de favoritos':'Añadir a favoritos')+'" aria-pressed="'+!!l.favorite+'">'+(l.favorite?'♥':'♡')+'</button><button class="chip-button" data-look-wear="'+fx(l.id)+'">✓ Llevado</button><button class="chip-button" data-look-swap="'+fx(l.id)+'">↻ Cambiar prenda</button></div>'+
    '<div class="tile-tools"><button class="chip-button'+(fb[l.id]==="up"?' on':'')+'" data-feedback="'+fx(l.id)+'" data-vote="up" aria-label="Me gusta" aria-pressed="'+(fb[l.id]==="up")+'">👍</button><button class="chip-button'+(fb[l.id]==="down"?' on':'')+'" data-feedback="'+fx(l.id)+'" data-vote="down" aria-label="No me gusta" aria-pressed="'+(fb[l.id]==="down")+'">👎</button></div>'+
    '<div class="tile-hints">'+(l.ai?"IA":"Manual")+(lookComplete((l.garmentIds||[]).map(id=>myGarments().find(g=>g.id===id)))?'':' · <span title="'+BASE_MSG+'">Incompleto: falta arriba, abajo o vestido</span>')+'</div></div>').join("")+'</div>':'<div class="empty">Todavía no tienes looks para este filtro.</div>'));
- $("#newLook")?.addEventListener("click",()=>openLook());$("#aiLooks")?.addEventListener("click",()=>suggestLooks());
+ $("#newLook")?.addEventListener("click",()=>openLook());bindOutfitPhoto(root);$("#aiLooks")?.addEventListener("click",()=>suggestLooks());
  $$("[data-look-filter]",root).forEach(b=>b.addEventListener("click",()=>{ui.lookFilter=b.dataset.lookFilter;render()}));
  $$("[data-look]",root).forEach(b=>b.addEventListener("click",()=>openLook(b.dataset.look)));
  $$("[data-look-fav]",root).forEach(b=>b.addEventListener("click",async()=>{const l=myLooks().find(l=>l.id===b.dataset.lookFav);if(l)await mutate(()=>{l.favorite=!l.favorite;l.updatedAt=new Date().toISOString()},"Look actualizado")}));

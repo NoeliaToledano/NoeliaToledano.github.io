@@ -25,7 +25,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { image } = req.body || {};
+    const { image, mode } = req.body || {};
+    const outfit = mode === "outfit"; // foto de un look puesto: varias prendas
     if (typeof image !== "string" || !image.startsWith("data:image/")) {
       return res.status(400).json({ error: "Falta una imagen válida." });
     }
@@ -38,7 +39,11 @@ export default async function handler(req, res) {
       if (!q.ok) return res.status(429).json({ error: "Has llegado al límite de 40 análisis de hoy. Mañana podrás seguir." });
     } catch (e) { console.error("QUOTA", e.message); }
 
-    const prompt = [
+    const prompt = outfit ? [
+      "Foto de una persona con un look. Lista cada prenda o complemento visible (máx. 7), sin ropa interior ni calcetines.",
+      'Responde SOLO JSON: {"items":[{"type":"top|bottom|dress|outerwear|shoes|bag|accessory","garmentType":"Camiseta, Vaqueros, Vestido midi…","name":"nombre corto","color":"Negro|Blanco|Gris|Beige|Marrón|Azul|Vaquero|Verde|Rojo|Rosa|Morado|Amarillo|Plateado|Dorado|Multicolor","style":"casual|smart|party|sport","season":"all|warm|cold","box":[x,y,ancho,alto]}]}',
+      "box: recuadro de esa prenda en % de la imagen (0-100), ajustado a la prenda. Un mono o enterizo es dress."
+    ].join("\n") : [
       "Cataloga la prenda de la foto. No inventes marca ni detalles no visibles; usa null si dudas.",
       "Responde SOLO JSON en español con estas claves y valores:",
       'name: nombre corto; type: top|bottom|dress|outerwear|shoes|bag|accessory|homewear|underwear|swimwear; color: Negro|Blanco|Gris|Beige|Marrón|Azul|Vaquero|Verde|Rojo|Rosa|Morado|Amarillo|Plateado|Dorado|Multicolor; style: casual|smart|party|sport; season: all|warm|cold; fabric: unknown|cotton|denim|linen|wool|knit|leather|satin|silk|synthetic|mixed; pattern: plain|stripes|checks|floral|animal|dots|graphic|other; length: na|cropped|regular|midi|long; formality: casual|smartcasual|formal|party|sport; occasions: lista de daily|work|sport|beach|home|event|party|formal; notes: máx 10 palabras o ""',
@@ -63,7 +68,7 @@ export default async function handler(req, res) {
             { type: "input_image", image_url: image, detail: "low" }
           ]
         }],
-        max_output_tokens: 350
+        max_output_tokens: outfit ? 520 : 350
       })
     });
 
@@ -83,9 +88,18 @@ export default async function handler(req, res) {
     const start = cleaned.indexOf("{");
     const end = cleaned.lastIndexOf("}");
     if (start < 0 || end <= start) throw new Error("Respuesta JSON no válida.");
-    const garment = JSON.parse(cleaned.slice(start, end + 1));
-
-    return res.status(200).json({ garment });
+    const parsed = JSON.parse(cleaned.slice(start, end + 1));
+    if (outfit) {
+      const TYPES = new Set(["top", "bottom", "dress", "outerwear", "shoes", "bag", "accessory"]);
+      const num = v => Math.max(0, Math.min(100, Number(v) || 0));
+      const items = (Array.isArray(parsed.items) ? parsed.items : []).filter(x => x && TYPES.has(x.type)).slice(0, 7).map(x => {
+        const b = Array.isArray(x.box) ? x.box.map(num) : [0, 0, 100, 100];
+        return { type: x.type, garmentType: String(x.garmentType || "").slice(0, 40), name: String(x.name || "").slice(0, 60), color: String(x.color || "").slice(0, 30),
+          style: String(x.style || "").slice(0, 10), season: String(x.season || "").slice(0, 5), box: [b[0], b[1], Math.max(4, Math.min(100 - b[0], b[2])), Math.max(4, Math.min(100 - b[1], b[3]))] };
+      });
+      return res.status(200).json({ items });
+    }
+    return res.status(200).json({ garment: parsed });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: "Error interno analizando la prenda." });
