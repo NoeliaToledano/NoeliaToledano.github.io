@@ -1580,10 +1580,17 @@ function layerRule(temp){return temp<15?{need:true,max:2,prefer:"warm"}:temp<20?
 /* Puntuación de un look completo → {score 0–100, reasons[], warnings[]} */
 function scoreOutfit(gs,ctx){
  const reasons=[],warnings=[],big=gs.filter(g=>BIG.includes(g.category));
- // Color (25): media de los pares; los opuestos solo penalizan si son dos piezas grandes
- let cs=[],kinds=[];for(let i=0;i<gs.length;i++)for(let j=i+1;j<gs.length;j++){const r=pairColor(gs[i],gs[j]),bothBig=BIG.includes(gs[i].category)&&BIG.includes(gs[j].category);
-  cs.push(r.k==="opposite"&&!bothBig?.75:r.s);if(r.k)kinds.push(r.k+(bothBig?"":"~"))}
- const color=cs.length?cs.reduce((a,b)=>a+b,0)/cs.length:.75,patterns=gs.filter(g=>colorInfo(g.color,g.pattern).fam==="estampado").length;
+ // Color (25): el conjunto principal manda. Bolsos y accesorios no deben
+ // tapar una incompatibilidad evidente entre camiseta, pantalón o vestido.
+ let colorTotal=0,colorWeight=0,kinds=[];
+ for(let i=0;i<gs.length;i++)for(let j=i+1;j<gs.length;j++){
+  const r=pairColor(gs[i],gs[j]),aBig=BIG.includes(gs[i].category),bBig=BIG.includes(gs[j].category),bothBig=aBig&&bBig;
+  const weight=bothBig?3:aBig||bBig?1:.35;
+  colorTotal+=(r.k==="opposite"&&!bothBig?.75:r.s)*weight;
+  colorWeight+=weight;
+  if(r.k)kinds.push(r.k+(bothBig?"":"~"));
+ }
+ const color=colorWeight?colorTotal/colorWeight:.75,patterns=gs.filter(g=>colorInfo(g.color,g.pattern).fam==="estampado").length;
  const tonal=kinds.find(k=>k.startsWith("tonal:")&&!k.endsWith("~"));
  if(tonal)reasons.push("Tono sobre tono en "+tonal.slice(6).replace(/~$/,"")+"s");
  else if(kinds.includes("opposite~"))reasons.push("Un toque de color en contraste");
