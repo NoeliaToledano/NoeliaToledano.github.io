@@ -3,7 +3,7 @@
 //   node atelier/benchmarks/real-photos/model-compare.mjs atelier-pairs.json model-predictions.json
 // Atelier baseline: node atelier/benchmarks/real-photos/pairs.mjs --json > atelier-pairs.json
 // External predictions format: [{"id":"p01","sa":0.72,"sb":0.65}, ...] (higher score is better).
-// Scores across models are NOT compared directly; only which of A/B each model prefers.
+// Scores across models are NOT compared directly; identical recorded eligibility gates apply first.
 // Human labels "noelia" are for reporting only and MUST NOT be used for calibration on this bank.
 import fs from "node:fs";
 
@@ -32,6 +32,15 @@ if(missing.length||extra.length){
  process.exit(2);
 }
 const pick=r=>r.sa===r.sb?"=":r.sa>r.sb?"a":"b";
+// Apply precisely the same recorded generator constraints to both rankers.
+// A/B scores only break ties when both alternatives are eligible (or both excluded).
+const constrainedPick=(r,original)=>{
+ const va=original.va||[],vb=original.vb||[];
+ if(!Array.isArray(va)||!Array.isArray(vb))throw Error("Invalid restriction arrays for "+original.id);
+ if(va.length&&!vb.length)return "b";
+ if(vb.length&&!va.length)return "a";
+ return pick(r);
+};
 const human=x=>["a","b","="].includes(x)?x:null;
 const summary=rows=>{
  const labeled=rows.filter(r=>r.human!==null);
@@ -48,7 +57,7 @@ const summary=rows=>{
 const rows=[...baseline.keys()].sort().map(id=>{
  const a=baseline.get(id),b=external.get(id);
  return {id,occasion:a.occasion??null,kind:a.kind??null,hard:!!a.hard,human:human(a.noelia),
-  stylist:human(a.better),atelier:pick(a),external:pick(b),
+  stylist:human(a.better),atelier:constrainedPick(a,a),external:constrainedPick(b,a),
   atelierScore:[a.sa,a.sb],externalScore:[b.sa,b.sb]};
 });
 const by=(key)=>Object.fromEntries([...new Set(rows.map(r=>String(r[key]??"unknown")))].sort().map(k=>[k,summary(rows.filter(r=>String(r[key]??"unknown")===k))]));
