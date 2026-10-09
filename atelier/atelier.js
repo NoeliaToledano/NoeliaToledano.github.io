@@ -1586,6 +1586,8 @@ function engineContext(o={}){
 function summerFootwear(g){return g.category==="Zapatos"&&/chancl|flip.?flop|sandali?as?|slides?/.test([g.name,g.type,g.subtype].filter(Boolean).join(" ").toLowerCase())}
 function winterHat(g){return g.category==="Accesorios"&&/gorro|beanie|pasamonta|balaclava|wool hat/.test([g.name,g.type,g.subtype].filter(Boolean).join(" ").toLowerCase())}
 const BACKPACK=/mochila|backpack/i;
+const isSneaker=g=>g.category==="Zapatos"&&(g.style==="sport"||/deportiv|sneaker|trainer|running|tenis|zapatilla(?!s? de casa)/i.test([g.type,g.subtype,g.name].filter(Boolean).join(" ")));
+const isBackpack=g=>g.category==="Bolsos"&&BACKPACK.test([g.type,g.name].filter(Boolean).join(" "));
 const HEADWEAR=/gorr|boina|sombrero|beanie|pamela|\bcap\b/i;
 function headwearMakesSense(g,ctx){
  if(!["daily","beach",null,undefined].includes(ctx.occasion))return false;
@@ -1624,7 +1626,7 @@ function vividColorRepeat(gs){
 }
 function completeOutfitGreedy(base,pool,ctx,used=new Map(),firstPick=null){
  const l=[...base],rule=layerRule(ctx.temp),home=ctx.occasion==="home",beach=ctx.occasion==="beach";
- const fits=x=>!l.includes(x)&&!heavyKnitInHeat(x,ctx.temp)&&!insufficientColdLayer(x,ctx.temp)&&weatherCompatible(x,l,ctx)&&l.every(p=>!related(x,p)||stylesOk(x,p))&&l.every(p=>pairColor(x,p).s>=.45||!BIG.includes(p.category)||!BIG.includes(x.category));
+ const fits=x=>!l.includes(x)&&!(l.some(isBackpack)&&["smart","party"].includes(x.style))&&!heavyKnitInHeat(x,ctx.temp)&&!insufficientColdLayer(x,ctx.temp)&&weatherCompatible(x,l,ctx)&&l.every(p=>!related(x,p)||stylesOk(x,p))&&l.every(p=>pairColor(x,p).s>=.45||!BIG.includes(p.category)||!BIG.includes(x.category));
  const pref=x=>(x.favorite?.5:0)+1/(1+(ctx.worn.get(x.id)||0))+(ctx.forgotten.has(x.id)?.5:0)-(ctx.avoid.has(x.id)?2:0)-(used.get(x.id)||0)*1.5+
   l.reduce((t,p)=>t+pairColor(x,p).s,0)/Math.max(1,l.length);
  const plan=[ctx.extras.shoes&&!home&&!beach?"Zapatos":beach&&ctx.extras.shoes?"Zapatos":null,!home&&rule.max>=0?"Capas":null,ctx.extras.bag&&!home?"Bolsos":null,!home?"Accesorios":null];
@@ -1637,7 +1639,8 @@ function completeOutfitGreedy(base,pool,ctx,used=new Map(),firstPick=null){
    if(!formal.length)c=(ctx.allShoes||[]).filter(smartFallbackShoes).filter(fits);
    c.sort((a,b)=>(Number(["party","smart"].includes(b.style))-Number(["party","smart"].includes(a.style)))*2+pref(b)-pref(a));
   }
-  else if(cat==="Zapatos"&&ctx.occasion==="work")c.sort((a,b)=>(b.style==="sport"?-4:0)-(a.style==="sport"?-4:0)+pref(b)-pref(a)); // Q2 (#108): mejor repetir calzado arreglado que deportivas
+  else if(cat==="Zapatos"&&ctx.occasion==="work"){ // Q2 (#108): deportivas solo si no hay otro calzado (por tipo o nombre, no solo por estilo)
+   const other=c.filter(x=>!isSneaker(x));if(other.length)c=other;c.sort((a,b)=>pref(b)-pref(a))}
   else c.sort((a,b)=>pref(b)-pref(a));
   if(cat==="Bolsos"&&l.some(p=>["smart","party"].includes(p.style)))c=c.filter(x=>!BACKPACK.test([x.type,x.name].filter(Boolean).join(" "))); // Q3 (#108)
   if(cat==="Zapatos"&&beach)c=c.filter(x=>/sandal|chancl|alpargat|zueco/i.test([x.type,x.name,x.subtype].filter(Boolean).join(" ")));
@@ -1678,7 +1681,7 @@ function rankOutfits(o={}){
   if(ctx.occasion==="home")bases=pool.filter(g=>g.category==="Casa").map(g=>[g]);
   if(ctx.occasion==="beach")bases=pool.filter(g=>g.category==="Baño").map(g=>[g]);
   bases=[...bases,...outfitBases(pool.filter(g=>!["Casa","Baño"].includes(g.category)))];
-  if(req)bases=bases.filter(b=>b.every(p=>!related(req,p)||stylesOk(req,p))).map(b=>[...b,req]);
+  if(req)bases=bases.filter(b=>b.every(p=>!related(req,p)||stylesOk(req,p))&&(!isBackpack(req)||b.every(p=>!["smart","party"].includes(p.style)))).map(b=>[...b,req]); // mochila elegida: sin prendas smart ni party (revisión de Codex, #111)
  }
  bases=bases.filter(b=>b.length&&!b.some(g=>heavyKnitInHeat(g,ctx.temp))&&b.every((x,i)=>b.every((y,j)=>i===j||!related(x,y)||stylesOk(x,y))));
  // Puntuación y selección variada: valor = puntuación − solapamiento con las ya elegidas (prendas principales pesan más)

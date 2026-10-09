@@ -419,12 +419,15 @@ console.log("PASS: S6 long-offline devices don't resurrect deletions");
    G("m1","Bolsos","Mochila","Gris"),G("m2","Bolsos","Bolso de hombro","Negro","smart")]});
   const looks=o=>rankOutfits({max:3,date:"2026-04-15",temp:20,...o});
   const daily=looks({occasion:"daily"}),work=looks({occasion:"work"});
+  myGarments().push(G("z3","Zapatos","Deportivas","Gris"));myGarments().find(g=>g.id==="z3").favorite=true; // deportivas sin estilo «sport» y favoritas
+  const work2=looks({occasion:"work"}),pack=looksAround(myGarments().find(g=>g.id==="m1"));
   return {dressesDaily:daily.filter(l=>l.garments.some(g=>g.category==="Vestidos")).length,
-   workSneakers:work.filter(l=>l.ids.includes("z1")).length,workBackpack:work.some(l=>l.ids.includes("m1")),
+   workSneakers:work.filter(l=>l.ids.includes("z1")).length+work2.filter(l=>l.ids.includes("z1")||l.ids.includes("z3")).length,
+   packSmart:pack.some(l=>l.some(g=>g.id!=="m1"&&["smart","party"].includes(g.style))),packCount:pack.length,workBackpack:work.some(l=>l.ids.includes("m1")),
    backpackWork:occasionFits(myGarments().find(g=>g.id==="m1"),"work"),backpackDaily:occasionFits(myGarments().find(g=>g.id==="m1"),"daily")};`);
   const r=probe(document,sessionStorage,{randomUUID:()=>"t"});
   assert.ok(r.dressesDaily<=2,"Con partes de arriba y de abajo, no todas las propuestas son vestidos ("+r.dressesDaily+")");
   assert.equal(r.workSneakers,0,"Trabajo: bailarinas antes que deportivas");
-  assert.equal(r.workBackpack,false);assert.equal(r.backpackWork,false);assert.equal(r.backpackDaily,true);
+  assert.equal(r.workBackpack,false);assert.ok(r.packCount>0&&!r.packSmart,"Combinar una mochila: sin prendas smart ni party");assert.equal(r.backpackWork,false);assert.equal(r.backpackDaily,true);
   console.log("PASS: #108 base variety, work shoes, backpacks only for daily/sport");
 }
