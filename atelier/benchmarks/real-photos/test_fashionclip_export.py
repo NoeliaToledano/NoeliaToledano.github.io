@@ -23,6 +23,21 @@ class InputTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 export.read_items(labels, root)
 
+    def test_pilot_subset_selection(self):
+        # The CLI must not require absent photographs outside the requested pilot.
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            (root / "a.jpg").write_bytes(b"x")
+            labels = root / "labels.json"
+            labels.write_text(json.dumps([
+                {"id": "a", "category": "Arriba", "file": "a.jpg"},
+                {"id": "b", "category": "Zapatos", "file": "missing.jpg"}
+            ]))
+            items = export.select_items(labels, root, "a")
+            self.assertEqual([i[0] for i in items], ["a"])
+            with self.assertRaises(ValueError):
+                export.select_items(labels, root, "unknown")
+
     def test_reject_duplicate_and_missing_photos(self):
         with tempfile.TemporaryDirectory() as t:
             root = Path(t)
