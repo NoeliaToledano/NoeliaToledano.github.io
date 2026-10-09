@@ -118,3 +118,41 @@ Cada cambio debe llevar su prueba de regresión con estos mismos casos. Después
 | Fiesta sin calzado | 8 | 4 |
 
 **Pendiente (menor):** los 4 looks de fiesta sin calzado son a 28 °C en los armarios A y B. Solo tienen sandalias planas, deportivas y botines, y los botines son de invierno. Es un límite de los datos. Una opción: en fiesta y con calor, aceptar sandalias como último recurso.
+
+## Segundo banco: ropa de mujer de catálogo (Polyvore) · `main` v82
+
+**Por qué un segundo banco:** el primero no tiene bolsos, tacones, joyas ni ropa de fiesta.
+
+**Datos:**
+- 86 prendas de `Marqo/polyvore`: 20 de arriba, 14 de abajo, 10 vestidos, 10 capas, 14 calzados, 8 bolsos y 10 complementos.
+- Fotos de producto, casi todas con fondo blanco. Las fotos no están en el repositorio: `labels-polyvore.json` guarda el `item_ID` de cada prenda.
+- **Categoría y tipo:** salen de la categoría de Polyvore.
+- **Color:** del texto de la prenda o estimado en el móvil.
+- **Revisadas a mano:** 14 etiquetas, mirando cada foto.
+- **Armarios:** «P» con las 86 prendas y «P-mitad» con 46.
+
+**Para repetirlo:**
+1. Descargar las fotos por `item_ID` desde `datasets-server.huggingface.co` a `img/` (ver `source` en `labels-polyvore.json`).
+2. `node atelier/benchmarks/real-photos/eval.mjs <carpeta> <salida> labels-polyvore.json wardrobes-polyvore.json`.
+
+**Bien:**
+- **Fiesta:** siempre vestido corto o largo con tacones, bolso de fiesta y blazer a 17 °C. Ni deportivas ni tacones en la playa.
+- El bolso de fiesta solo aparece en fiesta.
+- Un solo complemento por look, con sentido (pendientes, reloj o gafas de sol).
+
+**Problemas nuevos:**
+
+| # | Patrón | Recuento | Ejemplo |
+| --- | --- | --- | --- |
+| Q1 | **Casi todo son vestidos**: con 20 partes de arriba y 14 de abajo, 50 de 54 looks llevan vestido. En diario, trabajo y playa de «P», el 100 %. En el primer banco, 47 de 100 | 50 de 54 | P, trabajo, 8 °C: vestido dorado metalizado + deportivas Vans + abrigo rosa |
+| Q2 | **Vestido + deportivas en trabajo**, a 8 y 17 °C | 9 | P, trabajo, 17 °C: los tres looks |
+| Q3 | **Mochila de montaña** (North Face) con vestido, en trabajo y playa | 3 en trabajo o fiesta, 3 en playa | P, playa, 28 °C: vestido + sandalias + mochila |
+
+**Causa probable de Q1, en `scoreOutfit`:**
+- **Silueta:** con un vestido vale 0,8. Con arriba + abajo sin `fit` conocido vale 0,65, es decir, 3,75 puntos menos. El banco no tiene `fit`; en la app lo rellena el análisis, pero muchas prendas quedarán sin él.
+- **Color:** es la media de las parejas de prendas. Un look con vestido tiene menos parejas y suele salir más alto.
+
+**Propuestas (motor, ChatGPT):**
+- **Q1:** igualar la silueta cuando no se conoce el corte (0,75 en los dos casos). Además, si hay prendas de arriba y de abajo, como mucho 1 vestido entre las 3 propuestas, o en proporción al armario.
+- **Q2:** en trabajo, con vestido, preferir bailarinas, mocasines o botines a las deportivas.
+- **Q3:** mochila solo en diario o deporte, y nunca con prendas `smart` ni `party`.
