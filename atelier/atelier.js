@@ -1475,12 +1475,8 @@ function renderLooks(root){
    En «Estar en casa» y «Playa y piscina» el calzado no se añade nunca. */
 const NO_SHOES_OCCASIONS=new Set(["home","beach"]);
 function lookExtras(){const occasion=appState.data.preferences.occasion||"daily";return {shoes:!NO_SHOES_OCCASIONS.has(occasion),bag:occasion!=="home"}}
-function extrasTogglesHtml(){
- const p=appState.data.preferences,auto=NO_SHOES_OCCASIONS.has(p.occasion);
- return '<div class="extras-line" role="group" aria-label="Qué incluir en las propuestas"><label class="switch-line"><input type="checkbox" data-extra-pref="lookShoes"'+(p.lookShoes!==false?' checked':'')+(auto?' disabled':'')+'> Incluir calzado</label><label class="switch-line"><input type="checkbox" data-extra-pref="lookBag"'+(p.lookBag!==false?' checked':'')+'> Incluir bolso</label></div>'+
-  (auto?'<p class="helper">Con la ocasión «'+fx(occasions[p.occasion]||"")+'» las propuestas no llevan calzado.</p>':'');
-}
-function bindExtrasToggles(root,after){$$("[data-extra-pref]",root).forEach(c=>c.addEventListener("change",async()=>{appState.data.preferences[c.dataset.extraPref]=c.checked;await saveState();after?after():render()}))}
+function extrasTogglesHtml(){return ""}
+function bindExtrasToggles(){}
 /* ===================== Motor de estilismo (un solo motor para Hoy, Mi semana, Combinar prenda y Cambiar prenda) =====================
    Sin IA. Especificación: docs/atelier/STYLING_ENGINE_SPEC.md. Pasos:
    1) contexto (fecha, ocasión, temperatura) → 2) prendas que encajan (ocasión y temporada) → 3) bases (arriba+abajo, vestido,
