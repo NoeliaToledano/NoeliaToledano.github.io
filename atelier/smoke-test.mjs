@@ -156,6 +156,19 @@ try{
  assert.equal(fixedGarmentLooks.count,3,"Deben ofrecerse tres looks con la prenda elegida");
  assert.ok(fixedGarmentLooks.hasRequired,"La prenda seleccionada no debe desaparecer");
  assert.equal(new Set(fixedGarmentLooks.bottoms).size,3,"Variar pantalón sin cambiar la prenda obligatoria");
+ // Silueta: holgado + regular debe equilibrar más que oversize + holgado.
+ const silhouettePriority=await page.evaluate(()=>{
+  const ctx=engineContext({occasion:null,temp:22,extras:{shoes:false,bag:false}});
+  const top={id:"sil-t",name:"Camisa",category:"Arriba",color:"Blanco",style:"casual",fit:"oversize"};
+  const bottom={id:"sil-b",name:"Pantalón",category:"Abajo",color:"Negro",style:"casual"};
+  return {
+   balanced:scoreOutfit([top,{...bottom,fit:"entallado"}],ctx).score,
+   intermediate:scoreOutfit([top,{...bottom,fit:"regular"}],ctx).score,
+   unbalanced:scoreOutfit([top,{...bottom,fit:"holgado"}],ctx).score
+  };
+ });
+ assert.ok(silhouettePriority.balanced>silhouettePriority.intermediate&&silhouettePriority.intermediate>silhouettePriority.unbalanced,
+  "El ajuste de la silueta debe favorecer volúmenes complementarios frente a dos prendas holgadas");
  await page.locator(".daily-look").waitFor(); // «Tu look de hoy» nada más entrar
  assert.equal(await page.locator("#app").isVisible(),true);
  assert.equal(await page.locator("#auth").isVisible(),false);
