@@ -84,3 +84,28 @@ Prenda + atributos/procedencia + reglas actuales
 - Caché IndexedDB vs memoria, capacidad, algoritmo de invalidación/sync.
 - Resultados y comandos reproducibles de FashionCLIP local (fotos permanecen privadas).
 - Tamaño y fechas del test ciego nuevo, separado del banco que sirvió para ajustar reglas.
+
+
+## Principio de producto confirmado por Noelia (10/10/2026): núcleo coherente, extras subordinados
+
+**Definición del look:** su centro es (a) una pieza enteriza como **mono o vestido**, o (b) **una prenda superior + una inferior**. Todas las otras prendas se evalúan como posibles contribuciones a esa composición, no como categorías obligatorias que haya que rellenar.
+
+**Orden conceptual** (no fuerza orden visual ni obligación de incluir):
+1. **Base principal**: una pieza enteriza o arriba+abajo. Evaluar primero la cohesión de color, corte, textura, formalidad y proporciones.
+2. **Capas**: abrigo, chaquetilla, americana, cárdigan y similares, según **temperatura, función y coherencia**. Una necesidad térmica puede obligar a recomendar una capa o advertir que la base no es viable; no debe justificarse una capa incompatible por el mero hecho de tener frío.
+3. **Zapatos**: son una necesidad práctica al salir, **pero su presencia en la composición visual debe aportar valor y combinar**. No incluir un zapato mediocre solo para rellenar una casilla; buscar una alternativa, permitir mostrar el conjunto de ropa como base o advertir que falta calzado adecuado cuando el contexto lo exige.
+4. **Bolso y otros accesorios**: completamente opcionales salvo una necesidad expresamente seleccionada. Solo añadir cuando combinan con **todas las piezas relevantes** y mejoran el conjunto; no puede rescatarse un choque central con accesorios bonitos.
+
+**Invariante principal: coherencia global antes que número de prendas**. No basta con que un elemento sea compatible con el ancla; comprobar su relación con el resto y el resultado grupal. Una propuesta de 2 prendas excelente es mejor que una de 6 incoherente.
+
+### Requisitos verificables adicionales
+- [ ] Mono identificado como pieza enteriza, no tratado por defecto como una parte de arriba; idem vestido. Comprobar taxonomía actual (`Vestidos`, `type/subtype`) antes de modificarla.
+- [ ] La ampliación de un conjunto de 2 a 3 prendas *debe* justificar valor funcional o mejora visual/contextual. No hay bonificación automática por completar más categorías.
+- [ ] Una capa térmica que choca estéticamente produce búsqueda de alternativas o aviso, no un “look perfecto” falso.
+- [ ] Zapatos útiles pero discordantes no se incorporan como propuesta estilística por obligatoriedad; diferenciar presentación parcial y look completo para salir.
+- [ ] Bolso o accesorios compatibles con una prenda pero no con el resto se descartan.
+- [ ] Si no hay extras adecuados, presentar únicamente la base viable, claramente etiquetada, sin penalizarla por el número bajo de piezas.
+- [ ] Explicaciones de cada añadido: «protege del frío», «equilibra la silueta», «repite un tono», «aporta formalidad», etc. Deben surgir de señales reales, no motivos inventados.
+- [ ] Votos A/B para comparar look minimalista coherente vs look sobrecargado y para contrastar contextualización formal/casual, sin ajustar y certificar con el mismo lote.
+
+**Regla de aceptación**: la composición se valida como **unidad**. Compatibilidad por pares = condición de apoyo, nunca prueba suficiente de coherencia global. Se deberá adaptar `completeOutfitGreedy`/`completeOutfit` para que no añadan extras solo por disponibilidad.
