@@ -105,6 +105,23 @@ try{
   assert.ok(!/dense/.test(ratio.flow),"El orden visual debe coincidir con el orden de teclado a "+width+" px");
  }
  await page.setViewportSize({width:390,height:844});
+ // Motor de looks: si existen varias bases equivalentes, las primeras propuestas
+ // no pueden ser el mismo top+pantalón cambiando solo complementos.
+ const distinctBases=await page.evaluate(()=>{
+  const garments=[
+   {id:"style-top-1",name:"Camiseta blanca",category:"Arriba",color:"Blanco",style:"casual"},
+   {id:"style-top-2",name:"Camiseta negra",category:"Arriba",color:"Negro",style:"casual"},
+   {id:"style-top-3",name:"Camiseta beige",category:"Arriba",color:"Beige",style:"casual"},
+   {id:"style-bottom-1",name:"Pantalón negro",category:"Abajo",color:"Negro",style:"casual"},
+   {id:"style-bottom-2",name:"Pantalón beige",category:"Abajo",color:"Beige",style:"casual"}
+  ];
+  const looks=rankOutfits({pool:garments,occasion:null,temp:22,extras:{shoes:false,bag:false},max:3,avoid:new Set()});
+  const keys=looks.map(l=>l.garments.filter(g=>["Arriba","Abajo","Vestidos"].includes(g.category)).map(g=>g.id).sort().join("|"));
+  return {keys,count:looks.length};
+ });
+ assert.ok(distinctBases.count>=3,"El armario simulado debe producir tres conjuntos");
+ assert.equal(new Set(distinctBases.keys).size,distinctBases.keys.length,
+  "Las primeras propuestas deben usar bases diferentes, no solo variar accesorios");
  await page.locator(".daily-look").waitFor(); // «Tu look de hoy» nada más entrar
  assert.equal(await page.locator("#app").isVisible(),true);
  assert.equal(await page.locator("#auth").isVisible(),false);
