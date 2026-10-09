@@ -39,4 +39,9 @@ assert.equal(cache.stats().calculated,beforeNull+1,"Null evidence should also be
 const v2=createRelationCache({profileId:"noelia",engineVersion:"v2",pairEvidence:evaluate});
 v2.reconcile([a,b]);assert.equal(v2.stats().edges,0,"New engine versions do not reuse prior cache");
 assert.throws(()=>createRelationCache({profileId:"",engineVersion:"v1",pairEvidence:evaluate}));
+const ranked=createRelationCache({profileId:"noelia",engineVersion:"v1",pairEvidence:(left,right)=>({pair:[left.id,right.id]})});
+ranked.reconcile([{id:"anchor",category:"Arriba"},{id:"ordinary",category:"Abajo"},{id:"favorite",category:"Abajo"}]);
+assert.deepEqual(ranked.neighbors("anchor",{limit:1,rank:(_edge,g)=>g.id==="favorite"?100:1}).map(x=>x.garmentId),["favorite"],"A late-added garment must win on context, not wardrobe order");
+assert.deepEqual(ranked.neighbors("anchor",{limit:1,rank:(_edge,g)=>g.id==="ordinary"?100:1}).map(x=>x.garmentId),["ordinary"],"A new context must rerank without stale cached preferences");
+assert.throws(()=>ranked.neighbors("anchor",{rank:"invalid"}),/Invalid rank/);
 console.log("Incremental relation cache tests: OK");
