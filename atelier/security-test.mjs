@@ -262,3 +262,18 @@ console.log("PASS: S6 long-offline devices don't resurrect deletions");
   assert.ok(!r.start.includes("/api/analyze"),"B5: la foto de «¿Lo compro?» no se analiza con IA automáticamente");
   console.log("PASS: B5 buy check: local colour estimate, AI only on demand");
 }
+
+// Fondo blanco por defecto (decisión de Noelia, 09/10): también con recorte dudoso; solo un recorte roto conserva el fondo
+{
+  const probe=new Function("document","sessionStorage","crypto",src+`
+  return (async()=>{isCatalogPhoto=async()=>false;retouchOnly=async()=>"data:image/jpeg;base64,RETOQUE";
+   const run=async w=>{whiteBackground=async()=>w;return enhancePhotoHere("data:image/jpeg;base64,X")};
+   return {ok:await run({image:"W",doubtful:false}),doubtful:await run({image:"W",doubtful:true,broken:false}),broken:await run({image:"W",doubtful:true,broken:true}),none:await run(null)};
+  })();`);
+  const r=await probe(document,sessionStorage,{randomUUID:()=>"t"});
+  assert.equal(r.ok.image,"W");assert.equal(r.ok.white,true);
+  assert.equal(r.doubtful.image,"W","Recorte dudoso: fondo blanco por defecto");assert.equal(r.doubtful.retouched,"data:image/jpeg;base64,RETOQUE","…con el retoque como alternativa");
+  assert.equal(r.broken.white,false,"Recorte roto: se conserva el fondo");assert.equal(r.broken.doubtfulWhite,"W","…y el fondo blanco se ofrece aparte");
+  assert.equal(r.none.white,false);
+  console.log("PASS: White background by default (doubtful cutouts too; broken ones keep the background)");
+}

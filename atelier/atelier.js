@@ -254,6 +254,8 @@ function garmentMask(d,w,h,stats){
  // la silueta es muy irregular o el borde está «mordido», o la prenda es casi del color del fondo y los bordes son blandos.
  // No se usa por defecto, pero se ofrece para que decida la usuaria.
  const doubtful=kept<.8||solidity<.68||rough>7||(softFrac>.5&&nearFrac>.9);
+ // Recorte roto (se ha comido mucha prenda o queda deshilachado): el fondo blanco no se pone por defecto
+ const broken=kept<.75||rough>11||softFrac>.85;
  // Borde suave: se encoge un poco (quita el halo del fondo) y se difumina
  // Con fondo de color fuerte (una tela roja) se encoge 1 px más, para que no quede un hilo de ese color
  if(Math.hypot(ba,bb)>25)mask=morph(mask,1);
@@ -263,7 +265,7 @@ function garmentMask(d,w,h,stats){
   alpha[i]=sum===cnt?1:Math.max(0,(sum-3)/(cnt-3))}
  // Color del fondo (para corregir el tono de la luz si el fondo es neutro)
  const rgb=[0,1,2].map(c=>quantile(border.filter(i=>bg[i]).map(i=>d[i*4+c]),.5));
- return {alpha,w,h,x0,y0,x1,y1,doubtful,neutral:Math.hypot(ba,bb)<20&&bl>35,rgb};
+ return {alpha,w,h,x0,y0,x1,y1,doubtful,broken,neutral:Math.hypot(ba,bb)<20&&bl>35,rgb};
 }
 /* Retoque de la foto (sin IA): luz, contraste suave, color algo más vivo y nitidez.
    curveLUT: tablas por canal con ganancia de color (gain), punto negro (lo) y estiramiento (scale), más una curva en S suave. */
@@ -311,7 +313,7 @@ async function whiteBackground(src){
   const sc=Math.min(WHITE_W*.86/cw,WHITE_H*.86/ch,2.2),dw=cw*sc,dh=ch*sc;
   o.drawImage(fc,(WHITE_W-dw)/2,(WHITE_H-dh)/2,dw,dh);
   sharpen(o,WHITE_W,WHITE_H);
-  return {image:await toJpeg(out,.86),doubtful:!!m.doubtful};
+  return {image:await toJpeg(out,.86),doubtful:!!m.doubtful,broken:!!m.broken};
  }catch(e){console.warn("WHITE_BG",e);return null}
 }
 /* Solo retoque, cuando no se puede quitar el fondo: niveles de luz (sin pasarse), curva suave, color y nitidez */
@@ -353,12 +355,16 @@ async function isCatalogPhoto(src){
 }
 /* Mejora completa: si ya parece de catálogo se deja tal cual; si no, fondo blanco o solo retoque.
    → {image, white, asIs} o null */
-async function enhancePhotoHere(src){ // → {image, white, asIs?, doubtfulWhite?} o null
+async function enhancePhotoHere(src){ // → {image, white, asIs?, doubtful?, retouched?, doubtfulWhite?} o null
 
  if(await isCatalogPhoto(src))return {image:src,white:true,asIs:true};
  const white=await whiteBackground(src);if(white&&!white.doubtful)return {image:white.image,white:true};
- // Recorte dudoso: por defecto solo retoque; el fondo blanco se ofrece aparte (doubtfulWhite) para que decida la usuaria
- const tuned=await retouchOnly(src);return tuned?{image:tuned,white:false,doubtfulWhite:white?.image||null}:null;
+ // Recorte dudoso: por defecto también fondo blanco, como en una tienda online (decisión de Noelia, 09/10);
+ // el retoque conservando el fondo se ofrece como alternativa (retouched) por si falta algún trozo.
+ // Si el recorte está roto, por defecto solo retoque y el fondo blanco se ofrece aparte (doubtfulWhite).
+ const tuned=await retouchOnly(src);
+ if(white&&!white.broken)return {image:white.image,white:true,doubtful:true,retouched:tuned};
+ return tuned?{image:tuned,white:false,doubtfulWhite:white?.image||null}:null;
 }
 /* R3: el retoque se hace en un Worker para no congelar la app (sobre todo con «Mejorar todas»). El Worker se
    construye con estas mismas funciones (no hay otro archivo que mantener). Si el navegador no lo permite
@@ -838,13 +844,13 @@ function renderPhotoControls(){
  preview.src=img||"";preview.classList.toggle("hidden",!img);preview.classList.toggle("on-white",!!img&&(ph?.mode==="alt"||ph?.mode==="edited"&&!!ph.editedWhite));
  if(!ph||!img){box.innerHTML="";return}
  if(ph.busy){box.innerHTML='<p class="helper" role="status">Mejorando la foto…</p>';return}
- const keep='<p class="helper">Hemos mejorado la fotografía, pero hemos conservado el fondo para no alterar la prenda.'+(ph.altWhite?' Si prefieres, prueba «Fondo blanco (revisar)».':' Para fondo blanco, extiéndela sobre una superficie lisa de otro color.')+'</p>';
+ const keep='<p class="helper">Hemos mejorado la fotografía conservando el fondo.'+(ph.altWhite?' Para verla como en una tienda online, elige «Fondo blanco».':' Para fondo blanco, extiéndela sobre una superficie lisa de otro color.')+'</p>';
  const note=ph.asIs&&ph.mode==="edited"?'<p class="helper">La foto ya tenía aspecto de catálogo: se usa tal cual, sin retocar.</p>'
-  :ph.mode==="alt"?'<p class="helper">Revisa la prenda: puede que al quitar el fondo falte algún trozo. Si no te convence, elige «Mejorada» u «Original».</p>'
+  :ph.mode==="alt"?'<p class="helper">Revisa la prenda: puede que al quitar el fondo falte algún trozo. Si no te convence, elige '+(ph.edited?'«Mejorada» (conserva el fondo) u ':'')+'«Original».</p>'
   :ph.edited&&!ph.editedWhite&&ph.mode==="edited"?keep:'';
  // Versiones que se pueden elegir: mejorada (o con fondo blanco), fondo blanco dudoso y original
  // La persona decide: original siempre visible, incluso cuando el algoritmo considera que ya es catálogo.
- const modes=[...(ph.original?[["original","Original"]]:[]),...(ph.edited&&ph.edited!==ph.original?[["edited",ph.editedWhite?"Fondo blanco":"Mejorada"]]:[]),...(ph.altWhite?[["alt","Fondo blanco (revisar)"]]:[])];
+ const modes=[...(ph.original?[["original","Original"]]:[]),...(ph.edited&&ph.edited!==ph.original?[["edited",ph.editedWhite?"Fondo blanco":"Mejorada"]]:[]),...(ph.altWhite?[["alt","Fondo blanco"]]:[])];
  const choices=modes.length>1?'<div class="seg-tabs photo-mode" role="group" aria-label="Elige la fotografía que quieres guardar">'+modes.map(([m,label])=>'<button type="button" class="seg-tab'+(ph.mode===m?' active':'')+'" data-photo-mode="'+m+'" aria-pressed="'+(ph.mode===m)+'">'+label+'</button>').join("")+'</div>':'';
  const tryWhite=ph.original&&!ph.altWhite&&!ph.editedWhite?'<button type="button" class="secondary wide" id="tryWhitePreview">Probar fondo blanco y comparar</button>':'';
  const improve=!ph.edited&&!ph.asIs?'<button type="button" class="secondary wide" id="makeWhite">✨ Mejorar foto</button>':'';
@@ -871,7 +877,9 @@ async function makeSheetWhite(){
  try{
  const res=await enhancePhoto(ph.original).catch(()=>null);
  if(sheetPhoto!==ph)return;
- ph.busy=false;if(res){ph.edited=res.image;ph.editedWhite=res.white;ph.asIs=!!res.asIs;ph.altWhite=res.doubtfulWhite||null;ph.mode="edited";ph.changed=true}else ph.failed=true;
+ ph.busy=false;
+ if(res?.doubtful){ph.edited=res.retouched||null;ph.editedWhite=false;ph.asIs=false;ph.altWhite=res.image;ph.mode="alt";ph.changed=true}
+ else if(res){ph.edited=res.image;ph.editedWhite=res.white;ph.asIs=!!res.asIs;ph.altWhite=res.doubtfulWhite||null;ph.mode="edited";ph.changed=true}else ph.failed=true;
  renderPhotoControls();
  }finally{ph.busy=false;done()}
 }
@@ -2083,15 +2091,17 @@ async function importBackup(file){
  }catch(e){console.error("BACKUP",e);toast("No se pudo importar la copia")}
 }
 /* Mejora todas las fotos aún sin retocar; se parte de la original guardada en el móvil si la hay */
+/* Prendas a las que «Fondo blanco en todas» puede ayudar: sin mejorar, o mejoradas conservando el fondo */
+const needsWhite=g=>validImage(g.image)&&(!g.photoFx||!g.bgWhite&&!g.catalogPhoto);
 async function whiteAll(btn){
- const todo=myGarments().filter(g=>validImage(g.image)&&!g.photoFx),profile=appState.profile?.id;let done=0,white=0;
+ const todo=myGarments().filter(needsWhite),profile=appState.profile?.id;let done=0,white=0;
  btn.disabled=true;
  for(const [i,g] of todo.entries()){
   btn.textContent="Mejorando "+(i+1)+" de "+todo.length+"…";
   let source=g.image;try{const o=await dbGet(origKey(g.id));if(validImage(o))source=o}catch{}
   const res=await enhancePhoto(source);
   if(appState.profile?.id!==profile)return;
-  if(!res)continue;
+  if(!res||g.photoFx&&!res.white)continue; // ya retocada y sigue sin poder separarse: no se retoca otra vez
   const now=new Date().toISOString();
   if(res.asIs&&res.image===g.image)Object.assign(g,{bgWhite:true,photoFx:1,catalogPhoto:1,updatedAt:now});
   else{try{if(!res.asIs)await dbSet(origKey(g.id),source)}catch(e){console.warn("ORIG",e)}
@@ -2100,7 +2110,7 @@ async function whiteAll(btn){
  }
  if(done)await saveState();
  render();
- toast(done?plural(done,"foto mejorada","fotos mejoradas")+(done-white?" ("+(done-white)+" conservando el fondo para no alterar la prenda)":""):"No he podido mejorar ninguna foto");
+ toast(done?plural(white,"foto con fondo blanco","fotos con fondo blanco")+(done-white?" · "+(done-white)+" con el fondo original (no se pudo separar la prenda)":""):"No he podido mejorar ninguna foto");
 }
 function renderSettings(root){
  const p=appState.data.preferences,u=aiUsage(),since=daysSince(p.lastBackupAt);
@@ -2114,7 +2124,7 @@ function renderSettings(root){
   '<label class="field"><span>Diversidad de combinaciones: <strong id="settingsDiversityText">'+fx(p.diversity)+'</strong>%</span><input id="settingsDiversity" type="range" min="0" max="100" step="5" value="'+fx(p.diversity)+'"></label></div>'+
   '<div class="feature-card"><h2>Uso de la IA hoy</h2><p class="muted">Análisis de fotos: '+u.analyze+' de '+AI_LIMITS.analyze+'. Sugerencias de looks: '+u.looks+' de '+AI_LIMITS.looks+'.</p><p class="helper">Los límites diarios mantienen bajo el coste de la API. «¿Lo compro?», las recomendaciones y «Combinar prenda» no usan la IA.</p></div>'+
   '<div class="feature-card"><h2>Fotos</h2><p class="muted">'+fx(myGarments().filter(g=>g.photoFx).length+" de "+myGarments().filter(g=>validImage(g.image)).length+" fotos mejoradas ("+myGarments().filter(g=>g.bgWhite).length+" con fondo blanco).")+'</p>'+
-  (myGarments().some(g=>validImage(g.image)&&!g.photoFx)?'<button class="secondary wide" id="whiteAll">✨ Mejorar todas las fotos</button><p class="helper">Luz, color, nitidez y fondo blanco cuando se puede. Se hace en tu móvil, sin gastar tokens. Las originales se guardan en este dispositivo y puedes volver a ellas desde cada prenda.</p>':'')+'</div>'+
+  (myGarments().some(needsWhite)?'<button class="secondary wide" id="whiteAll">✨ Fondo blanco en todas las fotos</button><p class="helper">Como en una tienda online: prenda sobre fondo blanco, con luz, color y nitidez. Si en alguna no se puede separar la prenda, se mejora conservando el fondo. Se hace en tu móvil, sin gastar tokens. Las originales se guardan en este dispositivo y puedes volver a ellas desde cada prenda.</p>':'')+'</div>'+
   '<div class="feature-card"><h2>Copias de seguridad</h2>'+(storage?'<p class="muted">'+fx(storage)+'</p>':'')+
   '<p class="muted">'+fx(isStandalone()?"Estás usando Atelier como app instalada.":"Estás usando Atelier desde el navegador, sin instalar.")+' '+fx(since===null?"Sin copias exportadas todavía.":"Última copia exportada hace "+plural(since,"día","días")+".")+'</p>'+
   '<button id="exportBackup" class="secondary wide">↓ Exportar copia JSON</button>'+
