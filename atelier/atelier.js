@@ -989,13 +989,22 @@ function openGarment(id){
 }
 /* «Combina con» (#160): las relaciones de la prenda con el resto del armario, agrupadas por registro; sin IA */
 const META_NAME=Object.fromEntries(META_FIELDS.map(f=>[f[0],f[1].replace(/ \(.*/,"").toLowerCase()]));
+/* Pure presentation selection; use the same rules as the stylist and never store a second score. */
+function garmentPairsForContext(g,occasion="general",ctx=null){
+ if(occasion==="general")return relationsFor(g);
+ const c=ctx||engineContext({occasion});
+ ensureRelations();
+ if(!occasionFits(g,occasion)||!seasonFits(g,c.season)||!thermalOk(g,c.temp))return [];
+ return myGarments().filter(x=>x.id!==g.id&&occasionFits(x,occasion)&&seasonFits(x,c.season)&&thermalOk(x,c.temp))
+  .map(x=>({g:x,r:relationOf(g,x,c)})).filter(x=>x.r&&x.r.s>=REL_OK).sort((a,b)=>b.r.s-a.r.s);
+}
 function renderGarmentPairs(g){
  let box=$("#garmentPairs");
  if(!box){$("#garmentAround")?.insertAdjacentHTML("beforebegin",'<section id="garmentPairs" class="garment-pairs" aria-live="polite"></section>');box=$("#garmentPairs")}
  if(!box)return;
  const selected=box.querySelector("#garmentPairsOccasion")?.value||"general";
  const ctx=selected==="general"?null:engineContext({occasion:selected});
- const rel=g?(ctx?(ensureRelations(),myGarments().map(x=>({g:x,r:relationOf(g,x,ctx)})).filter(x=>x.r&&x.r.s>=REL_OK&&occasionFits(g,selected)&&occasionFits(x.g,selected)&&seasonFits(g,ctx.season)&&seasonFits(x.g,ctx.season)&&thermalOk(g,ctx.temp)&&thermalOk(x.g,ctx.temp)).sort((a,b)=>b.r.s-a.r.s)):relationsFor(g)):[];box.classList.toggle("hidden",!g);if(!g){box.innerHTML="";return}
+ const rel=g?garmentPairsForContext(g,selected,ctx):[];box.classList.toggle("hidden",!g);if(!g){box.innerHTML="";return}
  const missing=EVIDENCE_FIELDS(g).filter(f=>!g[f]&&f!=="color").map(f=>META_NAME[f]||f);
  const groups=new Map();for(const x of rel){if(!groups.has(x.r.register))groups.set(x.r.register,[]);groups.get(x.r.register).push(x)}
  const catRank=x=>BIG.includes(x.category)?0:x.category==="Zapatos"?1:2; /* primero ropa, luego calzado y complementos */
