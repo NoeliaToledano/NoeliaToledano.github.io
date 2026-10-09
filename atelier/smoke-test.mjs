@@ -122,6 +122,21 @@ try{
  assert.ok(distinctBases.count>=3,"El armario simulado debe producir tres conjuntos");
  assert.equal(new Set(distinctBases.keys).size,distinctBases.keys.length,
   "Las primeras propuestas deben usar bases diferentes, no solo variar accesorios");
+ const principalDiversity=await page.evaluate(()=>{
+  const pool=[
+   {id:"t1",name:"Camiseta 1",category:"Arriba",color:"Blanco",style:"casual"},
+   {id:"t2",name:"Camiseta 2",category:"Arriba",color:"Blanco",style:"casual"},
+   {id:"b1",name:"Pantalón 1",category:"Abajo",color:"Negro",style:"casual"},
+   {id:"b2",name:"Pantalón 2",category:"Abajo",color:"Negro",style:"casual"}
+  ];
+  const looks=rankOutfits({pool,occasion:null,temp:22,extras:{shoes:false,bag:false},max:2,avoid:new Set()});
+  if(looks.length<2)return {count:looks.length,shared:99};
+  const a=new Set(looks[0].garments.filter(g=>["Arriba","Abajo"].includes(g.category)).map(g=>g.id));
+  return {count:looks.length,shared:looks[1].garments.filter(g=>a.has(g.id)).length};
+ });
+ assert.equal(principalDiversity.count,2,"Deben existir dos propuestas para el armario equilibrado");
+ assert.equal(principalDiversity.shared,0,
+  "Dos propuestas equivalentes deben cambiar tanto la camiseta como el pantalón");
  await page.locator(".daily-look").waitFor(); // «Tu look de hoy» nada más entrar
  assert.equal(await page.locator("#app").isVisible(),true);
  assert.equal(await page.locator("#auth").isVisible(),false);
