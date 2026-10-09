@@ -647,9 +647,12 @@ console.log("PASS: S6 long-offline devices don't resurrect deletions");
   const G=(id,category,type,color,extra={})=>({id,name:type+" "+color,category,type,color,style:"casual",season:"all",updatedAt:"x",...extra});
   appState.profile={id:"noelia"};appState.data=normalizeData({garments:[G("c1","Capas","Abrigo","Camel"),G("c2","Capas","Abrigo","Negro"),G("c3","Capas","Chaqueta","Marrón"),G("t1","Arriba","Jersey","Blanco"),G("b1","Abajo","Falda","Negro")]});
   const ids=it=>inspoMatches(it).map(g=>g.id).join();
-  return {coat:ids({category:"Capas",garmentType:"Abrigo",color:"Camel"}),boots:ids({category:"Zapatos",garmentType:"Botines",color:"Burdeos"}),jeans:ids({category:"Abajo",garmentType:"Vaqueros",color:"Azul"})};`);
+  appState.data.garments.push(G("t2","Arriba","Blusa","Blanco",{pattern:"floral"}),G("t3","Arriba","Blusa","Blanco"));
+  const unknownPattern=inspoScore({category:"Arriba",garmentType:"Blusa",color:"Blanco"},myGarments().find(g=>g.id==="t2"))===inspoScore({category:"Arriba",garmentType:"Blusa",color:"Blanco"},myGarments().find(g=>g.id==="t3"));
+  const floral=ids({category:"Arriba",garmentType:"Blusa",color:"Blanco",pattern:"floral"}).split(",")[0];
+  return {unknownPattern,floral,coat:ids({category:"Capas",garmentType:"Abrigo",color:"Camel"}),boots:ids({category:"Zapatos",garmentType:"Botines",color:"Burdeos"}),jeans:ids({category:"Abajo",garmentType:"Vaqueros",color:"Azul"})};`);
   const r=probe(document,sessionStorage,{randomUUID:()=>"t"});
-  assert.equal(r.coat.split(",")[0],"c1","Abrigo camel: primero mi abrigo camel");assert.equal(r.boots,"","Sin zapatos en el armario: nada");
+  assert.equal(r.coat.split(",")[0],"c1","Abrigo camel: primero mi abrigo camel");assert.equal(r.unknownPattern,true,"Sin estampado en el análisis, no se premia lo liso");assert.equal(r.floral,"t2","Blusa de flores: primero mi blusa de flores");assert.equal(r.boots,"","Sin zapatos en el armario: nada");
   assert.equal(r.jeans,"","Vaqueros azules frente a falda negra: no es parecida (mejor «no tengo nada parecido»)");
   console.log("PASS: Inspiration matches the closest garments by attributes and admits when nothing is similar");
 }
@@ -659,11 +662,11 @@ console.log("PASS: S6 long-offline devices don't resurrect deletions");
   process.env.ATELIER_SESSION_SECRET="test-secret";process.env.OPENAI_API_KEY="k";
   const auth=await import("../atelier-api/_lib/auth.js"),analyze=(await import("../atelier-api/api/analyze.js?perfil")).default;
   const realFetch=globalThis.fetch;
-  globalThis.fetch=async()=>({ok:true,json:async()=>({output_text:JSON.stringify({items:[{type:"bag",name:"Mochila",formality:"smartcasual",sleeve:"x",length:"raro",box:[1,1,10,10]},{type:"top",name:"Top",sleeve:"sin mangas",formality:"inventada",box:[1,1,10,10]}]})})});
+  globalThis.fetch=async()=>({ok:true,json:async()=>({output_text:JSON.stringify({items:[{type:"bag",name:"Mochila",formality:"smartcasual",sleeve:"x",length:"raro",box:[1,1,10,10]},{type:"top",name:"Top",sleeve:"sin mangas",formality:"inventada",pattern:"floral",box:[1,1,10,10]}]})})});
   const res={code:0,body:null,setHeader(){},status(c){this.code=c;return this},json(b){this.body=b;return this},end(){return this}};
   await analyze({method:"POST",headers:{authorization:"Bearer "+auth.issueSession("noelia"),origin:"https://noeliatoledano.github.io"},body:{image:"data:image/jpeg;base64,AAAA",mode:"outfit"}},res);
   globalThis.fetch=realFetch;
   assert.equal(res.body.items[0].formality,"smartcasual");assert.equal(res.body.items[0].sleeve,undefined);assert.equal(res.body.items[0].length,undefined);
-  assert.equal(res.body.items[1].sleeve,"sin mangas");assert.equal(res.body.items[1].formality,undefined);
+  assert.equal(res.body.items[1].sleeve,"sin mangas");assert.equal(res.body.items[1].pattern,"floral");assert.equal(res.body.items[0].pattern,undefined);assert.equal(res.body.items[1].formality,undefined);
   console.log("PASS: Outfit photo items carry formality, sleeve and length (validated)");
 }

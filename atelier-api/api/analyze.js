@@ -41,7 +41,7 @@ export default async function handler(req, res) {
 
     const prompt = outfit ? [
       "Foto de una persona con un look. Lista cada prenda o complemento visible (máx. 7), sin ropa interior ni calcetines.",
-      'Responde SOLO JSON: {"items":[{"type":"top|bottom|dress|outerwear|shoes|bag|accessory","garmentType":"Camiseta, Vaqueros, Vestido midi…","name":"nombre corto","color":"Negro|Blanco|Gris|Beige|Marrón|Azul|Vaquero|Verde|Rojo|Rosa|Morado|Amarillo|Plateado|Dorado|Multicolor","style":"casual|smart|party|sport","formality":"casual|smartcasual|formal|party|sport","sleeve":"sin mangas|corta|tres cuartos|larga|no aplica","length":"na|cropped|regular|midi|long","season":"all|warm|cold","box":[x,y,ancho,alto]}]}',
+      'Responde SOLO JSON: {"items":[{"type":"top|bottom|dress|outerwear|shoes|bag|accessory","garmentType":"Camiseta, Vaqueros, Vestido midi…","name":"nombre corto","color":"Negro|Blanco|Gris|Beige|Marrón|Azul|Vaquero|Verde|Rojo|Rosa|Morado|Amarillo|Plateado|Dorado|Multicolor","style":"casual|smart|party|sport","formality":"casual|smartcasual|formal|party|sport","sleeve":"sin mangas|corta|tres cuartos|larga|no aplica","length":"na|cropped|regular|midi|long","pattern":"plain|stripes|checks|floral|animal|dots|graphic|other","season":"all|warm|cold","box":[x,y,ancho,alto]}]}',
       "box: recuadro de esa prenda en % de la imagen (0-100), ajustado a la prenda. Un mono o enterizo es dress."
     ].join("\n") : [
       "Cataloga la prenda de la foto. No inventes marca ni detalles no visibles; usa null si dudas.",
@@ -97,7 +97,7 @@ export default async function handler(req, res) {
         const b = Array.isArray(x.box) ? x.box.map(num) : [0, 0, 100, 100];
         return { type: x.type, garmentType: String(x.garmentType || "").slice(0, 40), name: String(x.name || "").slice(0, 60), color: String(x.color || "").slice(0, 30),
           style: String(x.style || "").slice(0, 10), season: String(x.season || "").slice(0, 5),
-          ...pick(x, "formality", ["casual", "smartcasual", "formal", "party", "sport"]), ...pick(x, "sleeve", ["sin mangas", "corta", "tres cuartos", "larga", "no aplica"]), ...pick(x, "length", ["na", "cropped", "regular", "midi", "long"]), box: [b[0], b[1], Math.max(4, Math.min(100 - b[0], b[2])), Math.max(4, Math.min(100 - b[1], b[3]))] };
+          ...pick(x, "formality", ["casual", "smartcasual", "formal", "party", "sport"]), ...pick(x, "sleeve", ["sin mangas", "corta", "tres cuartos", "larga", "no aplica"]), ...pick(x, "length", ["na", "cropped", "regular", "midi", "long"]), ...pick(x, "pattern", ["plain", "stripes", "checks", "floral", "animal", "dots", "graphic", "other"]), box: [b[0], b[1], Math.max(4, Math.min(100 - b[0], b[2])), Math.max(4, Math.min(100 - b[1], b[3]))] };
       });
       return res.status(200).json({ items });
     }
