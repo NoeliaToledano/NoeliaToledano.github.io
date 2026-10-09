@@ -40,4 +40,6 @@ for(const test of ["benchmarks/real-photos/model-compare.test.mjs","benchmarks/r
 }
 try{execFileSync(process.execPath,[new URL("./benchmarks/styling-formulas.test.mjs",import.meta.url).pathname],{stdio:"pipe"});}
 catch(e){fail("Styling formulas regression: "+String(e.stderr||e.message));}
+try{execFileSync(process.execPath,[new URL("./benchmarks/compatibility-graph.test.mjs",import.meta.url).pathname],{stdio:"pipe"});}
+catch(e){fail("Wardrobe compatibility graph regression: "+String(e.stderr||e.message));}
 console.log("Atelier release gate OK (app y backend)");
