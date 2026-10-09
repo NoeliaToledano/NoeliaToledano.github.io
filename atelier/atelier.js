@@ -1526,7 +1526,7 @@ function thermalOk(g,temp){
 }
 /* Ocasión: si la prenda tiene ocasiones, manda eso; si no, su estilo. Casa y Baño solo en su ocasión. */
 /* Trabajo y eventos: fuera shorts, chanclas, sandalias planas, zuecos, gorras y gorros (evaluación visual #99) */
-const WORK_NO=/\bshorts?\b|chancl|sandalia|zueco|gorra|gorro|beanie|crop top|ch[aá]ndal|mallas|pantal[oó]n deportivo|camiseta t[eé]cnica/i;
+const WORK_NO=/\bshorts?\b|chancl|sandalia|zueco|gorra|gorro|beanie|crop top|ch[aá]ndal|mallas|pantal[oó]n deportivo|camiseta t[eé]cnica|\brot[oa]s\b|desgastad|deshilachad|distress|ripped|acid.?wash|destroyed/i; // rotos o lavado ácido: no para el trabajo (evaluación Polyvore)
 const OCC_STYLES={daily:["casual","smart","sport"],work:["smart","casual"],sport:["sport"],beach:["casual","sport"],home:null,event:["smart","party"],party:["party","smart"],formal:["smart","party"]};
 function occasionFits(g,occ){
  if(!occ)return !["Casa","Baño"].includes(g.category);
