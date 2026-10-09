@@ -453,3 +453,6 @@ p.notice-card{display:block}
 
 /* Motivo del 👎 (opcional): una fila de chips bajo los votos */
 .dislike-why{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:0 10px 10px;font-size:12px;color:var(--muted)}
+
+/* Inspiración: tu versión del look bajo las prendas reconocidas */
+.inspo-result{display:grid;gap:6px;margin:12px 0}

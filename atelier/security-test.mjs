@@ -641,6 +641,19 @@ console.log("PASS: S6 long-offline devices don't resurrect deletions");
   console.log("PASS: Dislike reasons: 'hoy' ignored, 'colores' only colours, 'muy arreglado/informal' shifts formality");
 }
 
+// Inspiración (recréalo con tu armario): para cada prenda de la captura, las más parecidas del armario por sus características
+{
+  const probe=new Function("document","sessionStorage","crypto",src+`
+  const G=(id,category,type,color,extra={})=>({id,name:type+" "+color,category,type,color,style:"casual",season:"all",updatedAt:"x",...extra});
+  appState.profile={id:"noelia"};appState.data=normalizeData({garments:[G("c1","Capas","Abrigo","Camel"),G("c2","Capas","Abrigo","Negro"),G("c3","Capas","Chaqueta","Marrón"),G("t1","Arriba","Jersey","Blanco"),G("b1","Abajo","Falda","Negro")]});
+  const ids=it=>inspoMatches(it).map(g=>g.id).join();
+  return {coat:ids({category:"Capas",garmentType:"Abrigo",color:"Camel"}),boots:ids({category:"Zapatos",garmentType:"Botines",color:"Burdeos"}),jeans:ids({category:"Abajo",garmentType:"Vaqueros",color:"Azul"})};`);
+  const r=probe(document,sessionStorage,{randomUUID:()=>"t"});
+  assert.equal(r.coat.split(",")[0],"c1","Abrigo camel: primero mi abrigo camel");assert.equal(r.boots,"","Sin zapatos en el armario: nada");
+  assert.equal(r.jeans,"","Vaqueros azules frente a falda negra: no es parecida (mejor «no tengo nada parecido»)");
+  console.log("PASS: Inspiration matches the closest garments by attributes and admits when nothing is similar");
+}
+
 // Foto de look: el análisis devuelve también formalidad, manga y largo (perfil de prenda), solo con valores conocidos
 {
   process.env.ATELIER_SESSION_SECRET="test-secret";process.env.OPENAI_API_KEY="k";
