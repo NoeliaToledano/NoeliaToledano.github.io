@@ -1528,7 +1528,7 @@ function thermalOk(g,temp){
    pantalón 0,15–0,24; abrigo 0,36–0,48). Usa manga, largo, grosor y tejido de la ficha; sin datos, el tipo o el nombre. */
 function cloOf(g){
  const txt=textOf(g),fab=g.fabric||"";
- const th={ligero:-1,medio:0,grueso:1}[g.thickness]??(/grueso|chunky|borrego|sherpa|forrad|acolchad/i.test(txt)?1:/\bfin[oa]\b|liger|gasa|chiffon/i.test(txt)?-1:0)
+ const th=({ligero:-1,medio:0,grueso:1}[g.thickness]??(/grueso|chunky|borrego|sherpa|forrad|acolchad/i.test(txt)?1:/\bfin[oa]\b|liger|gasa|chiffon/i.test(txt)?-1:0)) // el tejido se suma siempre (revisión de Codex, #127)
   +(["wool"].includes(fab)||/\blana\b|wool|cashmere|cachemir/i.test(txt)?.5:0)-(fab==="linen"||/\blino\b|linen/i.test(txt)?.5:0);
  const w=(lo,mid,hi)=>th<0?mid+(lo-mid)*Math.min(1,-th):mid+(hi-mid)*Math.min(1,th);
  const SLEEVELESS=/tirantes|sin mangas|sleeveless|\btank\b|palabra de honor|strapless|halter/i;

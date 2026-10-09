@@ -539,9 +539,10 @@ console.log("PASS: S6 long-offline devices don't resurrect deletions");
   const cold=sc([blouse,pants,blazer,boots],8),warm=sc([blouse,pants,coat,boots],8),light=sc([tee,shorts,vest,sandals],17),ok17=sc([tee,pants,blazer,boots],17);
   const hot=sc([wool,pants,coat,boots],28),summer=sc([tee,shorts,sandals],28),home=sc([pj],6,"home");
   return {clo:[cloOf(tee),cloOf(wool),cloOf(shorts),cloOf(coat),cloOf(boots)].map(x=>x.toFixed(2)).join(),target:[5,17,28].map(t=>cloTarget(t).toFixed(2)).join(),
+   fabric:[cloOf(G("s1","Arriba","Camisa",{sleeve:"larga",thickness:"medio",fabric:"wool"}))>cloOf(G("s2","Arriba","Camisa",{sleeve:"larga",thickness:"medio"})),cloOf(G("s3","Arriba","Camisa",{sleeve:"larga",thickness:"medio",fabric:"linen"}))<cloOf(G("s2","Arriba","Camisa",{sleeve:"larga",thickness:"medio"}))].join(),
    cold:cold.score,warm:warm.score,coldWarn:cold.warnings.join("|"),light:light.score,ok17:ok17.score,hotWarn:hot.warnings.join("|"),summerWarn:summer.warnings.join("|"),homeWarn:home.warnings.join("|")};`);
   const r=probe(document,sessionStorage,{randomUUID:()=>"t"});
-  assert.equal(r.clo,"0.14,0.37,0.07,0.51,0.10","clo por prenda aproximado a ISO 9920");assert.equal(r.target,"1.35,0.81,0.32");
+  assert.equal(r.clo,"0.14,0.37,0.07,0.51,0.10","clo por prenda aproximado a ISO 9920");assert.equal(r.target,"1.35,0.81,0.32");assert.equal(r.fabric,"true,true","Lana abriga más y lino menos, también con grosor indicado");
   assert.ok(r.warm>r.cold,"8 °C: con abrigo, mejor que con blazer fino ("+r.warm+" vs "+r.cold+")");assert.match(r.coldWarn,/frío/);
   assert.ok(r.ok17>r.light,"17 °C: pantalón y chaqueta, mejor que shorts y chaleco");
   assert.match(r.hotWarn,/demasiado abrigo/);assert.equal(r.summerWarn,"","28 °C: camiseta y shorts, sin aviso");assert.doesNotMatch(r.homeWarn,/pases frío/,"En casa no se mide el abrigo");
