@@ -1145,8 +1145,8 @@ async function suggestLooks(){
    Cada look se describe con rasgos (monocromático, con estampados, con color, vestido, estilo…) y se compara
    cuántas veces gusta un rasgo con lo que gustan los looks en general. Solo se muestra con datos suficientes. */
 const TASTE_LABELS={mono:"looks monocromáticos (un solo color)",neutral:"looks solo en neutros",color:"looks con color",multicolor:"looks con varios colores",pattern:"looks con estampados",plain:"looks lisos, sin estampados",dress:"looks con vestido o mono",layer:"looks con una capa encima"};
-function lookTraits(l){
- const byId=new Map(myGarments().map(g=>[g.id,g])),gs=(l.garmentIds||[]).map(id=>byId.get(id)).filter(Boolean),t=new Set();
+function lookTraits(l,resolved){
+ const gs=resolved||(()=>{const byId=new Map(myGarments().map(g=>[g.id,g]));return (l.garmentIds||[]).map(id=>byId.get(id)).filter(Boolean)})(),t=new Set();
  const main=gs.filter(g=>["Arriba","Abajo","Vestidos","Capas"].includes(g.category));
  const tones=main.map(g=>{const c=colorInfo(g.color,g.pattern);return c.fam==="neutro"?"n:"+c.word.replace(/a$/,"o"):c.fam}).filter(Boolean);
  const fams=new Set(main.map(g=>colorInfo(g.color,g.pattern).fam).filter(f=>f&&f!=="neutro"&&f!=="estampado"));
@@ -1165,7 +1165,8 @@ function tasteProfile(){
  const fb=appState.data.feedback||{},looks=myLooks().filter(l=>(l.garmentIds||[]).length>=2);
  const vote=l=>fb[l.id]==="down"?-1:fb[l.id]==="up"||l.favorite?1:0;
  const N=looks.length,U=looks.filter(l=>vote(l)>0).length,D=looks.filter(l=>vote(l)<0).length,stats=new Map();
- for(const l of looks){const v=vote(l);for(const k of lookTraits(l)){const s=stats.get(k)||{n:0,u:0,d:0};s.n++;if(v>0)s.u++;if(v<0)s.d++;stats.set(k,s)}}
+ const byId=new Map(myGarments().map(g=>[g.id,g]));
+ for(const l of looks){const v=vote(l);for(const k of lookTraits(l,(l.garmentIds||[]).map(id=>byId.get(id)).filter(Boolean))){const s=stats.get(k)||{n:0,u:0,d:0};s.n++;if(v>0)s.u++;if(v<0)s.d++;stats.set(k,s)}}
  const enough=N>=5&&U+D>=4,likes=[],dislikes=[];
  if(enough)for(const [k,s] of stats){
   const lift=s.u/s.n-U/N,drop=s.d/s.n-D/N;
@@ -1347,7 +1348,7 @@ function scoreOutfit(gs,ctx){
  let personal=.5;const fav=gs.filter(g=>g.favorite).length,forg=gs.filter(g=>ctx.forgotten.has(g.id));
  personal+=Math.min(.3,fav*.1)+Math.min(.3,forg.length*.15)-gs.reduce((t,g)=>t+(ctx.avoid.has(g.id)?(BIG.includes(g.category)?.45:.1):0),0);
  if(forg.length)reasons.push("Rescata «"+forg[0].name+"», que hace tiempo que no te pones");
- const traits=lookTraits({garmentIds:gs.map(g=>g.id)});for(const k of traits){if(ctx.likes.has(k)){personal+=.25;reasons.push("Va con tus gustos: "+tasteLabel(k))}if(ctx.dislikes.has(k))personal-=.25}
+ const traits=lookTraits(null,gs);for(const k of traits){if(ctx.likes.has(k)){personal+=.25;reasons.push("Va con tus gustos: "+tasteLabel(k))}if(ctx.dislikes.has(k))personal-=.25}
  const clamp=v=>Math.max(0,Math.min(1,v));
  // Lo usado hace poco resta aparte (hasta 15 puntos), para que «distinto cada día» pese de verdad
  const recent=Math.min(1,personal<0?-personal:0);
@@ -1372,7 +1373,7 @@ function completeOutfitGreedy(base,pool,ctx,used=new Map(),firstPick=null){
  const plan=[ctx.extras.shoes&&!home&&!beach?"Zapatos":beach&&ctx.extras.shoes?"Zapatos":null,!home&&rule.max>=0?"Capas":null,ctx.extras.bag&&!home?"Bolsos":null,!home?"Accesorios":null];
  for(const cat of plan){
   if(!cat||l.some(x=>x.category===cat))continue;
-  let c=pool.filter(x=>x.category===cat&&fits(x));
+  let c=(ctx.byCat?.get(cat)||pool.filter(x=>x.category===cat)).filter(fits);
   if(cat==="Capas"){c=c.filter(x=>warmthOf(x)<=rule.max);if(rule.prefer==="warm")c.sort((a,b)=>warmthOf(b)-warmthOf(a)||pref(b)-pref(a));else c.sort((a,b)=>pref(b)-pref(a))}
   else c.sort((a,b)=>pref(b)-pref(a));
   if(cat==="Zapatos"&&beach)c=c.filter(x=>/sandal|chancl|alpargat|zueco/i.test(x.type||x.name||""));
@@ -1414,7 +1415,9 @@ function rankOutfits(o={}){
  }
  bases=bases.filter(b=>b.length&&b.every((x,i)=>b.every((y,j)=>i===j||!related(x,y)||stylesOk(x,y))));
  // Puntuación y selección variada: valor = puntuación − solapamiento con las ya elegidas (prendas principales pesan más)
- const used=new Map(),cands=bases.map(b=>{const gs=completeOutfit(b,pool,ctx);return {gs,...scoreOutfit(gs,ctx)}});
+ // R2: las bases se completan con la versión rápida; la búsqueda de calzado alternativo (completeOutfit) solo para las elegidas
+ ctx.byCat=new Map();for(const g of pool){if(!ctx.byCat.has(g.category))ctx.byCat.set(g.category,[]);ctx.byCat.get(g.category).push(g)}
+ const used=new Map(),cands=bases.map(b=>{const gs=completeOutfitGreedy(b,pool,ctx);return {gs,...scoreOutfit(gs,ctx)}});
  const seen=new Set(o.seen||[]),out=[],picked=new Set();
  const overlap=(a,b)=>a.gs.reduce((t,g)=>t+(b.gs.includes(g)?(BIG.includes(g.category)&&g.category!=="Capas"?1:.35):0),0);
  const sig=c=>c.gs.map(g=>g.id).sort().join("|");
@@ -1424,7 +1427,7 @@ function rankOutfits(o={}){
   if(!best)break;picked.add(best);
   // Variedad de complementos (D2): se vuelve a completar la base teniendo en cuenta lo ya elegido
   const base=best.gs.filter(g=>!["Zapatos","Capas","Bolsos","Accesorios"].includes(g.category)||g.id===o.required);
-  const gs=out.length?completeOutfit(base,pool,ctx,used):best.gs,sc=out.length?scoreOutfit(gs,ctx):best;
+  const gs=completeOutfit(base,pool,ctx,used),sc=scoreOutfit(gs,ctx);
   for(const g of gs)if(!BIG.includes(g.category)||g.category==="Capas")used.set(g.id,(used.get(g.id)||0)+1);
   const r={gs,score:sc.score,reasons:sc.reasons,warnings:[...warn,...sc.warnings]};seen.add(sig(r));out.push(r);
  }

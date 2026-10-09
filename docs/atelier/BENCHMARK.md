@@ -50,6 +50,18 @@ Tiempos en ms; tamaños en KB o MB.
 
 **Siguientes:** «Otro look» y el motor (unos 0,4–0,6 s con 500 prendas) con un precálculo por pintado (R2), y el retoque de fotos en un Worker (R3).
 
+## Tras R2 · motor con índice por categoría y búsqueda de calzado solo en las propuestas elegidas
+
+| Prendas | Otro look | Motor |
+| --- | --- | --- |
+| 20 | 9 | 1 |
+| 100 | 55 | 21 |
+| 300 | 167 | 86 |
+| 500 | **342** (antes 646) | **148** (antes 424) |
+
+Las demás columnas no cambian (dentro del ruido de medida).
+
 ## Historial
+- 9 oct 2026 · R2: `lookTraits` con prendas resueltas, índice por categoría y `completeOutfit` (con búsqueda de calzado alternativo) solo para las propuestas elegidas.
 - 9 oct 2026 · R1: fotos con `photoUrl(g)` (URL `blob:`) y `copyData` sin duplicar fotos.
 - 9 oct 2026 · línea base (antes de R1).
