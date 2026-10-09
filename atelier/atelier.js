@@ -769,7 +769,7 @@ function setView(v){
 }
 function render(){
  const root=$("#content");if(!appState.profile)return;
- const views={today:renderToday,wardrobe:renderWardrobe,stylist:renderStylist,trips:renderTrips,looks:renderLooks,shopping:renderShopping,insights:renderInsights,calendar:renderCalendar,settings:renderSettings};
+ const views={today:renderToday,wardrobe:renderWardrobe,stylist:renderStylist,trips:renderTrips,looks:renderLooks,shopping:renderShopping,calendar:renderCalendar,settings:renderSettings};
  (views[appState.view]||renderWardrobe)(root);
 }
 
@@ -829,7 +829,7 @@ function renderWardrobe(root){
  const cards=gs.map(g=>{const f=forgottenStatus(g),n=wornCount(g.id);return '<div class="garment-tile">'+garmentCard(g)+'<div class="tile-tools"><button class="chip-button" data-fav="'+fx(g.id)+'" aria-label="Favorito">'+(g.favorite?'♥':'♡')+'</button><button class="chip-button" data-wear="'+fx(g.id)+'" aria-label="Registrar uso">✓ Usada</button></div><div class="tile-hints">'+fx(plural(n,"uso registrado","usos registrados"))+(f.forgotten?' · ✦ Olvidada':'')+'</div></div>'}).join("");
  root.innerHTML=heroHtml("Mi armario","Toda tu ropa, aprovechada al máximo.")+safetyBanner()+
   '<div class="stats">'+miniStat("prendas",myGarments().length)+miniStat("favoritas",myGarments().filter(g=>g.favorite).length)+miniStat("olvidadas",myGarments().filter(g=>forgottenStatus(g).forgotten).length)+miniStat("looks",myLooks().length)+'</div>'+
-  '<div class="actions"><button type="button" class="secondary wide" id="wardrobeInsights">Mi armario en cifras · Estadísticas e historial</button></div>'+
+  '<details class="wardrobe-summary"><summary>Resumen del armario</summary><div class="wardrobe-summary-body"><p class="helper">'+fx(myGarments().length)+' prendas · '+fx(myLooks().length)+' looks · '+fx(logs().length)+' usos registrados</p><button type="button" class="secondary small" id="wardrobeHistory">Calendario e historial</button><button type="button" class="secondary small" id="wardrobeForgotten">Prendas olvidadas</button></div></details>'+
   '<div class="section-head"><h2>Prendas <span class="muted">('+gs.length+')</span></h2><span class="head-actions"><button class="secondary" data-outfit-photo aria-label="Guardar el look que llevo con una foto">📸 Mi look</button><button id="addGarment" class="primary">+ Añadir</button></span></div>'+filters+
   (gs.length?'<div class="grid">'+cards+'</div>':'<div class="empty"><h3>No hay prendas con estos filtros</h3><p class="muted">Prueba otro filtro o añade una prenda.</p><button class="primary" id="emptyAdd">Añadir prenda</button></div>');
  $("#bannerBackup")?.addEventListener("click",downloadBackup);
@@ -843,7 +843,8 @@ function renderWardrobe(root){
  $$("[data-garment]",root).forEach(x=>x.addEventListener("click",()=>openGarment(x.dataset.garment)));
  $$("[data-fav]",root).forEach(b=>b.addEventListener("click",async()=>{const g=myGarments().find(x=>x.id===b.dataset.fav);if(g)await mutate(()=>{g.favorite=!g.favorite;g.updatedAt=new Date().toISOString()},"Favoritos actualizados")}));
  $$("[data-wear]",root).forEach(b=>b.addEventListener("click",()=>promptWear([b.dataset.wear],null)));
- $("#wardrobeInsights")?.addEventListener("click",()=>setView("insights"));
+ $("#wardrobeHistory")?.addEventListener("click",()=>setView("calendar"));
+ $("#wardrobeForgotten")?.addEventListener("click",()=>{ui.onlyForgotten=true;ui.search="";setView("wardrobe")});
 }
 let lastAnalysis=null,metaConfidence="";
 /* Foto de la ficha abierta: la original y, si se ha podido, la versión mejorada (con fondo blanco o solo retocada).
@@ -2176,25 +2177,6 @@ function renderShopping(root){
 }
 
 /* ===================== 9. Análisis y calendario ===================== */
-function renderInsights(root){
- const gs=myGarments(),n=logs().length,forgotten=gs.filter(g=>forgottenStatus(g).forgotten),never=gs.filter(g=>!lastWorn(g.id)),priced=gs.filter(g=>g.price!==null&&g.price!==undefined),totalValue=priced.reduce((s,g)=>s+(Number(g.price)||0),0);
- const cats=[...new Set(gs.map(g=>g.category||"Sin categoría"))].map(c=>({name:c,n:gs.filter(g=>(g.category||"Sin categoría")===c).length})).sort((a,b)=>b.n-a.n);
- const ranked=gs.slice().sort((a,b)=>wornCount(b.id)-wornCount(a.id)),top=Math.max(1,ranked.length?wornCount(ranked[0].id):1);
- root.innerHTML=heroHtml("Tu armario en cifras","Decisiones basadas en usos que hayas registrado.")+
-  '<div class="stats">'+miniStat("prendas",gs.length)+miniStat("usos registrados",n)+miniStat("olvidadas",forgotten.length)+miniStat("valor registrado",euro(totalValue))+'</div>'+
-  '<div class="actions"><button class="primary" id="goCalendar">Calendario e historial</button><button class="secondary" id="goForgotten">Ver olvidadas</button></div>'+
-  '<div class="feature-card"><div class="section-head"><h2>Prendas olvidadas</h2><button class="secondary" id="configureForget">Configurar</button></div>'+
-  '<p class="muted">Sin utilizar durante al menos '+fx(appState.data.preferences.forgottenDays)+' días. Excluimos las prendas fuera de temporada.</p>'+
-  (forgotten.length?'<div class="insight-list">'+forgotten.map(g=>'<div class="list-line"><strong>'+fx(g.name)+'</strong><span class="muted">'+fx(forgottenStatus(g).age)+' días · '+fx(forgottenStatus(g).reason)+'</span></div>').join("")+'</div>':'<p>De momento no hay prendas identificadas como olvidadas.</p>')+
-  '<p class="helper">'+plural(never.length,"prenda","prendas")+' sin usos registrados. Esto no demuestra que nunca te las hayas puesto.</p></div>'+
-  '<div class="feature-card"><h2>Rotación de prendas</h2><div class="insight-list">'+(ranked.length?ranked.slice(0,12).map(g=>'<div class="progress-row"><span>'+fx(g.name)+'</span><div class="progress-track"><div style="width:'+Math.round(100*wornCount(g.id)/top)+'%"></div></div><strong>'+wornCount(g.id)+'</strong></div>').join(""):'Añade prendas para ver su rotación.')+'</div></div>'+
-  '<div class="feature-card"><h2>Distribución por categorías</h2><div class="insight-list">'+cats.map(c=>'<div class="progress-row"><span>'+fx(c.name)+'</span><div class="progress-track"><div style="width:'+Math.round(100*c.n/Math.max(1,gs.length))+'%"></div></div><strong>'+c.n+'</strong></div>').join("")+'</div></div>'+
-  '<div class="feature-card"><h2>Coste por uso</h2><p class="helper">Disponible cuando introduces el precio de compra y registras usos.</p>'+
-  (priced.length?'<div class="insight-list">'+priced.filter(g=>wornCount(g.id)>0).sort((a,b)=>(Number(b.price)/wornCount(b.id))-(Number(a.price)/wornCount(a.id))).slice(0,12).map(g=>'<div class="list-line"><strong>'+fx(g.name)+'</strong><span>'+euro(g.price/wornCount(g.id))+' / uso</span></div>').join("")+'</div>':'<p>Registra el precio de tus prendas para calcularlo.</p>')+'</div>';
- $("#goCalendar")?.addEventListener("click",()=>setView("calendar"));
- $("#goForgotten")?.addEventListener("click",()=>{ui.onlyForgotten=true;ui.search="";setView("wardrobe")});
- $("#configureForget")?.addEventListener("click",()=>{const v=prompt("Días sin usar para considerar una prenda olvidada (30–365)",appState.data.preferences.forgottenDays);if(v===null)return;const n=Number(v);if(!Number.isInteger(n)||n<30||n>365)return toast("Introduce entre 30 y 365 días");setPref("forgottenDays",n)});
-}
 function renderCalendar(root){
  const month=ui.calendarMonth,year=Number(month.slice(0,4)),mon=Number(month.slice(5,7)),days=new Date(year,mon,0).getDate(),first=(new Date(year,mon-1,1).getDay()+6)%7,byDay=new Map();
  for(const entry of logs())if(entry.date?.startsWith(month))byDay.set(entry.date,(byDay.get(entry.date)||0)+1);
@@ -2205,10 +2187,10 @@ function renderCalendar(root){
  const history=logs().slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,60);
  root.innerHTML=heroHtml("Calendario de looks","Solo los días que hayas registrado; nunca inventamos usos.")+
   '<div class="feature-card"><label class="field"><span>Mes</span><input id="calendarMonth" type="month" value="'+fx(month)+'"></label>'+grid+'</div>'+
-  '<div class="section-head"><h2>Historial de usos</h2><button class="secondary" id="backInsights">← Análisis</button></div>'+
+  '<div class="section-head"><h2>Historial de usos</h2><button class="secondary" id="backInsights">Volver al armario</button></div>'+
   (history.length?'<div class="insight-list">'+history.map(l=>'<div class="history-line"><div><strong>'+fx(l.date)+'</strong><p class="muted">'+fx((l.garmentIds||[]).map(id=>myGarments().find(g=>g.id===id)?.name).filter(Boolean).join(" · "))+'</p></div><button class="chip-button" data-remove-use="'+fx(l.id)+'">Eliminar</button></div>').join("")+'</div>':'<div class="empty">Todavía no has registrado ningún conjunto utilizado.</div>');
  $("#calendarMonth")?.addEventListener("change",e=>{ui.calendarMonth=e.target.value||dayISO().slice(0,7);render()});
- $("#backInsights")?.addEventListener("click",()=>setView("insights"));
+ $("#backInsights")?.addEventListener("click",()=>setView("wardrobe"));
  $$("[data-cal-date]",root).forEach(b=>b.addEventListener("click",()=>{const day=b.dataset.calDate,items=logs().filter(l=>l.date===day);toast(items.length?plural(items.length,"uso registrado","usos registrados")+" el "+day:"Sin usos registrados el "+day)}));
  $$("[data-remove-use]",root).forEach(b=>b.addEventListener("click",async()=>{if(!confirm("¿Eliminar este registro de uso?"))return;const id=b.dataset.removeUse;await mutate(()=>{appState.data.wearLog=logs().filter(l=>l.id!==id);tomb(id)},"Registro eliminado")}));
 }
