@@ -67,6 +67,21 @@ try{
   return failures;
  });
  assert.deepEqual(collageAudit,[],"Regresión de composición fotográfica de looks");
+ // Collages complejos: ocupan toda la fila también tras el breakpoint de 700 px.
+ for(const width of [320,390,700,768,999]){
+  await page.setViewportSize({width,height:844});
+  const ratio=await page.evaluate(()=>{
+   const host=document.createElement("div");host.className="grid";
+   host.style.cssText="position:fixed;top:0;left:0;width:100%;opacity:.01;pointer-events:none;z-index:-1";
+   host.innerHTML='<div class="look-tile"><div class="look-mixed-board" data-count="5"></div></div>';
+   document.body.append(host);
+   const card=host.querySelector(".look-tile");
+   const fraction=card.getBoundingClientRect().width/host.getBoundingClientRect().width;
+   host.remove();return fraction;
+  });
+  assert.ok(ratio>.8,"Un look de 5 prendas se estrecha a "+width+" px: "+ratio);
+ }
+ await page.setViewportSize({width:390,height:844});
  await page.locator(".daily-look").waitFor(); // «Tu look de hoy» nada más entrar
  assert.equal(await page.locator("#app").isVisible(),true);
  assert.equal(await page.locator("#auth").isVisible(),false);
