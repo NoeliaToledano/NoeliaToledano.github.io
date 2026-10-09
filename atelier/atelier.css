@@ -72,6 +72,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .verdict.bad{background:#fbecea;border-color:#e6c2bd}
 .mini-title{font-size:14px;margin:16px 0 8px}
 .thumb-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;align-items:center}
+.garment-pairs{margin:14px 0 10px;display:grid;gap:6px}.garment-pairs h3{margin:0;font-size:15px}.garment-pairs .pair-group p{margin:0 0 4px}.garment-pairs .pair-note{font-size:12px;margin:0}
 .thumb{flex:none;width:72px;height:90px;border:1px solid var(--line);border-radius:12px;background:#f4f1ec center/cover no-repeat;position:relative;padding:0;overflow:hidden}
 .thumb span{position:absolute;left:0;right:0;bottom:0;background:rgba(255,255,255,.88);font-size:10px;padding:3px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
 .thumb-more{font-size:12px;padding:0 6px}

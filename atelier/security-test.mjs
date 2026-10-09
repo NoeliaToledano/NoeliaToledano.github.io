@@ -150,6 +150,44 @@ for(const [n,r] of Object.entries(engineProbe)){
 }
 console.log("PASS: Styling engine (20/100/500 prendas): capas según tiempo, variedad, ocasión, vestidos — tiempos "+Object.entries(engineProbe).map(([n,r])=>n+":"+r.ms+"ms").join(" "));
 
+// Cerebro de estilista (#160): relaciones entre pares, coherencia global y solo piezas que aportan
+{
+  const probe=new Function("document","sessionStorage","crypto",src+`
+  const G=(id,category,type,color,extra={})=>({id,name:type+" "+color,category,type,color,style:"casual",season:"all",pattern:"plain",updatedAt:"x",...extra});
+  appState.profile={id:"noelia"};const by=id=>myGarments().find(g=>g.id===id),out={};
+  // 1) La tercera pieza se mide con todas: la americana de cuadros va con la camisa, no con el pantalón de rayas
+  appState.data=normalizeData({garments:[G("t","Arriba","Camisa","Blanco",{style:"smart",sleeve:"larga"}),G("p","Abajo","Pantalón","Azul",{style:"smart",pattern:"stripes"}),
+   G("c","Capas","Americana","Gris",{style:"smart",warmth:"bajo",pattern:"checks"}),G("z","Zapatos","Mocasines","Negro",{style:"smart"}),G("a","Accesorios","Pañuelo","Rosa",{pattern:"graphic"})]});
+  let ctx=engineContext({occasion:"daily",temp:18,date:"2026-04-15"});
+  out.ct=relationOf(by("c"),by("t"),ctx).s;out.cp=relationOf(by("c"),by("p"),ctx).s;
+  out.third=rankOutfits({max:3,occasion:"daily",temp:18,date:"2026-04-15"}).map(l=>l.ids);
+  // 2) Mezcla intencionada: americana con vaquero no resta
+  appState.data=normalizeData({garments:[G("t","Arriba","Camiseta","Blanco"),G("j","Abajo","Vaqueros","Vaquero"),G("s","Zapatos","Deportivas","Blanco",{style:"sport"}),
+   G("b","Capas","Americana","Negro",{style:"smart",formality:"smartcasual",warmth:"bajo"})]});
+  ctx=engineContext({occasion:"daily",temp:16,date:"2026-04-15"});
+  out.mix=intentionalMix(by("b"),by("j"));out.mixS=relationOf(by("b"),by("j"),ctx).s;
+  out.mixLook=rankOutfits({max:1,occasion:"daily",temp:16,date:"2026-04-15"})[0].ids;
+  out.combina=relationsFor(by("j")).map(x=>x.g.id+":"+x.r.register);
+  // 3) Sin calzado coherente: aviso, no un calzado malo
+  appState.data=normalizeData({garments:[G("t","Arriba","Blusa","Azul",{style:"party",formality:"party"}),G("p","Abajo","Falda","Azul",{style:"party",formality:"party"}),
+   G("z","Zapatos","Chanclas","Naranja",{style:"sport",formality:"sport",pattern:"graphic"})]});
+  const party=rankOutfits({max:1,occasion:"party",temp:22,date:"2026-07-15"})[0];out.partyIds=party.ids;out.partyWarn=party.warnings;
+  // 4) Arriba + abajo sin calzado ni extras es un look válido; un complemento solo entra si suma
+  appState.data=normalizeData({garments:[G("t","Arriba","Camiseta","Blanco"),G("j","Abajo","Vaqueros","Vaquero"),G("a","Accesorios","Pañuelo","Verde",{pattern:"graphic"})]});
+  appState.data.preferences.extras={shoes:false,bag:false};
+  out.two=rankOutfits({max:1,occasion:"daily",temp:24,date:"2026-07-15"})[0]?.ids;
+  return out;`);
+  const r=probe(document,sessionStorage,{randomUUID:()=>"t"});
+  assert.ok(r.ct>=.6&&r.cp<.6,"La americana de cuadros combina con la camisa ("+r.ct+") pero no con el pantalón de rayas ("+r.cp+")");
+  assert.ok(r.third.every(ids=>!(ids.includes("c")&&ids.includes("p"))),"La tercera pieza se mide con todas: sin americana de cuadros con pantalón de rayas");
+  assert.ok(r.third.every(ids=>!ids.includes("a")),"Un complemento que no aporta no se añade por obligación");
+  assert.equal(r.mix,"americana con vaquero");assert.ok(r.mixS>=.75&&r.mixLook.includes("b"),"Mezcla intencionada: americana con vaquero ("+r.mixS+")");
+  assert.ok(r.combina.length>=3&&r.combina.some(x=>x.startsWith("b:arreglado")),"«Combina con»: relaciones con registro ("+r.combina+")");
+  assert.ok(!r.partyIds.includes("z")&&r.partyWarn.some(w=>/calzado/.test(w)),"Sin calzado coherente: aviso en lugar de chanclas en una fiesta");
+  assert.deepEqual(r.two,["t","j"],"Camiseta y vaquero es un look válido sin añadir nada");
+  console.log("PASS: Stylist brain: weakest link, third piece vs all, intentional mix, no filler pieces, honest shoe warning");
+}
+
 // Estilos flexibles (#52): deportivas + vaqueros + americana sí; mallas + sudadera en informal; nada de gimnasio en boda ni con vestido de fiesta
 const styleProbe=new Function("document","sessionStorage","crypto",src+`
 const G=(id,category,color,style,extra={})=>({id,name:id,category,color,style,season:"all",pattern:"plain",createdAt:"2026-10-01",updatedAt:"x",...extra});

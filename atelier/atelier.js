@@ -979,12 +979,27 @@ function openGarment(id){
  let btn=$("#garmentAround");
  if(!btn){$("#garmentForm .actions")?.insertAdjacentHTML("beforebegin",'<button type="button" id="garmentAround" class="secondary wide">✦ Ver looks con esta prenda</button>');btn=$("#garmentAround");btn?.addEventListener("click",()=>{const gid=$("#garmentId").value;if(!gid)return;ui.aroundId=gid;ui.stylistTab="around";closeGarment();setView("stylist")})}
  btn?.classList.toggle("hidden",!g);
+ renderGarmentPairs(g);
  buildMetadataSection();renderPhotoControls();populateMetadata(g);setAnalyzeStatus("");
  const details=$("#metadataDetails");if(details)details.open=false;
  const extra=$("#garmentExtra");if(extra)extra.open=!!g;
  const auto=$("#autoAnalyze");if(auto)auto.checked=appState.data.preferences.autoAnalyze!==false;
  const aw=$("#autoWhite");if(aw)aw.checked=appState.data.preferences.autoWhite!==false;
  lastAnalysis=null;$("#garmentSheet").classList.remove("hidden");
+}
+/* «Combina con» (#160): las relaciones de la prenda con el resto del armario, agrupadas por registro; sin IA */
+const META_NAME=Object.fromEntries(META_FIELDS.map(f=>[f[0],f[1].replace(/ \(.*/,"").toLowerCase()]));
+function renderGarmentPairs(g){
+ let box=$("#garmentPairs");
+ if(!box){$("#garmentAround")?.insertAdjacentHTML("beforebegin",'<section id="garmentPairs" class="garment-pairs" aria-live="polite"></section>');box=$("#garmentPairs")}
+ if(!box)return;
+ const rel=g?relationsFor(g):[];box.classList.toggle("hidden",!g);if(!g){box.innerHTML="";return}
+ const missing=EVIDENCE_FIELDS(g).filter(f=>!g[f]&&f!=="color").map(f=>META_NAME[f]||f);
+ const groups=new Map();for(const x of rel){if(!groups.has(x.r.register))groups.set(x.r.register,[]);groups.get(x.r.register).push(x)}
+ const order=["informal","arreglado","de fiesta","deportivo"],occ=xs=>{const c=new Map();for(const x of xs)for(const o of x.r.contexts)c.set(o,(c.get(o)||0)+1);return [...c].sort((a,b)=>b[1]-a[1]).slice(0,3).map(([o])=>(occasions[o]||o).toLowerCase()).join(", ")};
+ box.innerHTML='<h3>Combina con</h3>'+(rel.length?[...groups].sort((a,b)=>order.indexOf(a[0])-order.indexOf(b[0])).map(([reg,xs])=>'<div class="pair-group"><p class="muted"><strong>'+fx(reg[0].toUpperCase()+reg.slice(1))+'</strong> · '+xs.length+(xs.length===1?' prenda':' prendas')+(occ(xs)?' · '+fx(occ(xs)):'')+'</p>'+thumbs(xs.map(x=>x.g),10)+'</div>').join("")
+  :'<p class="muted">Todavía no hay prendas en tu armario que combinen bien con esta.</p>')+(missing.length?'<p class="muted pair-note">Para afinar, completa en la ficha: '+fx(missing.join(", "))+'.</p>':'');
+ $$("[data-thumb]",box).forEach(b=>b.addEventListener("click",()=>openGarment(b.dataset.thumb)));
 }
 function closeGarment(){$("#garmentSheet").classList.add("hidden")}
 async function saveGarment(e){
@@ -1151,9 +1166,100 @@ function lookComplete(gs){
  const c=new Set(gs.filter(Boolean).map(g=>g.category));
  return c.has("Vestidos")||c.has("Casa")||c.has("Baño")||c.has("Arriba")&&c.has("Abajo");
 }
+/* ===== Cerebro estilista (#159, #160; principios de Noelia, 10/10/2026) =====
+   Principio rector: Atelier no busca el conjunto con más prendas compatibles, sino la combinación más coherente,
+   favorecedora y adecuada al contexto, usando solo las piezas que aporten valor.
+   Nivel 1, relaciones: pairEvidence(a,b) son los HECHOS (reutiliza pairColor, styleAffinity, formalLevel, occasionFits…);
+   contextualizePair(ev,ctx) los valora para la ocasión, el tiempo y el gusto del perfil (el feedback solo entra aquí).
+   Nivel 2, conjunto: el núcleo (vestido o mono, o arriba+abajo) marca la dirección; cada pieza añadida necesita una función
+   (proteger del frío, repetir un color, aportar estructura, equilibrar, contraste, punto de interés) y mejorar el conjunto. */
+const REL_OCCS=["daily","work","party","event","formal","sport","beach"];
+const REGISTER_OF=lv=>lv<.6?"deportivo":lv<1.5?"informal":lv<2.5?"arreglado":"de fiesta";
+const REL_PAIRS=new Set(["Arriba|Abajo","Arriba|Capas","Arriba|Zapatos","Arriba|Bolsos","Arriba|Accesorios","Abajo|Capas","Abajo|Zapatos","Abajo|Bolsos","Abajo|Accesorios","Vestidos|Capas","Vestidos|Zapatos","Vestidos|Bolsos","Vestidos|Accesorios","Capas|Zapatos","Capas|Bolsos","Capas|Accesorios","Zapatos|Bolsos","Zapatos|Accesorios","Bolsos|Accesorios"]);
+const relatedCats=(a,b)=>REL_PAIRS.has(a.category+"|"+b.category)||REL_PAIRS.has(b.category+"|"+a.category);
+const STRUCTURED=/blazer|americana|chaqueta de traje|sastre|trench|gabardina|abrigo de pa[ñn]o/i;
+/* Mezcla intencionada (coherencia no es uniformidad): zapatillas limpias con prendas arregladas, americana con vaquero */
+function intentionalMix(a,b){
+ for(const [x,y] of [[a,b],[b,a]]){
+  if(isSneaker(x)&&x.formality!=="sport"&&!OUTDOOR.test(textOf(x))&&y.category!=="Zapatos"&&formalLevel(y)>=2) /* deportivas urbanas (no de running ni montaña) */return "zapatillas con prenda arreglada";
+  if(x.category==="Capas"&&STRUCTURED.test(textOf(x))&&isDenimPiece(y))return "americana con vaquero";
+ }
+ return "";
+}
+const EVIDENCE_FIELDS=g=>["color",...(["Arriba","Vestidos","Capas"].includes(g.category)?["sleeve","thickness"]:[]),...(BIG.includes(g.category)?["warmth"]:[]),"formality"];
+let relCache={sig:"",ev:new Map(),ctx:new Map(),learn:new Map()};
+function relSig(){const d=appState.data||{};return (d.garments||[]).length+"|"+(d.garments||[]).reduce((m,g)=>String(g.updatedAt||"")>m?String(g.updatedAt||""):m,"")+"|"+JSON.stringify(d.feedback||{})+"|"+(d.looks||[]).map(l=>l.id+(l.dislikeReason||"")).join(",").length+"|"+(d.preferences?.workDress||"")}
+/* Una vez por cálculo (rankOutfits, ficha): si el armario, el feedback o el código de vestir cambian, se rehace la caché */
+function ensureRelations(){
+ const sig=relSig();if(relCache.sig===sig)return;
+ relCache={sig,ev:new Map(),ctx:new Map(),learn:new Map()};const fb=appState.data.feedback||{};
+ for(const l of myLooks()){const v=fb[l.id]==="down"?(l.dislikeReason==="hoy"||l.dislikeReason==="color"?0:-1):fb[l.id]==="up"||l.favorite||l.inspired?1:0;if(!v)continue;const ids=l.garmentIds||[];
+  for(let i=0;i<ids.length;i++)for(let j=i+1;j<ids.length;j++){const k=[ids[i],ids[j]].sort().join("|");relCache.learn.set(k,(relCache.learn.get(k)||0)+v)}}
+}
+/* la formalidad de la ficha manda sobre el estilo (un vestido de fiesta etiquetado «casual» es de fiesta) */
+const SHEET_STYLE={sport:"sport",casual:"casual",smartcasual:"smart",formal:"smart",party:"party"};
+const sheetStyle=g=>g.formality in SHEET_STYLE&&g.style!==SHEET_STYLE[g.formality]?{...g,style:SHEET_STYLE[g.formality]}:g;
+function pairEvidence(a,b){
+ if(!a||!b||a.id===b.id||!relatedCats(a,b))return null;
+ const key=a.id&&b.id?(a.id<b.id?a.id+"|"+b.id:b.id+"|"+a.id):"";if(key&&relCache.ev.has(key))return relCache.ev.get(key);
+ const pc=pairColor(a,b),heavy=g=>warmthOf(g)>=2||g.thickness==="grueso",light=g=>summerFootwear(g)||isShortBottom(g)||g.sleeve==="sin mangas";
+ const ev={ids:[a.id,b.id],color:pc.s,colorKind:pc.k||"",small:!BIG.includes(a.category)||!BIG.includes(b.category),style:styleAffinity(sheetStyle(a),sheetStyle(b)),formalGap:Math.abs(formalLevel(a)-formalLevel(b)),
+  register:REGISTER_OF((formalLevel(a)+formalLevel(b))/2),seasonClash:!!(a.season&&b.season&&a.season!=="all"&&b.season!=="all"&&a.season!==b.season),
+  thermalClash:heavy(a)&&light(b)||heavy(b)&&light(a),occasions:REL_OCCS.filter(o=>occasionFits(a,o)&&occasionFits(b,o)),mix:intentionalMix(a,b),declared:[...new Set([a,b].flatMap(g=>!g.formality&&Array.isArray(g.occasions)?g.occasions:[]))],
+  uncertain:[a,b].flatMap(g=>EVIDENCE_FIELDS(g).filter(f=>!g[f]).map(f=>(g.name||g.type||g.category)+": "+f))};
+ if(key)relCache.ev.set(key,ev);return ev;
+}
+function contextualizePair(ev,ctx){
+ if(!ev)return null;
+ const pk=ev.ids[0]<ev.ids[1]?ev.ids[0]+"|"+ev.ids[1]:ev.ids[1]+"|"+ev.ids[0],k=pk+"|"+(ctx?.occasion||"")+"|"+(ctx?.likes?.has("pattern")?"p":"");
+ if(relCache.ctx.has(k))return relCache.ctx.get(k);
+ const color=ev.colorKind==="two-patterns"&&ctx?.likes?.has("pattern")?.75:ev.colorKind==="opposite"&&ev.small?.75:ev.color;
+ const style=ev.mix?Math.max(ev.style,.85):ev.style,formal=ev.mix?Math.max(1-ev.formalGap/3,.75):1-ev.formalGap/3; // mezcla intencionada: no resta
+ /* la ficha manda: si a una le falta la formalidad pero está marcada para esta ocasión (y ambas valen), su estilo no resta */
+ const sheet=ctx?.occasion&&ev.declared?.includes(ctx.occasion)&&ev.occasions.includes(ctx.occasion);
+ let s=.35*color+.25*(sheet?Math.max(style,.75):style)+.2*(sheet?Math.max(formal,.75):formal)+.1*(ev.seasonClash?.2:1)+.1*(ev.thermalClash?.4:1);
+ s=Math.min(s,Math.min(color,sheet?Math.max(style,.75):style,sheet?Math.max(formal,.75):formal)+.2); /* eslabón débil también dentro del par: un choque claro (dos estampados, deporte con fiesta) no lo compensan los demás aspectos */
+ if(!ev.occasions.length)s*=.8;else if(ctx?.occasion&&!ev.occasions.includes(ctx.occasion))s*=.85;
+ const n=relCache.learn.get(pk)||0;s+=Math.max(-.3,Math.min(.3,.1*n)); // lo aprendido del perfil
+ const r={s:Math.max(0,Math.min(1,Math.round(s*100)/100)),register:ev.register,contexts:ev.occasions,mix:ev.mix,uncertain:ev.uncertain};
+ relCache.ctx.set(k,r);return r;
+}
+const relationOf=(a,b,ctx)=>contextualizePair(pairEvidence(a,b),ctx);
+const REL_OK=.6,REL_WEAK=.4;
+/* La red vista desde una prenda: con qué combina, de mejor a peor (ficha «Combina con», Combinar prenda) */
+const relationsFor=(g,min=REL_OK)=>{ensureRelations();return myGarments().map(x=>({g:x,r:relationOf(g,x)})).filter(x=>x.r&&x.r.s>=min).sort((a,b)=>b.r.s-a.r.s)};
+/* Núcleo del look: el vestido o mono, o la parte de arriba + la de abajo. Marca la dirección estética. */
+const nucleusOf=gs=>{const d=gs.find(g=>g.category==="Vestidos");return d?[d]:gs.filter(g=>g.category==="Arriba"||g.category==="Abajo")};
+function comboIdentity(gs,ctx){
+ const rels=[];for(let i=0;i<gs.length;i++)for(let j=i+1;j<gs.length;j++){const r=relationOf(gs[i],gs[j],ctx);if(r)rels.push({a:gs[i],b:gs[j],r})}
+ const lv=xs=>xs.reduce((t,g)=>t+formalLevel(g),0)/Math.max(1,xs.length),nuc=nucleusOf(gs),main=gs.filter(g=>BIG.includes(g.category)||g.category==="Zapatos");
+ return {nucleus:REGISTER_OF(lv(nuc.length?nuc:gs)),register:REGISTER_OF(lv(main.length?main:gs)),contexts:REL_OCCS.filter(o=>gs.every(g=>occasionFits(g,o))),
+  weakest:rels.reduce((m,x)=>!m||x.r.s<m.r.s?x:m,null),mean:rels.length?rels.reduce((t,x)=>t+x.r.s,0)/rels.length:1};
+}
+/* Qué aporta una pieza al look (sin ella → con ella). Sin función, no entra. Solo se dicen motivos con base en los datos. */
+function pieceFunctions(x,look,ctx){
+ const f=[],t=ctx.temp,nuc=nucleusOf(look),base=nuc.length?nuc:look,name=c=>c.toLowerCase();
+ if(x.category==="Capas"){
+  if(layerRule(t).need)f.push("protege del frío");
+  else if(Number.isFinite(t)){const before=outfitClo(look)-cloTarget(t),after=outfitClo([...look,x])-cloTarget(t);if(before<-.15&&Math.abs(after)<Math.abs(before))f.push("abriga lo justo para "+t+" °C")}
+  if(STRUCTURED.test(textOf(x))&&base.every(g=>!STRUCTURED.test(textOf(g))))f.push("aporta estructura");
+  const lvBase=base.reduce((s,g)=>s+formalLevel(g),0)/Math.max(1,base.length);
+  if(["work","event","formal"].includes(ctx.occasion)&&formalLevel(x)>lvBase+.4)f.push("eleva el conjunto");
+ }
+ const k=colorKey(x),echo=k&&!["negro","blanco","gris"].includes(k)&&look.find(g=>colorKey(g)===k&&g.category!==x.category);
+ if(echo&&!BIG.includes(x.category))f.push("repite el "+name(x.color||k)+" de "+name(echo.type||echo.category));
+ const allNeutral=base.every(g=>colorInfo(g.color,g.pattern).fam==="neutro"),xc=colorInfo(x.color,x.pattern);
+ if(!BIG.includes(x.category)&&allNeutral&&xc.fam&&xc.fam!=="neutro"&&xc.fam!=="estampado")f.push("pone un punto de color");
+ if(!BIG.includes(x.category)&&allNeutral&&(isPatterned(x)||METAL.test(x.color||"")))f.push("aporta un punto de interés");
+ const vol=g=>({oversize:2,holgado:2,regular:1,recto:1,entallado:0,ajustado:0}[g.fit]);
+ if(x.category==="Capas"&&vol(x)!=null&&base.length&&base.every(g=>vol(g)!=null)&&Math.abs(vol(x)-base.reduce((s,g)=>s+vol(g),0)/base.length)>=1)f.push("equilibra las proporciones");
+ for(const g of look){const m=intentionalMix(x,g);if(m){f.push("contraste intencionado ("+m+")");break}}
+ return f;
+}
 function outfitBases(gs){
  const tops=gs.filter(g=>g.category==="Arriba"),bottoms=gs.filter(g=>g.category==="Abajo"),bases=gs.filter(g=>g.category==="Vestidos").map(d=>[d]),combos=[];
- for(const t of tops)for(const b of bottoms)if(pairs(t,b))combos.push([t,b]);
+ for(const t of tops)for(const b of bottoms)if(pairs(t,b)&&(relationOf(t,b)?.s??1)>=REL_OK)combos.push([t,b]); // núcleo: solo parejas que se llevan bien
+ if(!combos.length)for(const t of tops)for(const b of bottoms)if(pairs(t,b))combos.push([t,b]); // armario muy pequeño: las aceptables
  // Como mucho 400 en total: los vestidos siempre entran y el resto se reparte a lo largo de todas las combinaciones
  const room=Math.max(0,400-bases.length),step=combos.length>room?combos.length/room:1;
  for(let i=0;i<combos.length&&bases.length<400;i+=step)bases.push(combos[Math.floor(i)]);
@@ -1739,7 +1845,8 @@ function scoreOutfit(gs,ctx){
  else if(gs.some(g=>g.category==="Vestidos"))sil=.75;
  // Estilo (20): coherencia de estilo; una pieza de otro nivel puede ser intencionada (F03)
  const styled=gs.filter(g=>g.style),aff=[];
- for(let i=0;i<styled.length;i++)for(let j=i+1;j<styled.length;j++)aff.push(styleAffinity(styled[i],styled[j]));
+ const declared=g=>ctx.occasion&&!g.formality&&Array.isArray(g.occasions)&&g.occasions.includes(ctx.occasion); /* la ficha manda: sin formalidad en la ficha pero marcada para esta ocasión, su estilo no resta */
+ for(let i=0;i<styled.length;i++)for(let j=i+1;j<styled.length;j++){const x=styled[i],y=styled[j],v=styleAffinity(x,y);aff.push((declared(x)||declared(y))&&occasionFits(x,ctx.occasion)&&occasionFits(y,ctx.occasion)?Math.max(v,.85):v)}
  let style=aff.length?aff.reduce((a,b)=>a+b,0)/aff.length:.75;
  const target=DRESS_TARGET[ctx.dress]||(ctx.occasion==="work"?{arreglado:{smart:1,party:.6,casual:.55,sport:.25},formal:{smart:1,party:.7,casual:.3,sport:0},informal:{casual:1,smart:.9,sport:.6,party:.4}}[workDress()]:null);
  if(target&&styled.length){const fit=styled.reduce((t,g)=>t+(target[g.style]??.5),0)/styled.length;style=.5*style+.5*fit;
@@ -1766,6 +1873,11 @@ function scoreOutfit(gs,ctx){
  if(ctx.occasion&&gs.every(g=>occasionFits(g,ctx.occasion)))context+=.2;
  // Con frío, un top sin mangas, de hombros al aire o corto bajo el abrigo no es lo natural (banco A/B, #128)
  if(Number.isFinite(ctx.temp)&&ctx.temp<12&&ctx.occasion!=="home"&&gs.some(g=>g.category==="Arriba"&&((g.sleeve&&g.sleeve!=="no aplica"?g.sleeve==="sin mangas":/tirantes|sin mangas|sleeveless|\btank\b/i.test(textOf(g)))||(g.length&&g.length!=="na"?g.length==="cropped":/\bcrop/i.test(textOf(g)))||/off.?shoulder|hombros al aire|palabra de honor|strapless/i.test(textOf(g)))))context-=.25;
+ // Nivel 2: el conjunto como unidad. El eslabón más débil hunde el look aunque el resto encaje
+ const ident=comboIdentity(gs,ctx);
+ if(ident.weakest&&ident.weakest.r.s<REL_WEAK){context-=.25;warnings.push((ident.weakest.a.name||ident.weakest.a.type)+" y "+(ident.weakest.b.name||ident.weakest.b.type)+" no se llevan bien")}
+ else if(ident.weakest&&ident.weakest.r.s>=.72&&gs.length>=3)reasons.push("Todas las prendas se llevan bien entre sí");
+ if(!ctx.lite){const nuc=nucleusOf(gs);for(const x of gs.filter(g=>!nuc.includes(g)&&g.category!=="Zapatos").slice(0,3)){const fs=pieceFunctions(x,gs.filter(g=>g!==x),ctx);if(fs.length)reasons.push(capFirst(x.type||x.category)+": "+fs[0])}}
  const issues=lookIssues(gs,ctx);if(issues.length){context-=Math.min(.6,.3*issues.length);warnings.push(...issues.slice(0,2))}
  // Personal (10): favoritas, olvidadas, usado hace poco, Tus gustos
  let personal=.5;const fav=gs.filter(g=>g.favorite).length,forg=gs.filter(g=>ctx.forgotten.has(g.id));
@@ -1861,12 +1973,15 @@ function vividColorRepeat(gs){
 }
 function completeOutfitGreedy(base,pool,ctx,used=new Map(),firstPick=null){
  const l=[...base],rule=layerRule(ctx.temp),home=ctx.occasion==="home",beach=ctx.occasion==="beach";
- const fits=x=>!l.includes(x)&&!(l.some(g=>isBackpack(g)&&(isOutdoor(g)||formalLevel(g)<2))&&formalLevel(x)>=2)&&!heavyKnitInHeat(x,ctx.temp)&&!insufficientColdLayer(x,ctx.temp)&&weatherCompatible(x,l,ctx)&&l.every(p=>!related(x,p)||stylesOk(x,p))&&l.every(p=>pairColor(x,p).s>=.45||!BIG.includes(p.category)||!BIG.includes(x.category)||ctx.likes?.has("pattern")&&pairColor(x,p).k==="two-patterns")&&!(isPatterned(x)&&!BIG.includes(x.category)&&l.some(isPatterned))&&!(["Bolsos","Accesorios"].includes(x.category)&&newColorOverflow(x,l,ctx));
- const pref=x=>(x.favorite?.5:0)+(["Bolsos","Accesorios","Zapatos"].includes(x.category)&&colorKey(x)&&paletteOf(l).has(colorKey(x))?.6:0)+ /* repetir un color del look: ritmo (regla de tres colores) */1/(1+(ctx.worn.get(x.id)||0))+(ctx.forgotten.has(x.id)?.5:0)-(ctx.avoid.has(x.id)?2:0)-(used.get(x.id)||0)*1.5+
+ const fits=x=>!l.includes(x)&&!(l.some(g=>isBackpack(g)&&(isOutdoor(g)||formalLevel(g)<2))&&formalLevel(x)>=2)&&!heavyKnitInHeat(x,ctx.temp)&&!insufficientColdLayer(x,ctx.temp)&&weatherCompatible(x,l,ctx)&&l.every(p=>!related(x,p)||stylesOk(x,p))&&l.every(p=>pairColor(x,p).s>=.45||!BIG.includes(p.category)||!BIG.includes(x.category)||ctx.likes?.has("pattern")&&pairColor(x,p).k==="two-patterns")&&!(isPatterned(x)&&!BIG.includes(x.category)&&l.some(isPatterned))&&!(["Bolsos","Accesorios"].includes(x.category)&&newColorOverflow(x,l,ctx))&&l.every(p=>(relationOf(x,p,ctx)?.s??1)>=REL_WEAK); // ninguna pareja débil (calzado incluido: mejor sin calzado que uno que no combina)
+ const relMean=x=>{const rs=l.map(p=>relationOf(x,p,ctx)?.s).filter(v=>v!=null);return rs.length?rs.reduce((a,b)=>a+b,0)/rs.length:.6};
+ let pm=new Map();const pref=x=>pm.has(x)?pm.get(x):pm.set(x,prefRaw(x)).get(x); /* memo por categoría: el orden compara muchas veces */
+ const prefRaw=x=>(relMean(x)-.6)+(x.favorite?.5:0)+(["Bolsos","Accesorios","Zapatos"].includes(x.category)&&colorKey(x)&&paletteOf(l).has(colorKey(x))?.6:0)+ /* repetir un color del look: ritmo (regla de tres colores) */1/(1+(ctx.worn.get(x.id)||0))+(ctx.forgotten.has(x.id)?.5:0)-(ctx.avoid.has(x.id)?2:0)-(used.get(x.id)||0)*1.5+
   l.reduce((t,p)=>t+pairColor(x,p).s,0)/Math.max(1,l.length);
  const plan=[ctx.extras.shoes&&!home&&!beach?"Zapatos":beach&&ctx.extras.shoes?"Zapatos":null,!home&&rule.max>=0?"Capas":null,ctx.extras.bag&&!home?"Bolsos":null,!home?"Accesorios":null];
  for(const cat of plan){
   if(!cat||l.some(x=>x.category===cat))continue;
+  pm=new Map();
   let c=(ctx.byCat?.get(cat)||pool.filter(x=>x.category===cat)).filter(fits);
   if(cat==="Capas"){c=c.filter(x=>warmthOf(x)<=rule.max&&!insufficientColdLayer(x,ctx.temp));if(rule.prefer==="warm")c.sort((a,b)=>warmthOf(b)-warmthOf(a)||pref(b)-pref(a));else c.sort((a,b)=>pref(b)-pref(a));
    if(["work","event","formal","party"].includes(ctx.occasion)){const dressy=c.filter(x=>!casualCoat(x)&&(rule.prefer!=="warm"||warmthOf(x)>=warmthOf(c[0]||x)));if(dressy.length)c=[...dressy,...c.filter(x=>!dressy.includes(x))]}}
@@ -1890,7 +2005,15 @@ function completeOutfitGreedy(base,pool,ctx,used=new Map(),firstPick=null){
   if(cat==="Zapatos"&&beach)c=c.filter(x=>/sandal|chancl|alpargat|zueco/i.test([x.type,x.name,x.subtype].filter(Boolean).join(" ")));
   // P3/P4 (#99): un gorro o sombrero solo con motivo (frío o sol de verano en diario/playa); otros complementos, si suman
   if(cat==="Accesorios")c=c.filter(x=>!HEADWEAR.test([x.type,x.subtype,x.name].filter(Boolean).join(" "))||headwearMakesSense(x,ctx));
-  if(cat==="Accesorios"&&c[0]&&pref(c[0])<1.2)continue;
+  const optional=cat==="Bolsos"||cat==="Accesorios"||cat==="Capas"&&!rule.need;
+  if(optional&&ctx.lite)continue; // candidatos: sin piezas opcionales (rendimiento); se deciden al completar los looks elegidos
+  if(optional){ // expandLook: ¿el conjunto es mejor con esta prenda que sin ella? Necesita una función y subir la nota
+   /* función práctica (el bolso si se pide en Ajustes; la capa si sin ella hay aviso de frío): entra si combina con todo y apenas resta; si no, tiene que sumar */
+   const r0=scoreOutfit(l,ctx),s0=r0.score,cold=cat==="Capas"&&r0.warnings.some(w=>/frío/.test(w)),practical=cat==="Bolsos"||cold,best=c.slice(0,4).filter(x=>(practical||pieceFunctions(x,l,ctx).length)&&l.every(p=>(relationOf(x,p,ctx)?.s??1)>=REL_OK))
+    .map(x=>({x,s:scoreOutfit([...l,x],ctx).score})).sort((a,b)=>b.s-a.s)[0];
+   if(best&&best.s>=s0+(practical?-3:1))l.push(best.x); /* bolso: una pieza más diluye la media; se admite si apenas resta */
+   continue;
+  }
   const pick=cat==="Zapatos"&&firstPick?c.find(x=>x===firstPick):c[0];
   if(pick)l.push(pick);
  }
@@ -1902,15 +2025,16 @@ function completeOutfit(base,pool,ctx,used=new Map()){
  const first=completeOutfitGreedy(base,pool,ctx,used);
  if(!ctx.extras.shoes||base.some(g=>g.category==="Zapatos"))return first;
  const shoes=pool.filter(x=>x.category==="Zapatos"&&!base.includes(x)).slice(0,12);
+ const core=l=>l.filter(g=>!["Bolsos","Accesorios"].includes(g.category)).length; /* completo = calzado y capa; bolso y complementos son opcionales */
  let best=first;
- for(const z of shoes.filter(z=>!first.includes(z)).slice(0,2)){const alt=completeOutfitGreedy(base,pool,ctx,used,z);if(alt.length>best.length&&alt.includes(z))best=alt}
+ for(const z of shoes.filter(z=>!first.includes(z)).slice(0,2)){const alt=completeOutfitGreedy(base,pool,ctx,used,z);if(core(alt)>core(best)&&alt.includes(z))best=alt}
  return best;
 }
 /* rankOutfits(opciones) → [{garments, ids, score, reasons, warnings}]
    opciones: date, occasion (null = sin filtro), temp, required (id que debe estar), pool (prendas candidatas),
    avoid (ids usados hace poco), extras, max, seen (firmas ya vistas). */
 function rankOutfits(o={}){
- const ctx=engineContext(o),max=o.max||3;
+ ensureRelations();const ctx=engineContext(o),max=o.max||3;
  let pool=(o.pool||myGarments()).filter(g=>seasonFits(g,ctx.season)||g.id===o.required);
  ctx.allShoes=pool.filter(g=>g.category==="Zapatos");
  const byOcc=pool.filter(g=>occasionFits(g,ctx.occasion)||g.id===o.required);
@@ -1935,8 +2059,8 @@ function rankOutfits(o={}){
  // Puntuación y selección variada: valor = puntuación − solapamiento con las ya elegidas (prendas principales pesan más)
  // R2: las bases se completan con la versión rápida; la búsqueda de calzado alternativo (completeOutfit) solo para las elegidas
  ctx.byCat=new Map();for(const g of pool){if(!ctx.byCat.has(g.category))ctx.byCat.set(g.category,[]);ctx.byCat.get(g.category).push(g)}
- const used=new Map(),cands=bases.map(b=>{const gs=completeOutfitGreedy(b,pool,ctx);return {gs,...scoreOutfit(gs,ctx)}});
- const seen=new Set(o.seen||[]),out=[],picked=new Set();
+ ctx.lite=true;const used=new Map(),cands=bases.map(b=>{const gs=completeOutfitGreedy(b,pool,ctx);return {gs,...scoreOutfit(gs,ctx)}});
+ ctx.lite=false;const seen=new Set(o.seen||[]),out=[],picked=new Set();
  const hasTopBottom=cands.some(c=>c.gs.some(g=>g.category==="Arriba")&&c.gs.some(g=>g.category==="Abajo"));
  const overlap=(a,b)=>a.gs.reduce((t,g)=>t+(b.gs.includes(g)?(BIG.includes(g.category)&&g.category!=="Capas"?1:.35):0),0);
  const sig=c=>c.gs.map(g=>g.id).sort().join("|");
