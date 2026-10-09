@@ -629,13 +629,15 @@ console.log("PASS: S6 long-offline devices don't resurrect deletions");
   appState.profile={id:"noelia"};appState.data=normalizeData({garments:gs,looks,feedback:{l1:"down",l2:"down",l3:"down",l4:"up",l5:"up",l6:"up",l7:"up"}});
   const t=tasteProfile(),dis=t.dislikes.map(x=>x.k),hoyIgnored=myLooks().filter(l=>l.dislikeReason==="hoy").length===1;
   const noBias=formalityBias();
+  appState.data.looks.push(L("g1",["n1","n2"],{dislikeReason:"formal"}),L("g2",["n1","n2"],{dislikeReason:"formal"}),L("g3",["n1","n2"],{dislikeReason:"formal"}));Object.assign(appState.data.feedback,{g1:"up",g2:"up",g3:"up"});
+  const staleBias=formalityBias();appState.data.looks=appState.data.looks.filter(l=>!l.id.startsWith("g"));
   appState.data.looks.push(...["a","b","c"].map(k=>L("f"+k,["n1","n2"],{dislikeReason:"formal"})));Object.assign(appState.data.feedback,{fa:"down",fb:"down",fc:"down"});
   const c=engineContext({occasion:"daily",temp:20,date:"2026-04-15",extras:{shoes:false,bag:false}});
-  return {dis:dis.join(),styleDisliked:dis.some(k=>k.startsWith("style:")),noBias,bias:c.formalBias,casualVsSmart:scoreOutfit([gs[2],gs[3]],c).score-scoreOutfit([gs[4],gs[5]],c).score,
+  return {staleBias,dis:dis.join(),styleDisliked:dis.some(k=>k.startsWith("style:")),noBias,bias:c.formalBias,casualVsSmart:scoreOutfit([gs[2],gs[3]],c).score-scoreOutfit([gs[4],gs[5]],c).score,
    casualVsSmart0:(()=>{c.formalBias=0;return scoreOutfit([gs[2],gs[3]],c).score-scoreOutfit([gs[4],gs[5]],c).score})()};`);
   const r=probe(document,sessionStorage,{randomUUID:()=>"t"});
   assert.match(r.dis,/fam:rojo|mono/,"👎 «Colores» enseña colores ("+r.dis+")");assert.equal(r.styleDisliked,false,"👎 «Colores» no enseña estilo");
-  assert.equal(r.noBias,0);assert.ok(r.bias>0,"Tres 👎 «Muy arreglado»: sesgo hacia lo informal");assert.ok(r.casualVsSmart>r.casualVsSmart0,"Con ese sesgo, el look informal gana terreno");
+  assert.equal(r.noBias,0);assert.equal(r.staleBias,0,"Un motivo de 👎 que ya es 👍 no cuenta");assert.ok(r.bias>0,"Tres 👎 «Muy arreglado»: sesgo hacia lo informal");assert.ok(r.casualVsSmart>r.casualVsSmart0,"Con ese sesgo, el look informal gana terreno");
   console.log("PASS: Dislike reasons: 'hoy' ignored, 'colores' only colours, 'muy arreglado/informal' shifts formality");
 }
 

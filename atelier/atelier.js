@@ -1382,7 +1382,7 @@ const tasteLabel=k=>TASTE_LABELS[k]||(k.startsWith("fam:")?"looks con "+k.slice(
 const DISLIKE_WHY={color:"Colores",formal:"Muy arreglado",informal:"Muy informal",hoy:"Hoy no"};
 const COLOR_TRAIT=/^(mono|neutral|color|multicolor|fam:)/;
 /* Sesgo de formalidad aprendido de los 👎 con motivo: >0 prefiere más informal, <0 más arreglado (−1…1) */
-function formalityBias(){const ls=myLooks().filter(l=>l.dislikeReason==="formal"||l.dislikeReason==="informal"),f=ls.filter(l=>l.dislikeReason==="formal").length;return ls.length?(f-(ls.length-f))/Math.max(3,ls.length):0}
+function formalityBias(){const fb=appState.data.feedback||{},ls=myLooks().filter(l=>fb[l.id]==="down"&&(l.dislikeReason==="formal"||l.dislikeReason==="informal")) /* solo 👎 vigentes (revisión de Codex, #143) */,f=ls.filter(l=>l.dislikeReason==="formal").length;return ls.length?(f-(ls.length-f))/Math.max(3,ls.length):0}
 function tasteProfile(){
  const fb=appState.data.feedback||{},looks=myLooks().filter(l=>(l.garmentIds||[]).length>=2);
  // Motivo del 👎 (#136 §22): «hoy» no enseña nada; «color» solo cuenta para rasgos de color; «formal»/«informal» solo para el estilo
@@ -1390,7 +1390,7 @@ function tasteProfile(){
  const counts=(l,k)=>!(fb[l.id]==="down"&&l.dislikeReason)||(l.dislikeReason==="color"?COLOR_TRAIT.test(k):k.startsWith("style:"));
  const N=looks.length,U=looks.filter(l=>vote(l)>0).length,D=looks.filter(l=>vote(l)<0).length,stats=new Map();
  const byId=new Map(myGarments().map(g=>[g.id,g]));
- for(const l of looks){const v=vote(l);for(const k of lookTraits(l,(l.garmentIds||[]).map(id=>byId.get(id)).filter(Boolean))){const s=stats.get(k)||{n:0,u:0,d:0};s.n++;if(v>0)s.u++;if(v<0&&counts(l,k))s.d++;stats.set(k,s)}}
+ for(const l of looks){const v=vote(l);for(const k of lookTraits(l,(l.garmentIds||[]).map(id=>byId.get(id)).filter(Boolean))){if(v<0&&!counts(l,k))continue;const s=stats.get(k)||{n:0,u:0,d:0};s.n++;if(v>0)s.u++;if(v<0)s.d++;stats.set(k,s)} /* un 👎 por otro motivo no es muestra de este rasgo (revisión de Codex, #143) */}
  const enough=N>=5&&U+D>=4,likes=[],dislikes=[];
  if(enough)for(const [k,s] of stats){
   const lift=s.u/s.n-U/N,drop=s.d/s.n-D/N;
