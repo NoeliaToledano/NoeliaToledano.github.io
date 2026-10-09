@@ -450,9 +450,14 @@ function stampChanges(d,prev){
  for(const [area,pre] of [["preferences","p:"],["feedback","f:"]]){const a=d[area]||{},b=prev?.[area]||{};
   for(const k of new Set([...Object.keys(a),...Object.keys(b)]))if(JSON.stringify(a[k])!==JSON.stringify(b[k]))d.stamps[pre+k]=now}
 }
-function mergeData(local,remote){
+/* S6: las lápidas caducan a los 90 días. Si este dispositivo lleva más sin sincronizar (staleSince = su última
+   sincronización), lo que ya existía entonces y no está en el servidor se dio por borrado en otro dispositivo:
+   solo se conserva lo creado o editado aquí después. */
+function mergeData(local,remote,staleSince=null){
  const deleted=newest(remote.deleted,local.deleted),cutoff=new Date(Date.now()-90*86400000).toISOString();
  for(const [id,at] of Object.entries(deleted))if(String(at)<cutoff)delete deleted[id];
+ if(staleSince){local={...local};for(const key of ["garments","looks","wishlist","wearLog","trips","plans"]){const ids=new Set((remote[key]||[]).map(x=>x?.id));
+  local[key]=(local[key]||[]).filter(x=>ids.has(x?.id)||String(x?.updatedAt||"")>String(staleSince))}}
  const m=normalizeData({...remote,...local,deleted});
  for(const key of ["garments","looks","wishlist","wearLog","trips","plans"])m[key]=mergeLists(local[key]||[],remote[key]||[],deleted);
  m.plans=onePlanPerDay(m.plans);
@@ -523,15 +528,18 @@ async function syncNow(){
  try{
   for(let attempt=0;attempt<3;attempt++){
    const seqStart=editSeq;syncChangedView=false;let photoFail=0;
-   const g=await call("/api/sync");
+   // R4: si este dispositivo ya está al día, el servidor responde solo la versión y los ids de fotos (sin el armario)
+   const g=await call("/api/sync"+(s.ever&&s.rev?"?since="+s.rev:""));
    if(g.status===503){s.status="off";s.error=g.body.error||"";return}
    if(g.status!==200)throw new Error(g.body.error||"SYNC_"+g.status);
    const serverRev=Number(g.body.rev)||0,serverData=g.body.data?normalizeData(g.body.data):null,serverImages=new Set(Array.isArray(g.body.images)?g.body.images:[]);
    const local=appState.data,localHasData=local.garments.length||local.looks.length||local.wishlist.length||local.wearLog.length||local.trips.length;
    let incoming=null,needPush=false;
-   if(!serverData)needPush=!!localHasData||s.dirty;
+   if(g.body.unchanged&&serverRev===s.rev)needPush=s.dirty;
+   else if(!serverData)needPush=!!localHasData||s.dirty;
    else if(!s.ever){incoming=localHasData?mergeData(local,serverData):serverData;needPush=!!localHasData}  // primera vez en este dispositivo
-   else if(serverRev!==s.rev){incoming=s.dirty?mergeData(local,serverData):serverData;needPush=s.dirty}
+   else if(serverRev!==s.rev){const stale=s.lastAt&&Date.now()-Date.parse(s.lastAt)>85*86400000?s.lastAt:null;
+    incoming=s.dirty?mergeData(local,serverData,stale):serverData;needPush=s.dirty}
    else needPush=s.dirty;
    if(incoming){
     reuseLocalImages(incoming,local);
@@ -1108,7 +1116,7 @@ function renderToday(root){
  bindDailyLook(root);
  $("#prefSeason")?.addEventListener("change",e=>setPref("season",e.target.value,false));
  $("#prefTemperature")?.addEventListener("change",e=>{const v=e.target.value,n=Number(v);if(v===""||(Number.isFinite(n)&&n>=-30&&n<=55)){p.autoWeather=false;if(p.dailyLook&&!p.dailyLook.touched)p.dailyLook.date=null;setPref("temperature",v===""?DEFAULT_TEMPERATURE:n,true)}else toast("Introduce entre -30 y 55 °C")});
- $("#prefDiversity")?.addEventListener("input",e=>{$("#diversityText").textContent=e.target.value;setPref("diversity",Number(e.target.value),false)});
+ $("#prefDiversity")?.addEventListener("input",e=>{$("#diversityText").textContent=e.target.value});$("#prefDiversity")?.addEventListener("change",e=>setPref("diversity",Number(e.target.value),false)); // se guarda al soltar (R4)
  $("#prefAvoid")?.addEventListener("change",e=>setPref("avoidRepeats",e.target.checked,false));
  $("#suggestSmart")?.addEventListener("click",()=>suggestLooks());
  $("#createManual")?.addEventListener("click",()=>openLook());
@@ -2039,7 +2047,7 @@ function renderSettings(root){
  $("#syncButton")?.addEventListener("click",async e=>{e.target.disabled=true;e.target.textContent="Sincronizando…";$("#syncStatus").textContent="Sincronizando…";await syncNow();render()});
  $("#shoppingBudget")?.addEventListener("change",e=>{const n=Number(e.target.value);if(e.target.value===""||!Number.isFinite(n)||n<0)return toast("Introduce un importe en euros");setPref("budget",Math.round(n*100)/100,false);toast("Presupuesto guardado: "+euro(n))});
  $("#settingsForget")?.addEventListener("change",e=>{const n=Number(e.target.value);if(Number.isInteger(n)&&n>=30&&n<=365)setPref("forgottenDays",n);else toast("Introduce entre 30 y 365 días")});
- $("#settingsDiversity")?.addEventListener("input",e=>{$("#settingsDiversityText").textContent=e.target.value;setPref("diversity",Number(e.target.value),false)});
+ $("#settingsDiversity")?.addEventListener("input",e=>{$("#settingsDiversityText").textContent=e.target.value});$("#settingsDiversity")?.addEventListener("change",e=>setPref("diversity",Number(e.target.value),false)); // se guarda al soltar (R4)
  $("#exportBackup")?.addEventListener("click",downloadBackup);
  $("#importBackup")?.addEventListener("change",e=>importBackup(e.target.files[0]));
  $("#whiteAll")?.addEventListener("click",e=>whiteAll(e.target));

@@ -2,6 +2,7 @@ import { verifySession } from "../_lib/auth.js";
 import { cors, keys, pipeline, saveIfRev, storeConfigured } from "../_lib/store.js";
 
 // GET  /api/sync → { rev, updatedAt, data, images }   (armario sin fotos + ids de fotos guardadas)
+// GET  /api/sync?since=<rev> → { rev, unchanged: true, images } si no hay cambios desde esa versión
 // PUT  /api/sync   { baseRev, data } → { rev }         (409 si otro dispositivo guardó antes)
 const MAX_STATE_BYTES = 1_500_000;
 
@@ -15,6 +16,12 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === "GET") {
+      // ?since=<rev>: si no ha cambiado, no se envía el armario (R4)
+      const since = Number(req.query?.since);
+      if (Number.isInteger(since) && since > 0) {
+        const [rev0, imgs0] = await pipeline([["GET", k.rev], ["SMEMBERS", k.images]]);
+        if ((Number(rev0) || 0) === since) return res.status(200).json({ rev: since, unchanged: true, images: imgs0 || [] });
+      }
       const [rev, state, images] = await pipeline([["GET", k.rev], ["GET", k.state], ["SMEMBERS", k.images]]);
       const parsed = state ? JSON.parse(state) : null;
       return res.status(200).json({ rev: Number(rev) || 0, updatedAt: parsed?.updatedAt || null, data: parsed?.data || null, images: images || [] });
