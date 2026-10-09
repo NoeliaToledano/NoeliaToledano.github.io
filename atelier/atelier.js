@@ -1564,7 +1564,7 @@ function scoreOutfit(gs,ctx){
  const clamp=v=>Math.max(0,Math.min(1,v));
  // Lo usado hace poco resta aparte (hasta 15 puntos), para que «distinto cada día» pese de verdad
  const recent=Math.min(1,personal<0?-personal:0);
- const score=Math.round(25*clamp(color)+25*clamp(sil)+20*clamp(style)+20*clamp(context)+10*clamp(personal)-15*recent-(patterns>=3?12:0));
+ const score=Math.round(25*clamp(color)+25*clamp(sil)+20*clamp(style)+20*clamp(context)+10*clamp(personal)-15*recent-(patterns>=3?12:0)-12*vividColorRepeat(gs));
  return {score,reasons:[...new Set(reasons)].slice(0,3),warnings};
 }
 /* Contexto común (se calcula una vez por llamada: usos, olvidadas y gustos) */
@@ -1584,16 +1584,46 @@ function weatherCompatible(g,look,ctx){
  if(winterHat(g)&&(ctx.temp>=20||look.some(summerFootwear)))return false;
  return true;
 }
+/* Context checks used by the local outfit engine, not accessory-style policy. */
+function heavyKnitInHeat(g,temp){
+ const label=[g.name,g.type,g.subtype].filter(Boolean).join(" ").toLowerCase();
+ return temp>=24&&g.category==="Arriba"&&/jersey|suéter|sueter|sweater|pul[oó]ver|wool jumper/.test(label)&&
+  !/camiseta|manga corta|jersey fino|ligero|lightweight/.test(label);
+}
+function insufficientColdLayer(g,temp){
+ if(temp>=12||g.category!=="Capas")return false;
+ return /chaleco|vest|gilet/.test([g.name,g.type,g.subtype].filter(Boolean).join(" ").toLowerCase());
+}
+function smartFallbackShoes(g){
+ if(g.category!=="Zapatos")return false;
+ const text=[g.name,g.type,g.subtype].filter(Boolean).join(" ").toLowerCase();
+ return /mocas[ií]n|loafer|bailarina|flat|sal[oó]n|oxford|blucher|bot[ií]n|ankle boot/.test(text)&&
+  !/chancl|sandal|zueco|clog|deportiv|sneaker/.test(text);
+}
+function vividColorRepeat(gs){
+ const count=new Map();
+ for(const g of gs){
+  const info=colorInfo(g.color,g.pattern);
+  if(!info.fam||info.fam==="neutro"||info.fam==="estampado")continue;
+  count.set(info.fam,(count.get(info.fam)||0)+1);
+ }
+ return [...count.values()].reduce((n,v)=>n+Math.max(0,v-2),0);
+}
 function completeOutfitGreedy(base,pool,ctx,used=new Map(),firstPick=null){
  const l=[...base],rule=layerRule(ctx.temp),home=ctx.occasion==="home",beach=ctx.occasion==="beach";
- const fits=x=>!l.includes(x)&&weatherCompatible(x,l,ctx)&&l.every(p=>!related(x,p)||stylesOk(x,p))&&l.every(p=>pairColor(x,p).s>=.45||!BIG.includes(p.category)||!BIG.includes(x.category));
+ const fits=x=>!l.includes(x)&&!heavyKnitInHeat(x,ctx.temp)&&!insufficientColdLayer(x,ctx.temp)&&weatherCompatible(x,l,ctx)&&l.every(p=>!related(x,p)||stylesOk(x,p))&&l.every(p=>pairColor(x,p).s>=.45||!BIG.includes(p.category)||!BIG.includes(x.category));
  const pref=x=>(x.favorite?.5:0)+1/(1+(ctx.worn.get(x.id)||0))+(ctx.forgotten.has(x.id)?.5:0)-(ctx.avoid.has(x.id)?2:0)-(used.get(x.id)||0)*1.5+
   l.reduce((t,p)=>t+pairColor(x,p).s,0)/Math.max(1,l.length);
  const plan=[ctx.extras.shoes&&!home&&!beach?"Zapatos":beach&&ctx.extras.shoes?"Zapatos":null,!home&&rule.max>=0?"Capas":null,ctx.extras.bag&&!home?"Bolsos":null,!home?"Accesorios":null];
  for(const cat of plan){
   if(!cat||l.some(x=>x.category===cat))continue;
   let c=(ctx.byCat?.get(cat)||pool.filter(x=>x.category===cat)).filter(fits);
-  if(cat==="Capas"){c=c.filter(x=>warmthOf(x)<=rule.max);if(rule.prefer==="warm")c.sort((a,b)=>warmthOf(b)-warmthOf(a)||pref(b)-pref(a));else c.sort((a,b)=>pref(b)-pref(a))}
+  if(cat==="Capas"){c=c.filter(x=>warmthOf(x)<=rule.max&&!insufficientColdLayer(x,ctx.temp));if(rule.prefer==="warm")c.sort((a,b)=>warmthOf(b)-warmthOf(a)||pref(b)-pref(a));else c.sort((a,b)=>pref(b)-pref(a))}
+  else if(cat==="Zapatos"&&["party","event","formal"].includes(ctx.occasion)){
+   const formal=c.filter(x=>["party","smart"].includes(x.style));
+   if(!formal.length)c=c.filter(smartFallbackShoes);
+   c.sort((a,b)=>(Number(["party","smart"].includes(b.style))-Number(["party","smart"].includes(a.style)))*2+pref(b)-pref(a));
+  }
   else c.sort((a,b)=>pref(b)-pref(a));
   if(cat==="Zapatos"&&beach)c=c.filter(x=>/sandal|chancl|alpargat|zueco/i.test([x.type,x.name,x.subtype].filter(Boolean).join(" ")));
   if(cat==="Accesorios"&&c[0]&&pref(c[0])<1)continue;     // un complemento solo si de verdad suma
@@ -1632,7 +1662,7 @@ function rankOutfits(o={}){
   bases=[...bases,...outfitBases(pool.filter(g=>!["Casa","Baño"].includes(g.category)))];
   if(req)bases=bases.filter(b=>b.every(p=>!related(req,p)||stylesOk(req,p))).map(b=>[...b,req]);
  }
- bases=bases.filter(b=>b.length&&b.every((x,i)=>b.every((y,j)=>i===j||!related(x,y)||stylesOk(x,y))));
+ bases=bases.filter(b=>b.length&&!b.some(g=>heavyKnitInHeat(g,ctx.temp))&&b.every((x,i)=>b.every((y,j)=>i===j||!related(x,y)||stylesOk(x,y))));
  // Puntuación y selección variada: valor = puntuación − solapamiento con las ya elegidas (prendas principales pesan más)
  // R2: las bases se completan con la versión rápida; la búsqueda de calzado alternativo (completeOutfit) solo para las elegidas
  ctx.byCat=new Map();for(const g of pool){if(!ctx.byCat.has(g.category))ctx.byCat.set(g.category,[]);ctx.byCat.get(g.category).push(g)}
