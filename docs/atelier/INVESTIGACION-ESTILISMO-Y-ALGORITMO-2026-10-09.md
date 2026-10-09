@@ -489,3 +489,35 @@ Una prenda cálida puede resultar poco práctica con lluvia, viento o largas cam
 - No inferir lavandería o disponibilidad a partir de un registro de uso sin consentimiento.
 
 **Conclusión:** evaluar estética de cada conjunto, cobertura semanal, funcionalidad y eficiencia de una maleta como objetivos separados. Mantener el juego A/B de Claude para evaluar únicamente el estilismo individual, y desarrollar después benchmarks de planificación.
+
+
+## 40. Plan de reutilización de código y modelos abiertos — evaluación de integración
+
+**Decisión:** aprovechar todos los *aprendizajes compatibles*, no instalar todas las dependencias/modelos simultáneamente. Cada algoritmo debe superar pruebas de calidad, licencias, latencia y privacidad antes de entrar en la PWA.
+
+| Proyecto | Aporte | Estado técnico verificado | Decisión inicial |
+| --- | --- | --- | --- |
+| [Type-Aware Embeddings, mvasil](https://github.com/mvasil/fashion-compatibility) | Compatibilidad visual entre tipos de prendas | Repositorio BSD-3-Clause; código antiguo PyTorch 0.1.12 y pesos publicados para Polyvore nondisjoint (~11 MB) | **Primer experimento offline**; adaptar ejecución en entorno aislado y comparar con baseline, no instalarlo en el navegador |
+| [NGNN, CRIPAC-DIG](https://github.com/CRIPAC-DIG/NGNN) | Interacciones globales de categorías/prendas | TensorFlow 1.5 y Python 2.7: stack obsoleto | **Inspiración arquitectónica**; reproducción opcional después, sin arrastrar dependencias a PWA |
+| [FGAT](https://github.com/sajjadsaed/FGAT) | Personalización multimodal y grafos usuario–outfit–item | Paper en Machine Learning with Applications, publicación online 2025/volumen 2026; resultados sobre POG, no sobre nuestro armario | **Evaluación científica**, primero revisar código/licencias/entrada de datos |
+| [VICTOR](https://github.com/stevejpapad/Visual-InCompatibility-Transformer) | Detectar prendas incompatibles | Código Python moderno, requiere Polyvore y dependencias | **Experimento secundario** para mejorar Cambiar prenda |
+| [Polyvore Outfits](https://huggingface.co/datasets/mvasil/polyvore-outfits) | Pruebas disjoint/nondisjoint, compatibilidad y fill-in-the-blank | Publicado bajo CC BY 4.0 en Hugging Face; verificar derechos de imágenes de terceros antes de distribuir cualquier fotografía | **Dataset de comparación**; mantener test externo realmente separado |
+
+### Etapas realizables
+
+1. **Auditoría de integración**: revisar README, LICENSE, dependencias, pesos, tamaño, arquitectura, posibles datos personales y estado de mantenimiento de cada repositorio; dejar matriz de limitaciones.
+2. **Benchmark offline primero**: ejecutar baseline Atelier en los pares A/B (incluidos votos a ciegas) y comparar con Type-Aware en las mismas prendas donde sea técnicamente viable. Alinear información de entrada: un modelo alimentado con imágenes no debe compararse sin declarar que tiene más información que uno que usa solo etiquetas.
+3. **Prototipo de fusión**: si hay mejora consistente, combinar score estético neuronal con reglas funcionales locales de ocasión, clima, completitud y preferencias; calibrar en desarrollo y comprobar test reservado.
+4. **Reconstrucción de conjuntos**: estudiar NGNN/FGAT/VICTOR para casos donde falle compatibilidad global o para diagnosticar una pieza problemática. Evitar múltiples modelos que repliquen la misma señal.
+5. **Producción**: no introducir un servicio costoso o librerías pesadas en móvil hasta haber demostrado calidad incremental, tiempos aceptables y compatibilidad con condiciones de licencias.
+
+### Obligaciones metodológicas
+
+- Los resultados de Polyvore nondisjoint no representan exactitud personalizada real (las mismas prendas pueden figurar en train/test).
+- El conocimiento de un paper puede incorporarse por implementación propia sin necesidad de incorporar código incompatible u obsoleto; conservar atribuciones y verificar licencias específicas.
+- Separar derechos del código, pesos, dataset e imágenes.
+- Nunca enviar fotos de prendas del armario a proveedores nuevos sin decisión expresa.
+- Primero analizar votos de la usuaria: la PR #137 «Votos a ciegas de Noelia» está abierta y puede cambiar las etiquetas de nuestros tests; **no usar los votos del test reservado para ajustar y después reportar acierto sobre ese mismo test**.
+- Comparar precisión en casos difíciles, cobertura de preferencias, diversidad de top-3, tasa de looks funcionalmente inválidos, latencia y coste.
+
+**Prioridad inmediata:** cerrar el circuito humano de validación + prototipo offline Type-Aware. No tomar “usar todo” como introducir cinco modelos competidores en producción.
