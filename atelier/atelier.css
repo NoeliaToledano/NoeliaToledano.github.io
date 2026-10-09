@@ -466,3 +466,4 @@ p.notice-card{display:block}
 .almost-piece.off::after{content:"✕";position:absolute;top:6px;right:9px;font-weight:700;color:#a2402f}
 .almost-why{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
 .garment-pairs .pair-marks{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.garment-pairs .pair-warn{color:#8a5a12;background:#f5ead6;border-radius:10px;padding:8px 10px}

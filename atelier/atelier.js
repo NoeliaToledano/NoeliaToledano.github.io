@@ -998,11 +998,12 @@ function renderGarmentPairs(g){
  if(pairsView.id!==g.id)pairsView={id:g.id,occ:null};
  const occs=REL_OCCS.filter(o=>occasionFits(g,o)),occ=occs.includes(pairsView.occ)?pairsView.occ:null,rel=relationsFor(g,REL_OK,occ);
  const missing=EVIDENCE_FIELDS(g).filter(f=>!g[f]&&f!=="color").map(f=>META_NAME[f]||f);
+ const styleClash=g.style&&g.formality in SHEET_STYLE&&SHEET_STYLE[g.formality]!==g.style&&!(g.formality==="formal"&&g.style==="party"); /* etiquetas que se contradicen: el estilista usa la formalidad */
  const groups=new Map();for(const x of rel){if(!groups.has(x.r.register))groups.set(x.r.register,[]);groups.get(x.r.register).push(x)}
  const catRank=x=>BIG.includes(x.category)?0:x.category==="Zapatos"?1:2; /* primero ropa, luego calzado y complementos */
  const order=["informal","arreglado","de fiesta","deportivo"],occText=xs=>{if(occ)return "";const c=new Map();for(const x of xs)for(const o of x.r.contexts)c.set(o,(c.get(o)||0)+1);return [...c].sort((a,b)=>b[1]-a[1]).slice(0,3).map(([o])=>(occasions[o]||o).toLowerCase()).join(", ")};
  box.innerHTML='<h3>Combina con</h3>'+(occs.length?'<div class="pair-occs" role="group" aria-label="Ocasión">'+[[null,"Todas"],...occs.map(o=>[o,occasions[o]||o])].map(([o,t])=>'<button type="button" class="chip-button'+(o===occ?' active':'')+'" aria-pressed="'+(o===occ)+'" data-pair-occ="'+(o||"")+'">'+fx(t)+'</button>').join("")+'</div>':'')+'<p class="muted pair-note">'+(occ?'Para «'+fx((occasions[occ]||occ).toLowerCase())+'»':'En general')+', sin contar el tiempo de hoy: eso lo tiene en cuenta el estilista al proponer looks.</p>'+(rel.length?[...groups].sort((a,b)=>order.indexOf(a[0])-order.indexOf(b[0])).map(([reg,xs])=>'<div class="pair-group"><p class="muted"><strong>'+fx(reg[0].toUpperCase()+reg.slice(1))+'</strong> · '+xs.length+(xs.length===1?' prenda':' prendas')+(occText(xs)?' · '+fx(occText(xs)):'')+'</p>'+thumbs(xs.slice().sort((a,b)=>catRank(a.g)-catRank(b.g)||b.r.s-a.r.s).map(x=>x.g),10)+'</div>').join("")
-  :'<p class="muted">Todavía no hay prendas en tu armario que combinen bien con esta.</p>')+(missing.length?'<p class="muted pair-note">Para afinar, completa en la ficha: '+fx(missing.join(", "))+'.</p>':'');
+  :'<p class="muted">Todavía no hay prendas en tu armario que combinen bien con esta.</p>')+(missing.length?'<p class="muted pair-note">Para afinar, completa en la ficha: '+fx(missing.join(", "))+'.</p>':'')+(styleClash?'<p class="pair-note pair-warn">Revisa las etiquetas: el estilo es «'+fx(styleNames[g.style]||g.style)+'» pero la formalidad es «'+fx(metaLabel("formality",g.formality))+'». El estilista se guía por la formalidad.</p>':'');
  $$("[data-thumb]",box).forEach(b=>b.addEventListener("click",()=>openGarment(b.dataset.thumb)));
  $$("[data-pair-occ]",box).forEach(b=>b.addEventListener("click",()=>{pairsView.occ=b.dataset.pairOcc||null;renderGarmentPairs(g)}));
  /* Lo que has marcado con «Casi» sobre esta prenda, para poder deshacerlo */
@@ -1216,7 +1217,7 @@ const sheetStyle=g=>g.formality in SHEET_STYLE&&g.style!==SHEET_STYLE[g.formalit
 function relFeat(g){
  let f=relCache.feat.get(g);if(f)return f;const t=textOf(g);
  f={fl:formalLevel(g),heavy:warmthOf(g)>=2||g.thickness==="grueso",light:summerFootwear(g)||isShortBottom(g)||g.sleeve==="sin mangas",occ:REL_OCCS.filter(o=>occasionFits(g,o)),ss:sheetStyle(g),
-  urban:isSneaker(g)&&g.formality!=="sport"&&!OUTDOOR.test(t),structured:g.category==="Capas"&&STRUCTURED.test(t),denim:isDenimPiece(g),declared:!g.formality&&Array.isArray(g.occasions)?g.occasions:[],
+  urban:isSneaker(g)&&g.formality!=="sport"&&!OUTDOOR.test(t),denimMain:isDenimPiece(g)&&["Arriba","Abajo","Vestidos"].includes(g.category),tailoredPrint:isPatterned(g)&&formalLevel(g)>=2&&["Arriba","Abajo","Vestidos"].includes(g.category),structured:g.category==="Capas"&&STRUCTURED.test(t),denim:isDenimPiece(g),declared:!g.formality&&Array.isArray(g.occasions)?g.occasions:[],
   missing:EVIDENCE_FIELDS(g).filter(k=>!g[k]).map(k=>(g.name||g.type||g.category)+": "+k)};
  relCache.feat.set(g,f);return f;
 }
@@ -1227,7 +1228,7 @@ function pairEvidence(a,b){
  const mix=fa.urban&&b.category!=="Zapatos"&&fb.fl>=2||fb.urban&&a.category!=="Zapatos"&&fa.fl>=2?"zapatillas con prenda arreglada":fa.structured&&fb.denim||fb.structured&&fa.denim?"americana con vaquero":"";
  const ev={ids:[a.id,b.id],color:pc.s,colorKind:pc.k||"",small:!BIG.includes(a.category)||!BIG.includes(b.category),style:styleAffinity(fa.ss,fb.ss),formalGap:Math.abs(fa.fl-fb.fl),
   register:REGISTER_OF((fa.fl+fb.fl)/2),seasonClash:!!(a.season&&b.season&&a.season!=="all"&&b.season!=="all"&&a.season!==b.season),
-  thermalClash:fa.heavy&&fb.light||fb.heavy&&fa.light,occasions:fa.occ.filter(o=>fb.occ.includes(o)),mix,declared:fa.declared.concat(fb.declared),uncertain:fa.missing.concat(fb.missing)};
+  thermalClash:fa.heavy&&fb.light||fb.heavy&&fa.light,textureClash:fa.denimMain&&fb.tailoredPrint||fb.denimMain&&fa.tailoredPrint,occasions:fa.occ.filter(o=>fb.occ.includes(o)),mix,declared:fa.declared.concat(fb.declared),uncertain:fa.missing.concat(fb.missing)};
  if(!ma)relCache.ev.set(a,ma=new Map());ma.set(b,ev);let mb=relCache.ev.get(b);if(!mb)relCache.ev.set(b,mb=new Map());mb.set(a,ev);return ev;
 }
 function contextualizePair(ev,ctx){
@@ -1241,6 +1242,7 @@ function contextualizePair(ev,ctx){
  s=Math.min(s,Math.min(color,sheet?Math.max(style,.75):style,sheet?Math.max(formal,.75):formal)+.2); /* eslabón débil también dentro del par: un choque claro (dos estampados, deporte con fiesta) no lo compensan los demás aspectos */
  if(!ev.occasions.length)s*=.8;else if(ctx?.occasion&&!ev.occasions.includes(ctx.occasion))s*=.85;
  const n=relCache.learn.get(pk)||0;s+=Math.max(-.3,Math.min(.3,.1*n)); // lo aprendido del perfil
+ if(ev.textureClash&&!ctx?.likes?.has("denim"))s=Math.min(s,.45); /* vaquero con estampado de sastrería (camisa vaquera + pantalón de cuadros): las dos piezas tienen protagonismo y compiten; convención de estilismo que se relaja si te gusta el vaquero */
  if(relCache.block.has(pk))s=Math.min(s,.3); /* «no pegan» dicho por la persona: pareja débil */
  const r={s:Math.max(0,Math.min(1,Math.round(s*100)/100)),register:ev.register,contexts:ev.occasions,mix:ev.mix,uncertain:ev.uncertain};
  return r; /* la caché vive en relationOf, por objeto */
@@ -1888,7 +1890,7 @@ function scoreOutfit(gs,ctx){
  if(top&&bottom&&vol(top)!=null&&vol(bottom)!=null){const a=vol(top),b=vol(bottom);sil=Math.abs(a-b)===2?1:Math.abs(a-b)===1?.88:a===1?.8:ctx.dress==="comoda"&&a===2?.82:.6;if(Math.abs(a-b)===2)reasons.push("Volúmenes equilibrados: amplio con ajustado")}
  else if(gs.some(g=>g.category==="Vestidos"))sil=.75;
  // Estilo (20): coherencia de estilo; una pieza de otro nivel puede ser intencionada (F03)
- const styled=gs.filter(g=>g.style),aff=[];
+ const styled=gs.filter(g=>g.style).map(sheetStyle),aff=[]; /* la formalidad de la ficha manda sobre el estilo (camisa vaquera «smart» con formalidad informal = informal) */
  const declared=g=>ctx.occasion&&!g.formality&&Array.isArray(g.occasions)&&g.occasions.includes(ctx.occasion); /* la ficha manda: sin formalidad en la ficha pero marcada para esta ocasión, su estilo no resta */
  for(let i=0;i<styled.length;i++)for(let j=i+1;j<styled.length;j++){const x=styled[i],y=styled[j],v=styleAffinity(x,y);aff.push((declared(x)||declared(y))&&occasionFits(x,ctx.occasion)&&occasionFits(y,ctx.occasion)?Math.max(v,.85):v)}
  let style=aff.length?aff.reduce((a,b)=>a+b,0)/aff.length:.75;

@@ -244,12 +244,16 @@ console.log("PASS: Styling engine (20/100/500 prendas): capas según tiempo, var
   saveAlmost([by("t2"),by("j2"),by("z2")],["t2"],["prenda"],"daily");out.disliked=looks()[0].includes("t2");
   saveAlmost([by("v"),by("z1")],["v"],["ocasion"],"daily");out.offOcc=looks().some(ids=>ids.includes("v"));out.otherOcc=rankOutfits({max:5,occasion:"party",temp:24,date:"2026-07-15"}).length>=0;
   out.keys=Object.keys(appState.data.feedback).sort();
+  // Camisa vaquera con pantalón de cuadros de vestir: compiten (Noelia, 10/10/2026); con un pantalón liso, sí
+  appState.data=normalizeData({garments:[G("cv","Arriba","Camisa","Vaquero",{fabric:"denim",formality:"casual",style:"smart"}),G("pc","Abajo","Pantalón","Beige",{pattern:"checks",formality:"smartcasual",style:"smart"}),G("pn","Abajo","Pantalón","Negro",{formality:"smartcasual",style:"smart"})]});
+  const c2=engineContext({occasion:"work",temp:17,date:"2026-04-15"});out.clash=relationOf(by("cv"),by("pc"),c2).s;out.plain=relationOf(by("cv"),by("pn"),c2).s;
   return out;`);
   const r=probe(document,sessionStorage,{randomUUID:()=>"t"});
   assert.equal(r.pack,false,"Mochila de montaña: no entra como bolso en un look de diario");
   assert.ok(r.before>=.6&&r.after<=.3&&r.pairGone,"«No pega»: la pareja pasa a débil y no se propone junta ("+r.before+" → "+r.after+")");
   assert.equal(r.disliked,false,"«No me gusta la prenda»: deja de salir en la primera propuesta");
   assert.equal(r.offOcc,false,"«No es para esta ocasión»: no se propone en esa ocasión");
+  assert.ok(r.clash<.6&&r.plain>=.6,"Camisa vaquera: no con pantalón de cuadros de vestir ("+r.clash+"), sí con uno liso ("+r.plain+")");
   assert.deepEqual(r.keys,["g:t2","o:v|daily","p:j1|t1","p:j1|z1"],"Claves guardadas en feedback (se fusionan por clave entre dispositivos)");
   console.log("PASS: «Casi» learns per profile (pair, garment, occasion); outdoor backpack only for sport");
 }
