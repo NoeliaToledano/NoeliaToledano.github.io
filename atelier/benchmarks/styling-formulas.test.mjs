@@ -9,6 +9,7 @@ const items=[
 ];
 assert.equal(matchSlot(items[1],{category:"Arriba",pattern:"patterned"}),true);
 assert.equal(matchSlot(items[2],{category:"Abajo",pattern:"patterned"}),false);
+assert.equal(matchSlot({id:"u",category:"Abajo"},{category:"Abajo",pattern:"plain"}),false);
 const rows=generateFormulaCandidates(items,{occasion:"daily"});
 assert.ok(rows.some(x=>x.formulaId==="relaxed-tailoring"));
 assert.ok(rows.some(x=>x.formulaId==="one-pattern-focus"));
