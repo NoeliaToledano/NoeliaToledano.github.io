@@ -993,14 +993,18 @@ function renderGarmentPairs(g){
  let box=$("#garmentPairs");
  if(!box){$("#garmentAround")?.insertAdjacentHTML("beforebegin",'<section id="garmentPairs" class="garment-pairs" aria-live="polite"></section>');box=$("#garmentPairs")}
  if(!box)return;
- const rel=g?relationsFor(g):[];box.classList.toggle("hidden",!g);if(!g){box.innerHTML="";return}
+ const selected=box.querySelector("#garmentPairsOccasion")?.value||"general";
+ const ctx=selected==="general"?null:engineContext({occasion:selected});
+ const rel=g?(ctx?(ensureRelations(),myGarments().map(x=>({g:x,r:relationOf(g,x,ctx)})).filter(x=>x.r&&x.r.s>=REL_OK&&occasionFits(g,selected)&&occasionFits(x.g,selected)&&seasonFits(g,ctx.season)&&seasonFits(x.g,ctx.season)&&thermalOk(g,ctx.temp)&&thermalOk(x.g,ctx.temp)).sort((a,b)=>b.r.s-a.r.s)):relationsFor(g)):[];box.classList.toggle("hidden",!g);if(!g){box.innerHTML="";return}
  const missing=EVIDENCE_FIELDS(g).filter(f=>!g[f]&&f!=="color").map(f=>META_NAME[f]||f);
  const groups=new Map();for(const x of rel){if(!groups.has(x.r.register))groups.set(x.r.register,[]);groups.get(x.r.register).push(x)}
  const catRank=x=>BIG.includes(x.category)?0:x.category==="Zapatos"?1:2; /* primero ropa, luego calzado y complementos */
  const order=["informal","arreglado","de fiesta","deportivo"],occ=xs=>{const c=new Map();for(const x of xs)for(const o of x.r.contexts)c.set(o,(c.get(o)||0)+1);return [...c].sort((a,b)=>b[1]-a[1]).slice(0,3).map(([o])=>(occasions[o]||o).toLowerCase()).join(", ")};
- box.innerHTML='<h3>Combina con</h3><p class="muted pair-note">En general, sin contar el tiempo ni la ocasión de hoy: eso lo decide el estilista al proponer looks.</p>'+(rel.length?[...groups].sort((a,b)=>order.indexOf(a[0])-order.indexOf(b[0])).map(([reg,xs])=>'<div class="pair-group"><p class="muted"><strong>'+fx(reg[0].toUpperCase()+reg.slice(1))+'</strong> · '+xs.length+(xs.length===1?' prenda':' prendas')+(occ(xs)?' · '+fx(occ(xs)):'')+'</p>'+thumbs(xs.slice().sort((a,b)=>catRank(a.g)-catRank(b.g)||b.r.s-a.r.s).map(x=>x.g),10)+'</div>').join("")
+ box.innerHTML='<h3>Combina con</h3><label class="pair-note" for="garmentPairsOccasion">Filtrar por ocasión</label><select id="garmentPairsOccasion" aria-label="Filtrar combinaciones por ocasión"><option value="general">Todas las ocasiones</option><option value="daily">Día a día</option><option value="work">Trabajo</option><option value="party">Fiesta</option><option value="event">Evento</option><option value="formal">Formal</option></select><p class="muted pair-note">'+(ctx?'Compatibilidad para la ocasión y temperatura estimada; revisa después el look completo.':'Compatibilidad general: sin clima ni ocasión.')+'</p>'+(rel.length?[...groups].sort((a,b)=>order.indexOf(a[0])-order.indexOf(b[0])).map(([reg,xs])=>'<div class="pair-group"><p class="muted"><strong>'+fx(reg[0].toUpperCase()+reg.slice(1))+'</strong> · '+xs.length+(xs.length===1?' prenda':' prendas')+(occ(xs)?' · '+fx(occ(xs)):'')+'</p>'+thumbs(xs.slice().sort((a,b)=>catRank(a.g)-catRank(b.g)||b.r.s-a.r.s).map(x=>x.g),10)+'</div>').join("")
   :'<p class="muted">Todavía no hay prendas en tu armario que combinen bien con esta.</p>')+(missing.length?'<p class="muted pair-note">Para afinar, completa en la ficha: '+fx(missing.join(", "))+'.</p>':'');
- $$("[data-thumb]",box).forEach(b=>b.addEventListener("click",()=>openGarment(b.dataset.thumb)));
+ box.querySelector("#garmentPairsOccasion").value=selected;
+ box.querySelector("#garmentPairsOccasion").addEventListener("change",()=>renderGarmentPairs(g));
+ $("[data-thumb]",box).forEach(b=>b.addEventListener("click",()=>openGarment(b.dataset.thumb)));
 }
 function closeGarment(){$("#garmentSheet").classList.add("hidden")}
 async function saveGarment(e){
