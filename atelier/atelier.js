@@ -1204,7 +1204,7 @@ function renderOutfitSheet(){
   '<p class="helper">Los recortes de las prendas nuevas se sincronizan entre tus dispositivos, como el resto de fotos.</p>'+
   '<p class="helper" id="outfitWarn"></p><button type="button" class="primary wide" id="outfitSave">Guardar</button>';
  const {el,close}=showSheet("outfitSheet",'<div class="section-head"><h2 id="outfitSheetTitle">Guardar el look que llevo</h2><button type="button" class="secondary" data-close-sheet>Cerrar</button></div>'+
-  '<img class="outfit-photo" src="'+d.image+'" alt="Foto del look">'+body,()=>{if(outfitDraft===d)outfitDraft=null});
+  '<div class="outfit-review-layout"><div class="outfit-review-photo"><img class="outfit-photo" src="'+d.image+'" alt="Foto del look"><p class="outfit-photo-caption">Foto original · no se guarda</p></div><div class="outfit-review-content">'+body+'</div></div>',()=>{if(outfitDraft===d)outfitDraft=null});
  $("#outfitAnalyze",el)?.addEventListener("click",analyzeOutfit);
  $("#outfitCancel",el)?.addEventListener("click",()=>{outfitDraft={token:{},image:d.image,preview:true};renderOutfitSheet()});
  $("#outfitChange",el)?.addEventListener("click",()=>{close();pickOutfitPhoto()});
