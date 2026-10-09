@@ -177,3 +177,34 @@ console.log("PASS: Codex review fixes: legacy plan ids, same-day plans, strict o
   assert.ok(!/detail:\s*data/.test(src),"B6: sin detalles de OpenAI en las respuestas");
   console.log("PASS: B4/B6 revocable sessions, sliding renewal, shared CORS, generic errors");
 }
+
+// S3: descarga de fotos en paralelo, guardada al llegar; una foto que falla no bloquea las demás ni el estado
+const s3Probe=new Function("document","sessionStorage","crypto",src+`
+return (async()=>{
+  toast=()=>{};const IMG="data:image/jpeg;base64,AAAA",s={imgs:{}};let calls=0,active=0,peak=0;
+  const data=normalizeData({garments:[1,2,3,4,5,6,7,8].map(i=>({id:"g"+i,name:"p"+i,category:"Arriba",updatedAt:"x"}))});
+  const call=async path=>{calls++;active++;peak=Math.max(peak,active);await new Promise(r=>setTimeout(r,5));active--;
+    if(path.includes("g3"))throw new TypeError("Failed to fetch");if(path.includes("g5"))return {status:500,body:{}};return {status:200,body:{image:IMG}}};
+  const server=new Set(data.garments.map(g=>g.id));
+  const failed=await downloadImages(data,server,call,s,"noelia");
+  const got=data.garments.filter(g=>g.image).length;
+  // Reintento de la fusión (otra copia de los datos): solo se piden las que faltaban
+  const again=normalizeData({garments:data.garments.map(g=>({...g,image:undefined}))});calls=0;
+  const failed2=await downloadImages(again,server,call,s,"noelia");
+  let fatal=null;try{await downloadImages(normalizeData({garments:[{id:"g9",updatedAt:"x"}]}),new Set(["g9"]),async()=>{throw new Error("SESSION_EXPIRED")},s,"noelia")}catch(e){fatal=e.message}
+  // Subida: una foto rechazada (413) no bloquea las demás y no se reintenta
+  appState.profile={id:"noelia"};appState.data=normalizeData({garments:["a","b","c"].map(id=>({id,name:id,category:"Arriba",image:IMG,updatedAt:"x"}))});
+  const up=new Set(),us={imgs:{}};let posts=0;
+  const callUp=async(p,o)=>{posts++;const id=JSON.parse(o.body).id;return id==="b"?{status:413,body:{}}:{status:200,body:{}}};
+  const upFailed=await uploadImages(up,callUp,us);const posts1=posts;await uploadImages(up,callUp,us);
+  return {failed,got,peak,calls2:calls,failed2,fatal,upFailed,uploaded:[...up].sort().join(),posts1,posts2:posts-posts1};
+})();
+`);
+const s3=await s3Probe(document,sessionStorage,{randomUUID:()=>"t"});
+assert.equal(s3.failed,2,"Dos fotos fallan (red y 500)");assert.equal(s3.got,6,"Las demás se descargan");
+assert.ok(s3.peak>1&&s3.peak<=4,"Descarga en paralelo, máximo 4 a la vez");
+assert.equal(s3.calls2,2,"Reintento: solo se piden las que faltaban");assert.equal(s3.failed2,2);
+assert.equal(s3.fatal,"SESSION_EXPIRED","Una sesión caducada sí detiene la sincronización");
+assert.equal(s3.upFailed,1);assert.equal(s3.uploaded,"a,c","Una foto rechazada no bloquea las demás");
+assert.equal(s3.posts2,0,"La foto rechazada no se reintenta hasta que cambie");
+console.log("PASS: S3 photo sync: parallel downloads kept on arrival, per-photo failures don't block");
