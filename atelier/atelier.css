@@ -419,3 +419,8 @@ p.notice-card{display:block}
 #buyCheck .buy-photo-actions button{min-width:0;min-height:48px}
 .photo-guidance{font-size:12px;line-height:1.5;color:var(--muted);margin:9px 0 12px}
 @media(max-width:360px){#buyCheck .buy-photo-actions{grid-template-columns:1fr}}
+
+.wardrobe-summary{margin:4px 0 20px;border-bottom:1px solid var(--line)}
+.wardrobe-summary>summary{cursor:pointer;padding:12px 2px;color:var(--muted);font-size:13px}
+.wardrobe-summary-body{display:flex;flex-wrap:wrap;gap:8px;padding:0 2px 15px}
+.wardrobe-summary-body p{flex-basis:100%;margin:0 0 4px}

@@ -144,9 +144,12 @@ try{
  await page.locator('[name="wishPrice"]').fill("80");
  await page.locator('#wishlistForm button[type="submit"]').click();
  await page.getByText("Abrigo de prueba").waitFor();
- await page.locator('[data-view="wardrobe"]').click(); await page.locator('#wardrobeInsights').click();
- await page.getByRole("heading",{name:"Prendas olvidadas"}).waitFor();
- await page.locator("#goCalendar").click();
+ await page.locator('[data-view="wardrobe"]').click();
+ await page.locator(".wardrobe-summary > summary").click();
+ await page.locator("#wardrobeForgotten").click();
+ assert.equal(await page.evaluate(()=>ui.onlyForgotten),true);
+ await page.locator(".wardrobe-summary > summary").click();
+ await page.locator("#wardrobeHistory").click();
  await page.getByRole("heading",{name:"Calendario de looks"}).waitFor();
  assert.ok(await page.locator("[data-remove-use]").count()>0,"Wear records must appear in calendar");
  await page.locator('[data-view="today"]').click();
