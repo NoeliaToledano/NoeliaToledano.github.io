@@ -250,3 +250,15 @@ console.log("PASS: S6 long-offline devices don't resurrect deletions");
   assert.ok(/worker-src &#39;self&#39; blob:/.test(html),"CSP: Worker de fotos (blob:) y service worker ('self')");
   console.log("PASS: R3 photo Worker source and CSP");
 }
+
+// B5: «¿Lo compro?» no llama a la IA sola; el color se estima en el móvil
+{
+  const probe=new Function("document","sessionStorage","crypto",src+`
+  const lab=rgb=>{const [L,A,B]=labArrays(Uint8ClampedArray.from([...rgb,255]),1);return colorName(L[0],A[0],B[0])};
+  return {names:[[20,20,22],[245,245,240],[128,128,128],[40,40,200],[110,60,140],[200,30,40],[230,150,175],[214,196,164],[110,72,45],[60,130,70],[230,205,50],[80,105,140]].map(lab).join(),
+   start:String(startBuyCheck)};`);
+  const r=probe(document,sessionStorage,{randomUUID:()=>"t"});
+  assert.equal(r.names,"Negro,Blanco,Gris,Azul,Morado,Rojo,Rosa,Beige,Marrón,Verde,Amarillo,Vaquero");
+  assert.ok(!r.start.includes("/api/analyze"),"B5: la foto de «¿Lo compro?» no se analiza con IA automáticamente");
+  console.log("PASS: B5 buy check: local colour estimate, AI only on demand");
+}
