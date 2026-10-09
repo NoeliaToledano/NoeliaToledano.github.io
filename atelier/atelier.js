@@ -55,7 +55,7 @@ function photoUrl(g){
 function clearPhotoUrls(){for(const c of photoUrls.values())URL.revokeObjectURL(c.url);photoUrls.clear()}
 const appState={profile:null,token:null,data:emptyData(),view:"today",authExpired:false};
 let lastSavedData=emptyData();
-const ui={search:"",category:"",season:"",onlyFavorites:false,onlyForgotten:false,sort:"recent",calendarMonth:new Date().toISOString().slice(0,7),lookFilter:"all",wishlistFilter:"all",stylistTab:"today",shopTab:"buy",aroundId:"",tripId:""};
+const ui={search:"",category:"",season:"",onlyFavorites:false,onlyForgotten:false,sort:"recent",calendarMonth:new Date().toISOString().slice(0,7),lookFilter:"all",wishlistFilter:"all",stylistTab:"today",shopTab:"buy",aroundId:"",tripId:"",todayOptionsOpen:false};
 
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
 function uid(){return crypto.randomUUID?.()||Date.now().toString(36)+Math.random().toString(36).slice(2)}
@@ -1290,13 +1290,12 @@ function renderToday(root){
  const info=p.autoWeather&&p.weatherDay===dayISO()?"Tiempo de hoy en tu zona: media de "+p.temperature+" °C.":p.autoWeather?"Actualizando el tiempo de hoy…":"";
  stylistShell(root,"Hoy",capFirst(new Intl.DateTimeFormat("es-ES",{weekday:"long",day:"numeric",month:"long"}).format(new Date())),
   dailyLookHtml()+plannedTodayHtml()+
-  '<details class="today-unified-options"><summary>Más opciones</summary><div class="today-options-content"><section class="today-ia-section"><h2>Ideas con IA</h2>'+
+  '<details class="today-unified-options"'+(ui.todayOptionsOpen?' open':'')+'><summary>Más opciones</summary><div class="today-options-content"><section class="today-ia-section"><h2>Ideas con IA</h2>'+
   '<div class="filter-grid"><label class="field"><span>Ocasión</span><select id="prefOccasion">'+optionList(Object.entries(occasions),p.occasion)+'</select></label>'+
   '<label class="field"><span>Temporada</span><select id="prefSeason">'+optionList(Object.entries(seasons),p.season)+'</select></label></div>'+
   '<div class="today-weather"><div class="today-weather-heading"><strong>Temperatura para tu look</strong><span class="muted">'+(p.autoWeather&&p.weatherDay===dayISO()?'Según el tiempo de hoy':p.autoWeather?'Actualizando tiempo de hoy':'Ajustada manualmente')+'</span></div>'+
   '<div class="today-weather-controls"><label class="field" for="prefTemperature"><span>Grados Celsius</span><span class="today-temperature-input"><input id="prefTemperature" type="number" min="-30" max="55" step="1" inputmode="numeric" value="'+fx(currentTemperature())+'"><span>°C</span></span></label>'+
   '<button type="button" class="secondary" id="useWeather">Usar tiempo de hoy</button></div>'+
-  (p.autoWeather?'<button type="button" class="link-button today-weather-reset" id="stopWeather">Restablecer a '+DEFAULT_TEMPERATURE+' °C</button>':'')+
   (info?'<p class="helper" role="status">'+fx(info)+'</p>':'')+'</div>'+
   '<label class="switch-line"><input id="prefAvoid" type="checkbox"'+(p.avoidRepeats?' checked':'')+'> Evitar repetir combinaciones recientes</label>'+
   '<button class="primary wide" id="suggestSmart">✦ Generar looks con mi ropa</button>'+
@@ -1305,6 +1304,7 @@ function renderToday(root){
   '<div class="actions"><button class="secondary" id="createManual">Crear look manual</button><button class="secondary" id="openCalendar">Calendario de uso</button></div>'+
   (candidates.length?'<div class="section-head"><h2>Prendas olvidadas</h2></div><div class="insight-list">'+candidates.map(g=>'<button class="list-line link-line" data-rescue="'+fx(g.id)+'"><strong>'+fx(g.name)+'</strong><span class="muted">'+fx(plural(wornCount(g.id),"uso","usos"))+' · ver looks ›</span></button>').join("")+'</div>':'')+
   '</div></section></div></details>');
+ $(".today-unified-options",root)?.addEventListener("toggle",e=>{ui.todayOptionsOpen=e.target.open});
  $("#prefOccasion")?.addEventListener("change",e=>{const d=p.dailyLook;if(d&&!d.touched)d.date=null;setPref("occasion",e.target.value,true)});
  bindExtrasToggles(root,()=>{const d=p.dailyLook;if(d&&!d.touched)d.date=null;render()});
  bindDailyLook(root);
@@ -1319,7 +1319,6 @@ function renderToday(root){
  $("#useWeather")?.addEventListener("click",async e=>{e.target.disabled=true;e.target.textContent="Consultando…";
   try{const w=await fetchTodayTemperature(true);toast("Hoy: entre "+w.min+" y "+w.max+" °C (media "+w.mean+" °C)");render()}
   catch(err){console.warn("WEATHER",err);toast(err?.code===1?"Sin permiso de ubicación: sigo usando "+DEFAULT_TEMPERATURE+" °C":"No se pudo consultar el tiempo");e.target.disabled=false;e.target.textContent="Usar tiempo de hoy"}});
- $("#stopWeather")?.addEventListener("click",async()=>{Object.assign(p,{autoWeather:false,temperature:DEFAULT_TEMPERATURE,weatherDay:null,weatherPlace:null});await saveState();render()});
 }
 const aiLookCache=new Map();
 /* Las propuestas de la IA se revisan antes de guardarlas (no se guardan solas en Mis looks) */
