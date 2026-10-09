@@ -15,7 +15,7 @@ return {badImage,goodImage,badLook,escaped:esc("<script>alert(1)</script>"),logo
 const r=run(document,sessionStorage,{randomUUID:()=> "test"});
 assert.ok(r.badImage.includes('data-garment="&quot; onclick=&quot;alert(1)"'));
 assert.ok(!r.badImage.includes("javascript:"));
-assert.ok(r.goodImage.includes("data:image/jpeg;base64,AAAA"));
+assert.ok(/background-image:url\((blob:|data:image\/jpeg;base64,AAAA)/.test(r.goodImage),"Una foto válida se pinta (como blob: o data:)");
 assert.ok(r.badLook.includes('data-look="&quot; onclick=&quot;alert(1)"'));
 assert.equal(r.escaped,"&lt;script&gt;alert(1)&lt;/script&gt;");
 r.logout();

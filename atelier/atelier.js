@@ -37,7 +37,22 @@ function normalizeData(v){
  d.plans=onePlanPerDay(d.plans);
  return d;
 }
-const copyData=d=>structuredClone(d);
+/* Copia del estado sin duplicar las fotos: las cadenas de texto son inmutables, así que las fotos se comparten (R1).
+   Antes, cada guardado copiaba todas las fotos (0,8 s con 500 prendas). */
+const copyData=d=>{const imgs=(d.garments||[]).map(g=>g.image),c=structuredClone({...d,garments:(d.garments||[]).map(({image,...g})=>g)});
+ c.garments.forEach((g,i)=>{if(imgs[i]!==undefined)g.image=imgs[i]});return c};
+/* URL corta (blob:) para pintar la foto de una prenda, creada una vez por foto (R1).
+   Así el HTML no lleva la foto entera dentro (44 MB por pintado con 500 prendas). g.image sigue siendo el data URL. */
+const photoUrls=new Map();
+function photoUrl(g){
+ const src=g?.image;if(!validImage(src))return "";
+ const c=photoUrls.get(g.id);if(c&&c.src===src)return c.url;
+ try{const comma=src.indexOf(","),mime=src.slice(5,src.indexOf(";")),bin=atob(src.slice(comma+1)),u=new Uint8Array(bin.length);
+  for(let k=0;k<bin.length;k++)u[k]=bin.charCodeAt(k);
+  const url=URL.createObjectURL(new Blob([u],{type:mime}));if(c)URL.revokeObjectURL(c.url);photoUrls.set(g.id,{src,url});return url}
+ catch{return src}
+}
+function clearPhotoUrls(){for(const c of photoUrls.values())URL.revokeObjectURL(c.url);photoUrls.clear()}
 const appState={profile:null,token:null,data:emptyData(),view:"today",authExpired:false};
 let lastSavedData=emptyData();
 const ui={search:"",category:"",season:"",onlyFavorites:false,onlyForgotten:false,sort:"recent",calendarMonth:new Date().toISOString().slice(0,7),lookFilter:"all",wishlistFilter:"all",stylistTab:"today",shopTab:"buy",aroundId:"",tripId:""};
@@ -609,7 +624,7 @@ function mapAnalysis(d){
 
 /* ===================== 5. Sesión y navegación ===================== */
 function showAuth(){
- resetSyncSession();
+ resetSyncSession();clearPhotoUrls();
  appState.profile=null;appState.token=null;appState.data=emptyData();lastSavedData=emptyData();appState.view="wardrobe";
  buyCheck=null;storedImages=new Map();ui.aroundId="";
  $("#content").replaceChildren();$("#profileName").textContent="";$("#garmentForm").reset();$("#lookForm").reset();$("#lookGarments").replaceChildren();
@@ -691,24 +706,24 @@ const BOARD_SLOTS={Capas:{x:0,y:3,w:50,h:60,z:1},Arriba:{x:24,y:1,w:52,h:46,z:3}
 function outfitBoard(pieces){
  const items=pieces.filter(g=>validImage(g.image)).slice(0,7);
  if(!items.length)return "";
- if(!items.every(g=>g.bgWhite))return collage(items.map(g=>g.image),items.length-4);
- if(items.length===1)return '<div class="board"><img src="'+items[0].image+'" alt="'+fx(items[0].name)+'" loading="lazy" style="left:8%;top:5%;width:84%;height:90%"></div>';
+ if(!items.every(g=>g.bgWhite))return collage(items.map(photoUrl),items.length-4);
+ if(items.length===1)return '<div class="board"><img src="'+photoUrl(items[0])+'" alt=""'+fx(items[0].name)+'" loading="lazy" style="left:8%;top:5%;width:84%;height:90%"></div>';
  const layer=items.some(g=>g.category==="Capas"),count={};
  return '<div class="board">'+items.map(g=>{
   const s={...(BOARD_SLOTS[g.category]||{x:66,y:74,w:30,h:23,z:4})},k=count[g.category]=(count[g.category]||0)+1;
   if(layer&&["Arriba","Abajo","Vestidos"].includes(g.category))s.x+=12;
   if(k>1){s.x=Math.min(100-s.w,s.x+12*(k-1));s.y=Math.min(100-s.h,s.y+5*(k-1));s.z+=k}
-  return '<img src="'+g.image+'" alt="'+fx(g.name)+'" loading="lazy" style="left:'+s.x+'%;top:'+s.y+'%;width:'+s.w+'%;height:'+s.h+'%;z-index:'+s.z+'">';
+  return '<img src="'+photoUrl(g)+'" alt="'+fx(g.name)+'" loading="lazy" style="left:'+s.x+'%;top:'+s.y+'%;width:'+s.w+'%;height:'+s.h+'%;z-index:'+s.z+'">';
  }).join("")+'</div>';
 }
 function thumbs(list,max=12){
  if(!list.length)return "";
- return '<div class="thumb-row">'+list.slice(0,max).map(g=>'<button class="thumb" data-thumb="'+fx(g.id)+'" title="'+fx(g.name)+'"'+(validImage(g.image)?' style="background-image:url('+g.image+')"':'')+'><span>'+fx(g.name)+'</span></button>').join("")+(list.length>max?'<span class="muted thumb-more">+'+(list.length-max)+'</span>':'')+'</div>';
+ return '<div class="thumb-row">'+list.slice(0,max).map(g=>'<button class="thumb" data-thumb="'+fx(g.id)+'" title="'+fx(g.name)+'"'+(validImage(g.image)?' style="background-image:url('+photoUrl(g)+')"':'')+'><span>'+fx(g.name)+'</span></button>').join("")+(list.length>max?'<span class="muted thumb-more">+'+(list.length-max)+'</span>':'')+'</div>';
 }
-function garmentCard(g){const image=validImage(g.image)?g.image:"";return `<article class="card" data-garment="${esc(g.id)}"><div class="card-img"${image?` style="background-image:url(${image})"`:""}></div><div class="card-body"><div class="card-title">${esc(g.name||"Sin nombre")}</div><div class="card-meta">${esc([g.category,g.color].filter(Boolean).join(" · "))}</div></div></article>`}
+function garmentCard(g){const image=photoUrl(g);return `<article class="card" data-garment="${esc(g.id)}"><div class="card-img"${image?` style="background-image:url(${image})"`:""}></div><div class="card-body"><div class="card-title">${esc(g.name||"Sin nombre")}</div><div class="card-meta">${esc([g.category,g.color].filter(Boolean).join(" · "))}</div></div></article>`}
 function lookCard(l){
- const gs=(l.garmentIds||[]).map(id=>myGarments().find(g=>g.id===id)).filter(Boolean),imgs=gs.map(g=>g.image).filter(validImage);
- return '<article class="card" data-look="'+esc(l.id)+'">'+outfitBoard(gs)+'<div class="card-body"><div class="card-title">'+esc(l.name)+'</div><div class="look-items">'+gs.map(g=>'<span class="look-chip">'+(validImage(g.image)?'<img class="look-chip-photo" src="'+g.image+'" alt="" loading="lazy">':'<span class="look-chip-placeholder" aria-hidden="true">◇</span>')+'<span class="look-chip-name">'+esc(g.name||g.category||"Prenda")+'</span></span>').join("")+'</div></div></article>';
+ const gs=(l.garmentIds||[]).map(id=>myGarments().find(g=>g.id===id)).filter(Boolean);
+ return '<article class="card" data-look="'+esc(l.id)+'">'+outfitBoard(gs)+'<div class="card-body"><div class="card-title">'+esc(l.name)+'</div><div class="look-items">'+gs.map(g=>'<span class="look-chip">'+(validImage(g.image)?'<img class="look-chip-photo" src="'+photoUrl(g)+'" alt="" loading="lazy">':'<span class="look-chip-placeholder" aria-hidden="true">◇</span>')+'<span class="look-chip-name">'+esc(g.name||g.category||"Prenda")+'</span></span>').join("")+'</div></div></article>';
 }
 function safetyBanner(){
  const p=appState.data.preferences,msgs=[];
@@ -1200,7 +1215,7 @@ function renderSwap(){
   '<p class="muted">'+fx(l.name)+'. El resto del look se queda igual.</p>'+outfitBoard(gs)+
   '<div class="swap-picks" role="group" aria-label="Prenda que quieres cambiar">'+gs.map(g=>'<button type="button" class="chip-button'+(cur?.id===g.id?' on':'')+'" data-swap-pick="'+fx(g.id)+'" aria-pressed="'+(cur?.id===g.id)+'">Cambiar '+fx(SWAP_NAMES[g.category]||g.name)+'</button>').join("")+'</div>'+
   (!cur?'<p class="helper">Elige qué prenda quieres cambiar.</p>'
-   :opts.length?'<div class="swap-list">'+opts.map((o,i)=>'<div class="swap-option"><div class="thumb"'+(validImage(o.g.image)?' style="background-image:url('+o.g.image+')"':'')+'></div><div class="swap-text"><strong>'+fx(o.g.name)+'</strong>'+o.why.map(w=>'<span class="muted">'+fx(w)+'</span>').join("")+(o.exists&&!isPlan?'<span class="muted">Ya tienes este look guardado</span>':'')+'</div><div class="swap-actions">'+
+   :opts.length?'<div class="swap-list">'+opts.map((o,i)=>'<div class="swap-option"><div class="thumb"'+(validImage(o.g.image)?' style="background-image:url('+photoUrl(o.g)+')"':'')+'></div><div class="swap-text"><strong>'+fx(o.g.name)+'</strong>'+o.why.map(w=>'<span class="muted">'+fx(w)+'</span>').join("")+(o.exists&&!isPlan?'<span class="muted">Ya tienes este look guardado</span>':'')+'</div><div class="swap-actions">'+
      (isPlan?'<button type="button" class="primary" data-swap-use="'+i+'" data-swap-mode="plan">Usar este día</button>':o.exists?'':'<button type="button" class="primary" data-swap-use="'+i+'" data-swap-mode="new">Guardar como look nuevo</button><button type="button" class="secondary" data-swap-use="'+i+'" data-swap-mode="replace">Cambiar en este look</button>')+'</div></div>').join("")+'</div>'
    :'<p class="muted">No tienes otra prenda de '+fx(SWAP_NAMES[cur.category]||"esta categoría")+' que combine con el resto del look. Mira «Recomendaciones» en Compras.</p>');
  $("#closeSwap").addEventListener("click",closeSwap);
@@ -1684,7 +1699,7 @@ function renderTrip(root,t){
   (!items.length?'<p class="notice-card">No he encontrado prendas de '+fx(SEASON_LABEL[season].toLocaleLowerCase("es"))+' que combinen entre sí. Añádelas a mano abajo.</p>':'')+
   '<div class="feature-card"><div class="section-head"><h2>Equipaje</h2><span class="muted">'+ready+' de '+total+'</span></div>'+
   '<div class="progress-track"><div style="width:'+(total?Math.round(100*ready/total):0)+'%"></div></div>'+
-  '<div class="pack-list">'+sorted.map(g=>'<div class="pack-row"><input type="checkbox" data-pack="'+fx(g.id)+'" aria-label="Preparada: '+fx(g.name)+'"'+(t.packed?.[g.id]?' checked':'')+'><span class="pack-thumb"'+(validImage(g.image)?' style="background-image:url('+g.image+')"':'')+'></span><span class="pack-name">'+fx(g.name)+'<small class="muted">'+fx(g.category||"")+'</small></span><button class="chip-button" data-unpack="'+fx(g.id)+'" aria-label="Quitar '+fx(g.name)+'">✕</button></div>').join("")+'</div>'+
+  '<div class="pack-list">'+sorted.map(g=>'<div class="pack-row"><input type="checkbox" data-pack="'+fx(g.id)+'" aria-label="Preparada: '+fx(g.name)+'"'+(t.packed?.[g.id]?' checked':'')+'><span class="pack-thumb"'+(validImage(g.image)?' style="background-image:url('+photoUrl(g)+')"':'')+'></span><span class="pack-name">'+fx(g.name)+'<small class="muted">'+fx(g.category||"")+'</small></span><button class="chip-button" data-unpack="'+fx(g.id)+'" aria-label="Quitar '+fx(g.name)+'">✕</button></div>').join("")+'</div>'+
   (others.length?'<div class="pack-add"><select id="tripAddSelect" aria-label="Prenda para añadir">'+optionList([["","Añadir otra prenda…"],...others.map(g=>[g.id,g.name+(g.category?" · "+g.category:"")])],"")+'</select><button class="secondary" id="tripAdd">Añadir</button></div>':'')+
   '<h3 class="mini-title">Además</h3><div class="pack-list">'+extras.map(x=>'<div class="pack-row extra"><input type="checkbox" data-extra="'+fx(x.id)+'" aria-label="Preparado: '+fx(x.text)+'"'+(x.done?' checked':'')+'><span class="pack-name">'+fx(x.text)+'</span><button class="chip-button" data-extra-remove="'+fx(x.id)+'" aria-label="Quitar '+fx(x.text)+'">✕</button></div>').join("")+'</div>'+
   '<form id="extraForm" class="pack-add"><input id="extraText" maxlength="60" placeholder="Añadir algo (gafas de sol, bañador…)" aria-label="Otra cosa para la maleta"><button class="secondary" type="submit">Añadir</button></form></div>'+
