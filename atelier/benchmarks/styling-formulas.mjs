@@ -29,28 +29,36 @@ export function generateFormulaCandidates(garments,{occasion="daily",formulas=FO
  if(!Array.isArray(garments)||!Array.isArray(formulas)||!Number.isInteger(limit)||limit<1)throw Error("Invalid inputs");
  const results=[],seen=new Set();
  const pool=garments.filter(g=>g&&typeof g.id==="string"&&g.id&&!g.deleted&&!g.archived);
+ // Round-robin across formulas. Previously the first formula exhausted the
+ // global limit and prevented all subsequent styles from appearing.
+ const iterators=[];
  for(const formula of formulas){
-  if(!formula||!Array.isArray(formula.slots)||!formula.slots.length)continue;
-  if(!formula.occasion?.includes(occasion))continue;
+  if(!formula||!Array.isArray(formula.slots)||!formula.slots.length||!formula.occasion?.includes(occasion))continue;
   const options=formula.slots.map(slot=>pool.filter(g=>matchSlot(g,slot)).sort((a,b)=>a.id.localeCompare(b.id)));
   if(options.some(x=>!x.length))continue;
-  function combine(slot,selected,ids){
-   if(results.length>=limit)return;
-   if(slot===options.length){
-    const key=[...ids].sort().join("|");
-    if(!seen.has(key)){seen.add(key);results.push({formulaId:formula.id,formulaName:formula.name,garmentIds:[...ids]})}
-    return;
-   }
-   for(const item of options[slot]){
+  function* combinations(i=0,ids=[]){
+   if(i===options.length){yield [...ids];return}
+   for(const item of options[i]){
     if(ids.includes(item.id))continue;
-    ids.push(item.id);selected.push(item);
-    combine(slot+1,selected,ids);
-    selected.pop();ids.pop();
-    if(results.length>=limit)break;
+    ids.push(item.id);
+    yield* combinations(i+1,ids);
+    ids.pop();
    }
   }
-  combine(0,[],[]);
-  if(results.length>=limit)break;
+  iterators.push({formula,iter:combinations()});
+ }
+ while(results.length<limit&&iterators.length){
+  for(let i=0;i<iterators.length&&results.length<limit;){
+   const {formula,iter}=iterators[i];
+   const next=iter.next();
+   if(next.done){iterators.splice(i,1);continue}
+   const ids=next.value,key=[...ids].sort().join("|");
+   if(!seen.has(key)){
+    seen.add(key);
+    results.push({formulaId:formula.id,formulaName:formula.name,garmentIds:ids});
+   }
+   i++;
+  }
  }
  return results;
 }
