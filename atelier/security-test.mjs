@@ -580,15 +580,18 @@ console.log("PASS: S6 long-offline devices don't resurrect deletions");
   const chambray=G("t1","Arriba","Camisa",{name:"Camisa vaquera",color:"Vaquero"}),white=G("t2","Arriba","Camisa",{color:"Blanco"}),jacket=G("c1","Capas","Cazadora",{name:"Cazadora vaquera",color:"Vaquero"});
   const coat=G("c2","Capas","Abrigo",{color:"Gris"}),fur=G("c3","Capas","Abrigo",{name:"Abrigo de pelo leopardo",pattern:"animal",color:"Marrón"}),sweater=G("t3","Arriba","Jersey",{sleeve:"larga"}),tank=G("t4","Arriba","Top",{sleeve:"sin mangas"});
   return {denim:sc([chambray,black,shoes],"daily",17)>sc([chambray,jeans,shoes],"daily",17),jacketOk:sc([white,jeans,shoes,jacket],"daily",17)>=sc([white,jeans,shoes],"daily",17)-3,
-   loudWork:sc([sweater,black,shoes,coat],"work",8)>sc([sweater,black,shoes,fur],"work",8),loudDaily:sc([sweater,black,shoes,coat],"daily",8)-sc([sweater,black,shoes,fur],"daily",8),
+   loudWork:Math.abs(sc([sweater,black,shoes,coat],"work",8)-sc([sweater,black,shoes,fur],"work",8))<=3&&sc([sweater,black,shoes,coat],"work",8)>sc([sweater,black,shoes,G("c5","Capas","Chaqueta",{name:"Chaqueta de lentejuelas"})],"work",8),loudDaily:sc([sweater,black,shoes,coat],"daily",8)-sc([sweater,black,shoes,fur],"daily",8),
    cottonShirt:sc([G("t5","Arriba","Camisa",{name:"Camisa vaquera",fabric:"cotton",color:"Azul"}),jeans,shoes],"daily",17)>=sc([white,jeans,shoes],"daily",17)-3,
    plainLeo:Math.abs(sc([sweater,black,shoes,G("c4","Capas","Abrigo",{name:"Abrigo leopardo",pattern:"plain"})],"work",8)-sc([sweater,black,shoes,coat],"work",8))<=3,
    cropLen:sc([sweater,black,shoes,coat],"daily",8)>sc([G("t6","Arriba","Top",{sleeve:"larga",length:"cropped"}),black,shoes,coat],"daily",8),
+   mix:(()=>{const st=G("t7","Arriba","Jersey",{pattern:"stripes",sleeve:"larga"}),ck=G("b3","Abajo","Pantalón",{pattern:"checks",color:"Beige"}),sc2=G("c6","Capas","Abrigo",{pattern:"stripes",color:"Gris"});
+    const c=engineContext({occasion:"daily",temp:8,date:"2026-01-15",extras:{shoes:true,bag:false}}),gap=()=>scoreOutfit([sweater,black,shoes,sc2],c).score-scoreOutfit([st,ck,shoes,sc2],c).score;
+    const plain=gap();c.likes=new Set(["pattern"]);return [plain,gap()]})(),
    cold:sc([sweater,black,shoes,coat],"daily",8)>sc([tank,black,shoes,coat],"daily",8),warm:sc([tank,black,shoes],"daily",20)>=sc([sweater,black,shoes],"daily",20)-3};`);
   const r=probe(document,sessionStorage,{randomUUID:()=>"t"});
   assert.equal(r.denim,true,"Camisa vaquera: mejor con pantalón negro que con vaqueros");assert.equal(r.jacketOk,true,"Cazadora vaquera con vaqueros y camisa blanca: sin penalización");
-  assert.equal(r.loudWork,true,"Trabajo: abrigo liso antes que abrigo de pelo de leopardo");assert.ok(Math.abs(r.loudDaily)<=4,"Diario: el leopardo no se penaliza por ser llamativo");
-  assert.equal(r.cold,true,"8 °C: jersey mejor que top sin mangas bajo el abrigo");assert.equal(r.cottonShirt,true,"Ficha de algodón: no cuenta como vaquera aunque el nombre lo diga");assert.equal(r.plainLeo,true,"Ficha lisa: no es llamativa aunque el nombre diga leopardo");assert.equal(r.cropLen,true,"Largo «cropped» en la ficha: penaliza con frío aunque el nombre sea «Top»");assert.equal(r.warm,true,"20 °C: el top sin mangas no se penaliza");
+  assert.equal(r.loudWork,true,"Trabajo: el abrigo de leopardo vale (votos de Noelia); las lentejuelas restan");assert.ok(Math.abs(r.loudDaily)<=4,"Diario: el leopardo no se penaliza por ser llamativo");
+  assert.equal(r.cold,true,"8 °C: jersey mejor que top sin mangas bajo el abrigo");assert.ok(r.mix[0]>10&&r.mix[1]<r.mix[0]-10,"Mezcla de estampados: penaliza por defecto, mucho menos si te gustan los estampados ("+r.mix+")");assert.equal(r.cottonShirt,true,"Ficha de algodón: no cuenta como vaquera aunque el nombre lo diga");assert.equal(r.plainLeo,true,"Ficha lisa: no es llamativa aunque el nombre diga leopardo");assert.equal(r.cropLen,true,"Largo «cropped» en la ficha: penaliza con frío aunque el nombre sea «Top»");assert.equal(r.warm,true,"20 °C: el top sin mangas no se penaliza");
   console.log("PASS: Stylist details: double denim, loud pieces at work, sleeveless top in the cold (soft)");
 }
 

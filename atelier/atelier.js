@@ -1627,7 +1627,7 @@ function scoreOutfit(gs,ctx){
  let baseTotal=0,baseN=0,extrasTotal=0,extrasWeight=0,kinds=[];
  for(let i=0;i<gs.length;i++)for(let j=i+1;j<gs.length;j++){
   const r=pairColor(gs[i],gs[j]),aBig=BIG.includes(gs[i].category),bBig=BIG.includes(gs[j].category),bothBig=aBig&&bBig;
-  if(bothBig){baseTotal+=r.s;baseN++}
+  if(bothBig){baseTotal+=r.k==="two-patterns"&&ctx.likes?.has("pattern")?.75:r.s;baseN++} // si te gustan los estampados, mezclarlos no resta (votos de Noelia, #128)
   else {const weight=aBig||bBig?1:.35;extrasTotal+=r.s*weight;extrasWeight+=weight}
   if(r.k)kinds.push(r.k+(bothBig?"":"~"));
  }
@@ -1657,7 +1657,8 @@ function scoreOutfit(gs,ctx){
  // La ficha manda: el nombre solo cuenta si falta el dato (revisión de Codex, #134)
  const isDenim=g=>g.fabric&&g.fabric!=="unknown"?g.fabric==="denim":g.color==="Vaquero"||/vaquer|denim|chambray|\bjeans?\b/i.test(textOf(g));
  if(big.filter(isDenim).length>=2&&big.filter(g=>g.category!=="Capas").every(isDenim))style-=.15;
- const isLoud=g=>(g.pattern?g.pattern==="animal":/leopard|cebra|zebra|serpiente|snake|animal print/i.test(textOf(g)))||/\bpelo\b|faux fur|\bfur\b|lentejuel|sequin|purpurina|glitter/i.test(textOf(g));
+ // Animal print y pelo sí valen para la oficina (votos de Noelia, #128); brillos de noche, no
+ const isLoud=g=>/lentejuel|sequin|purpurina|glitter|strass|rhinestone/i.test(textOf(g));
  if(ctx.occasion==="work"){const loud=gs.filter(isLoud).length;if(loud)style-=Math.min(.3,.15*loud)}
  const mix=new Set(styled.map(g=>g.style));
  if(mix.has("sport")&&mix.has("smart"))reasons.push("Las deportivas le dan un aire informal y actual");
@@ -1683,7 +1684,7 @@ function scoreOutfit(gs,ctx){
  const clamp=v=>Math.max(0,Math.min(1,v));
  // Lo usado hace poco resta aparte (hasta 15 puntos), para que «distinto cada día» pese de verdad
  const recent=Math.min(1,personal<0?-personal:0);
- const score=Math.round(25*clamp(color)+25*clamp(sil)+20*clamp(style)+20*clamp(context)+10*clamp(personal)-15*recent-(patterns>=3?12:0)-12*vividColorRepeat(gs));
+ const score=Math.round(25*clamp(color)+25*clamp(sil)+20*clamp(style)+20*clamp(context)+10*clamp(personal)-15*recent-(patterns>=3&&!ctx.likes?.has("pattern")?12:0)-12*vividColorRepeat(gs));
  return {score,reasons:[...new Set(reasons)].slice(0,3),warnings};
 }
 /* Contexto común (se calcula una vez por llamada: usos, olvidadas y gustos) */
@@ -1765,7 +1766,7 @@ function vividColorRepeat(gs){
 }
 function completeOutfitGreedy(base,pool,ctx,used=new Map(),firstPick=null){
  const l=[...base],rule=layerRule(ctx.temp),home=ctx.occasion==="home",beach=ctx.occasion==="beach";
- const fits=x=>!l.includes(x)&&!(l.some(g=>isBackpack(g)&&(isOutdoor(g)||formalLevel(g)<2))&&formalLevel(x)>=2)&&!heavyKnitInHeat(x,ctx.temp)&&!insufficientColdLayer(x,ctx.temp)&&weatherCompatible(x,l,ctx)&&l.every(p=>!related(x,p)||stylesOk(x,p))&&l.every(p=>pairColor(x,p).s>=.45||!BIG.includes(p.category)||!BIG.includes(x.category))&&!(isPatterned(x)&&!BIG.includes(x.category)&&l.some(isPatterned));
+ const fits=x=>!l.includes(x)&&!(l.some(g=>isBackpack(g)&&(isOutdoor(g)||formalLevel(g)<2))&&formalLevel(x)>=2)&&!heavyKnitInHeat(x,ctx.temp)&&!insufficientColdLayer(x,ctx.temp)&&weatherCompatible(x,l,ctx)&&l.every(p=>!related(x,p)||stylesOk(x,p))&&l.every(p=>pairColor(x,p).s>=.45||!BIG.includes(p.category)||!BIG.includes(x.category)||ctx.likes?.has("pattern")&&pairColor(x,p).k==="two-patterns")&&!(isPatterned(x)&&!BIG.includes(x.category)&&l.some(isPatterned));
  const pref=x=>(x.favorite?.5:0)+1/(1+(ctx.worn.get(x.id)||0))+(ctx.forgotten.has(x.id)?.5:0)-(ctx.avoid.has(x.id)?2:0)-(used.get(x.id)||0)*1.5+
   l.reduce((t,p)=>t+pairColor(x,p).s,0)/Math.max(1,l.length);
  const plan=[ctx.extras.shoes&&!home&&!beach?"Zapatos":beach&&ctx.extras.shoes?"Zapatos":null,!home&&rule.max>=0?"Capas":null,ctx.extras.bag&&!home?"Bolsos":null,!home?"Accesorios":null];
