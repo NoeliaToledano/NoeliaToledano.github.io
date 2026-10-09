@@ -1492,12 +1492,17 @@ const SEASON_TEMP={warm:27,mid:19,cold:11};                              // para
 function tempFor(date){return !date||date===dayISO()?currentTemperature():SEASON_TEMP[SEASON3(Number(date.slice(5,7))-1)]}
 const seasonFits=(g,s)=>!g.season||g.season==="all"||s==="mid"||g.season===s;
 /* Ocasión: si la prenda tiene ocasiones, manda eso; si no, su estilo. Casa y Baño solo en su ocasión. */
+/* Trabajo y eventos: fuera shorts, chanclas, sandalias planas, zuecos, gorras y gorros (evaluación visual #99) */
+const WORK_NO=/\bshorts?\b|chancl|sandalia|zueco|gorra|gorro|beanie|crop top|ch[aá]ndal|mallas|pantal[oó]n deportivo|camiseta t[eé]cnica/i;
 const OCC_STYLES={daily:["casual","smart","sport"],work:["smart","casual"],sport:["sport"],beach:["casual","sport"],home:null,event:["smart","party"],party:["party","smart"],formal:["smart","party"]};
 function occasionFits(g,occ){
  if(!occ)return !["Casa","Baño"].includes(g.category);
  if(g.category==="Casa")return occ==="home";
  if(g.category==="Baño")return occ==="beach";
  if(occ==="home")return ["Zapatos"].includes(g.category)?/casa|zapatilla/i.test(g.type||g.name||""):false;
+ if((occ==="work"||occ==="formal"||occ==="event")&&WORK_NO.test([g.type,g.subtype,g.name].filter(Boolean).join(" ")))return false; // P1/P8 (#99)
+ // Gorros, gorras, boinas y sombreros solo en diario o playa; vale también para las sugerencias con IA (revisión de Codex, #100)
+ if(g.category==="Accesorios"&&!["daily","beach"].includes(occ)&&HEADWEAR.test([g.type,g.subtype,g.name].filter(Boolean).join(" ")))return false;
  const occs=Array.isArray(g.occasions)?g.occasions.filter(o=>o in occasions):[];
  if(occs.length)return occs.includes(occ)||(occ==="daily"&&!occs.every(o=>["sport","home","beach","formal","party","event"].includes(o)));
  if(g.category==="Zapatos"&&g.style==="sport"&&["daily","work"].includes(occ))return true;
@@ -1543,10 +1548,10 @@ function scoreOutfit(gs,ctx){
  const styled=gs.filter(g=>g.style),aff=[];
  for(let i=0;i<styled.length;i++)for(let j=i+1;j<styled.length;j++)aff.push(styleAffinity(styled[i],styled[j]));
  let style=aff.length?aff.reduce((a,b)=>a+b,0)/aff.length:.75;
- const target=DRESS_TARGET[ctx.dress];
+ const target=DRESS_TARGET[ctx.dress]||(ctx.occasion==="work"?{smart:1,party:.6,casual:.55,sport:.25}:null);
  if(target&&styled.length){const fit=styled.reduce((t,g)=>t+(target[g.style]??.5),0)/styled.length;style=.5*style+.5*fit;
   if(ctx.dress==="comoda"&&gs.some(g=>["holgado","oversize"].includes(g.fit)||["knit","cotton"].includes(g.fabric)))style=Math.min(1,style+.1);
-  if(fit>=.85)reasons.push("Encaja con tu estilo de hoy: "+DRESS_LABEL[ctx.dress].toLowerCase())}
+  if(fit>=.85&&ctx.dress)reasons.push("Encaja con tu estilo de hoy: "+DRESS_LABEL[ctx.dress].toLowerCase());else if(fit>=.85)reasons.push("Arreglado para el trabajo")}
  const mix=new Set(styled.map(g=>g.style));
  if(mix.has("sport")&&mix.has("smart"))reasons.push("Las deportivas le dan un aire informal y actual");
  else if(mix.size===2&&styled.length>=3)reasons.push("Mezcla un toque de otro estilo");
@@ -1579,9 +1584,15 @@ function engineContext(o={}){
    used: veces que ya sale cada prenda en las propuestas elegidas (para variar complementos, D2). */
 function summerFootwear(g){return g.category==="Zapatos"&&/chancl|flip.?flop|sandali?as?|slides?/.test([g.name,g.type,g.subtype].filter(Boolean).join(" ").toLowerCase())}
 function winterHat(g){return g.category==="Accesorios"&&/gorro|beanie|pasamonta|balaclava|wool hat/.test([g.name,g.type,g.subtype].filter(Boolean).join(" ").toLowerCase())}
+const HEADWEAR=/gorr|boina|sombrero|beanie|pamela|\bcap\b/i;
+function headwearMakesSense(g,ctx){
+ if(!["daily","beach",null,undefined].includes(ctx.occasion))return false;
+ if(winterHat(g))return ctx.temp<12;
+ return ctx.temp>=24&&/sombrero|pamela|gorra/i.test([g.type,g.subtype,g.name].filter(Boolean).join(" "));
+}
 function weatherCompatible(g,look,ctx){
  if(summerFootwear(g)&&(ctx.temp<19||look.some(winterHat)))return false;
- if(winterHat(g)&&(ctx.temp>=20||look.some(summerFootwear)))return false;
+ if(winterHat(g)&&(ctx.temp>=12||look.some(summerFootwear)))return false; // P6 (#99): solo con frío
  return true;
 }
 /* Context checks used by the local outfit engine, not accessory-style policy. */
@@ -1626,7 +1637,9 @@ function completeOutfitGreedy(base,pool,ctx,used=new Map(),firstPick=null){
   }
   else c.sort((a,b)=>pref(b)-pref(a));
   if(cat==="Zapatos"&&beach)c=c.filter(x=>/sandal|chancl|alpargat|zueco/i.test([x.type,x.name,x.subtype].filter(Boolean).join(" ")));
-  if(cat==="Accesorios"&&c[0]&&pref(c[0])<1)continue;     // un complemento solo si de verdad suma
+  // P3/P4 (#99): un gorro o sombrero solo con motivo (frío o sol de verano en diario/playa); otros complementos, si suman
+  if(cat==="Accesorios")c=c.filter(x=>!HEADWEAR.test([x.type,x.subtype,x.name].filter(Boolean).join(" "))||headwearMakesSense(x,ctx));
+  if(cat==="Accesorios"&&c[0]&&pref(c[0])<1.2)continue;
   const pick=cat==="Zapatos"&&firstPick?c.find(x=>x===firstPick):c[0];
   if(pick)l.push(pick);
  }
