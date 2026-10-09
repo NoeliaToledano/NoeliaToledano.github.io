@@ -1379,12 +1379,18 @@ function lookTraits(l,resolved){
  return t;
 }
 const tasteLabel=k=>TASTE_LABELS[k]||(k.startsWith("fam:")?"looks con "+k.slice(4):k.startsWith("style:")?"looks de estilo "+(styleNames[k.slice(6)]||k.slice(6)):k);
+const DISLIKE_WHY={color:"Colores",formal:"Muy arreglado",informal:"Muy informal",hoy:"Hoy no"};
+const COLOR_TRAIT=/^(mono|neutral|color|multicolor|fam:)/;
+/* Sesgo de formalidad aprendido de los 👎 con motivo: >0 prefiere más informal, <0 más arreglado (−1…1) */
+function formalityBias(){const ls=myLooks().filter(l=>l.dislikeReason==="formal"||l.dislikeReason==="informal"),f=ls.filter(l=>l.dislikeReason==="formal").length;return ls.length?(f-(ls.length-f))/Math.max(3,ls.length):0}
 function tasteProfile(){
  const fb=appState.data.feedback||{},looks=myLooks().filter(l=>(l.garmentIds||[]).length>=2);
- const vote=l=>fb[l.id]==="down"?-1:fb[l.id]==="up"||l.favorite?1:0;
+ // Motivo del 👎 (#136 §22): «hoy» no enseña nada; «color» solo cuenta para rasgos de color; «formal»/«informal» solo para el estilo
+ const vote=l=>fb[l.id]==="down"?(l.dislikeReason==="hoy"?0:-1):fb[l.id]==="up"||l.favorite?1:0;
+ const counts=(l,k)=>!(fb[l.id]==="down"&&l.dislikeReason)||(l.dislikeReason==="color"?COLOR_TRAIT.test(k):k.startsWith("style:"));
  const N=looks.length,U=looks.filter(l=>vote(l)>0).length,D=looks.filter(l=>vote(l)<0).length,stats=new Map();
  const byId=new Map(myGarments().map(g=>[g.id,g]));
- for(const l of looks){const v=vote(l);for(const k of lookTraits(l,(l.garmentIds||[]).map(id=>byId.get(id)).filter(Boolean))){const s=stats.get(k)||{n:0,u:0,d:0};s.n++;if(v>0)s.u++;if(v<0)s.d++;stats.set(k,s)}}
+ for(const l of looks){const v=vote(l);for(const k of lookTraits(l,(l.garmentIds||[]).map(id=>byId.get(id)).filter(Boolean))){const s=stats.get(k)||{n:0,u:0,d:0};s.n++;if(v>0)s.u++;if(v<0&&counts(l,k))s.d++;stats.set(k,s)}}
  const enough=N>=5&&U+D>=4,likes=[],dislikes=[];
  if(enough)for(const [k,s] of stats){
   const lift=s.u/s.n-U/N,drop=s.d/s.n-D/N;
@@ -1463,7 +1469,8 @@ function renderLooks(root){
   '<details class="looks-tools"><summary>Más opciones para mis looks</summary><div class="looks-tools-body"><button class="secondary wide" id="aiLooks">Sugerir looks con IA</button>'+tasteCardHtml()+'</div></details>'+
   (looks.length?'<div class="grid">'+looks.map(l=>'<div class="look-tile">'+lookCard(l)+
    '<div class="tile-tools"><button class="chip-button" data-look-fav="'+fx(l.id)+'" aria-label="'+(l.favorite?'Quitar de favoritos':'Añadir a favoritos')+'" aria-pressed="'+!!l.favorite+'">'+(l.favorite?'♥':'♡')+'</button><button class="chip-button" data-look-wear="'+fx(l.id)+'">✓ Llevado</button><button class="chip-button" data-look-swap="'+fx(l.id)+'">↻ Cambiar prenda</button></div>'+
-   '<div class="look-votes"><button class="chip-button'+(fb[l.id]==="up"?' on':'')+'" data-feedback="'+fx(l.id)+'" data-vote="up" aria-label="Me gusta" aria-pressed="'+(fb[l.id]==="up")+'">👍</button><button class="chip-button'+(fb[l.id]==="down"?' on':'')+'" data-feedback="'+fx(l.id)+'" data-vote="down" aria-label="No me gusta" aria-pressed="'+(fb[l.id]==="down")+'">👎</button></div>'+ 
+   '<div class="look-votes"><button class="chip-button'+(fb[l.id]==="up"?' on':'')+'" data-feedback="'+fx(l.id)+'" data-vote="up" aria-label="Me gusta" aria-pressed="'+(fb[l.id]==="up")+'">👍</button><button class="chip-button'+(fb[l.id]==="down"?' on':'')+'" data-feedback="'+fx(l.id)+'" data-vote="down" aria-label="No me gusta" aria-pressed="'+(fb[l.id]==="down")+'">👎</button></div>'+
+   (fb[l.id]==="down"?'<div class="dislike-why" role="group" aria-label="Por qué no te gusta (opcional)"><span>¿Por qué?</span>'+Object.entries(DISLIKE_WHY).map(([k,t])=>'<button class="chip-button small'+(l.dislikeReason===k?' on':'')+'" data-why="'+fx(l.id)+'" data-reason="'+k+'" aria-pressed="'+(l.dislikeReason===k)+'">'+t+'</button>').join("")+'</div>':'')+ 
    '<div class="tile-hints">'+(l.ai?"IA":"Manual")+(lookComplete((l.garmentIds||[]).map(id=>myGarments().find(g=>g.id===id)))?'':' · <span title="'+BASE_MSG+'">Incompleto: falta arriba, abajo o vestido</span>')+'</div></div>').join("")+'</div>':'<div class="empty">Todavía no tienes looks para este filtro.</div>'));
  $("#newLook")?.addEventListener("click",()=>openLook());bindOutfitPhoto(root);$("#aiLooks")?.addEventListener("click",()=>suggestLooks());
  $$("[data-look-filter]",root).forEach(b=>b.addEventListener("click",()=>{ui.lookFilter=b.dataset.lookFilter;render()}));
@@ -1471,7 +1478,8 @@ function renderLooks(root){
  $$("[data-look-fav]",root).forEach(b=>b.addEventListener("click",async()=>{const l=myLooks().find(l=>l.id===b.dataset.lookFav);if(l)await mutate(()=>{l.favorite=!l.favorite;l.updatedAt=new Date().toISOString()},"Look actualizado")}));
  $$("[data-look-swap]",root).forEach(b=>b.addEventListener("click",()=>openSwap(b.dataset.lookSwap)));
  $$("[data-look-wear]",root).forEach(b=>b.addEventListener("click",()=>{const l=myLooks().find(l=>l.id===b.dataset.lookWear);if(l)promptWear(l.garmentIds,l.id)}));
- $$("[data-feedback]",root).forEach(b=>b.addEventListener("click",async()=>{const id=b.dataset.feedback;await mutate(()=>{if(fb[id]===b.dataset.vote)delete fb[id];else fb[id]=b.dataset.vote},"Preferencia guardada")}));
+ $$("[data-feedback]",root).forEach(b=>b.addEventListener("click",async()=>{const id=b.dataset.feedback,l=myLooks().find(x=>x.id===id);await mutate(()=>{if(fb[id]===b.dataset.vote)delete fb[id];else fb[id]=b.dataset.vote;if(l&&fb[id]!=="down"&&l.dislikeReason){delete l.dislikeReason;l.updatedAt=new Date().toISOString()}},"Preferencia guardada")}));
+ $$("[data-why]",root).forEach(b=>b.addEventListener("click",async()=>{const l=myLooks().find(x=>x.id===b.dataset.why);if(!l)return;await mutate(()=>{if(l.dislikeReason===b.dataset.reason)delete l.dislikeReason;else l.dislikeReason=b.dataset.reason;l.updatedAt=new Date().toISOString()},b.dataset.reason==="hoy"?"Entendido: no lo tendré en cuenta para tus gustos":"Gracias: lo tendré en cuenta")}));
 }
 /* Complementos en las propuestas: calzado y bolso se pueden quitar (preferencia por perfil).
    En «Estar en casa» y «Playa y piscina» el calzado no se añade nunca. */
@@ -1692,6 +1700,7 @@ function scoreOutfit(gs,ctx){
  let personal=.5;const fav=gs.filter(g=>g.favorite).length,forg=gs.filter(g=>ctx.forgotten.has(g.id));
  personal+=Math.min(.3,fav*.1)+Math.min(.3,forg.length*.15)-gs.reduce((t,g)=>t+(ctx.avoid.has(g.id)?(BIG.includes(g.category)?.45:.1):0),0);
  if(forg.length)reasons.push("Rescata «"+forg[0].name+"», que hace tiempo que no te pones");
+ if(ctx.formalBias){const lv=gs.reduce((t,g)=>t+formalLevel(g),0)/gs.length;personal-=.3*ctx.formalBias*(lv-1.5)/1.5} // 👎 «muy arreglado/informal»
  const traits=lookTraits(null,gs);for(const k of traits){if(ctx.likes.has(k)){personal+=.25;reasons.push("Va con tus gustos: "+tasteLabel(k))}if(ctx.dislikes.has(k))personal-=.25}
  const clamp=v=>Math.max(0,Math.min(1,v));
  // Lo usado hace poco resta aparte (hasta 15 puntos), para que «distinto cada día» pese de verdad
@@ -1705,7 +1714,7 @@ function engineContext(o={}){
  const temp=o.temp??tempFor(date),season=SEASON3(Number(date.slice(5,7))-1),worn=new Map();
  for(const l of logs())for(const id of l.garmentIds||[])worn.set(id,(worn.get(id)||0)+1);
  return {date,occasion,dress,temp,season,extras:o.extras||lookExtras(),avoid:o.avoid||new Set(),worn,
-  forgotten:new Set(myGarments().filter(g=>forgottenStatus(g).forgotten).map(g=>g.id)),likes:new Set(taste.likes.map(x=>x.k)),dislikes:new Set(taste.dislikes.map(x=>x.k))};
+  forgotten:new Set(myGarments().filter(g=>forgottenStatus(g).forgotten).map(g=>g.id)),likes:new Set(taste.likes.map(x=>x.k)),dislikes:new Set(taste.dislikes.map(x=>x.k)),formalBias:formalityBias()};
 }
 /* Completa una base: calzado, capa (regla de temperatura), bolso y un complemento, si combinan con todo.
    used: veces que ya sale cada prenda en las propuestas elegidas (para variar complementos, D2). */
