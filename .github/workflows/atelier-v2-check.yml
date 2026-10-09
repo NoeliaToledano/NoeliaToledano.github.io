@@ -23,7 +23,9 @@ jobs:
           node --check atelier/atelier.js
           node --check atelier/sw.js
       - name: FashionCLIP input-contract tests (no model download)
-        run: python3 -m unittest discover -s atelier/benchmarks/real-photos -p 'test_fashionclip_export.py'
+        run: |
+          python3 -m unittest discover -s atelier/benchmarks/real-photos -p 'test_fashionclip_export.py'
+          python3 -m unittest discover -s atelier/benchmarks/real-photos -p 'test_fashionclip_attributes.py'
       - name: Atelier release gate
         run: node atelier/validate.mjs
       - name: Security regression tests
