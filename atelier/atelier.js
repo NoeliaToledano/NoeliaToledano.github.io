@@ -1360,13 +1360,14 @@ async function suggestLooks(){
 /* Tus gustos: rasgos de los looks que te gustan (👍 o ♥) y de los que no (👎), calculado en el móvil, sin IA.
    Cada look se describe con rasgos (monocromático, con estampados, con color, vestido, estilo…) y se compara
    cuántas veces gusta un rasgo con lo que gustan los looks en general. Solo se muestra con datos suficientes. */
-const TASTE_LABELS={mono:"looks monocromáticos (un solo color)",neutral:"looks solo en neutros",color:"looks con color",multicolor:"looks con varios colores",pattern:"looks con estampados",plain:"looks lisos, sin estampados",dress:"looks con vestido o mono",layer:"looks con una capa encima",denim:"looks con doble vaquero"};
+const TASTE_LABELS={mono:"looks monocromáticos (un solo color)",neutral:"looks solo en neutros",color:"looks con color",multicolor:"looks con varios colores",pattern:"looks con estampados",plain:"looks lisos, sin estampados",dress:"looks con vestido o mono",layer:"looks con una capa encima",denim:"looks con doble vaquero",vividmono:"looks tono sobre tono en color vivo"};
 function lookTraits(l,resolved){
  const gs=resolved||(()=>{const byId=new Map(myGarments().map(g=>[g.id,g]));return (l.garmentIds||[]).map(id=>byId.get(id)).filter(Boolean)})(),t=new Set();
  const main=gs.filter(g=>["Arriba","Abajo","Vestidos","Capas"].includes(g.category));
  const tones=main.map(g=>{const c=colorInfo(g.color,g.pattern);return c.fam==="neutro"?"n:"+c.word.replace(/a$/,"o"):c.fam}).filter(Boolean);
  const fams=new Set(main.map(g=>colorInfo(g.color,g.pattern).fam).filter(f=>f&&f!=="neutro"&&f!=="estampado"));
  if(tones.length>=2&&new Set(tones).size===1)t.add("mono");
+ if(t.has("mono")&&!tones[0].startsWith("n:"))t.add("vividmono"); // tono sobre tono en color vivo: gusto distinto de «todo negro» (revisión de ChatGPT, #139)
  if(tones.length>=2&&tones.every(x=>x.startsWith("n:"))&&!t.has("mono"))t.add("neutral");
  if(fams.size>=1)t.add("color");if(fams.size>=2)t.add("multicolor");
  for(const f of fams)t.add("fam:"+f);
@@ -1599,7 +1600,7 @@ function occasionFits(g,occ){
  }
  if(occ==="party"&&g.formality&&formal<2)return false;
  if(!["daily","sport","beach"].includes(occ)&&isOutdoor(g)&&g.category!=="Zapatos")return false; // Q3 (#108): mochila de montaña, ropa técnica
- if(g.category==="Bolsos"&&!["daily","sport"].includes(occ)&&!g.formality&&g.style!=="smart"&&BACKPACK.test(textOf(g)))return false; // mochila sin más datos: solo diario
+ if(g.category==="Bolsos"&&!["daily","sport"].includes(occ)&&!(occ==="work"&&wd==="informal")&&!g.formality&&g.style!=="smart"&&BACKPACK.test(textOf(g)))return false; // mochila sin más datos: solo diario
  // Gorros, gorras, boinas y sombreros solo en diario o playa; vale también para las sugerencias con IA (revisión de Codex, #100)
  if(g.category==="Accesorios"&&!["daily","beach"].includes(occ)&&HEADWEAR.test([g.type,g.subtype,g.name].filter(Boolean).join(" ")))return false;
  if(occs.length)return occs.includes(occ)||(occ==="daily"&&!occs.every(o=>["sport","home","beach","formal","party","event"].includes(o)));
@@ -1695,7 +1696,7 @@ function scoreOutfit(gs,ctx){
  const clamp=v=>Math.max(0,Math.min(1,v));
  // Lo usado hace poco resta aparte (hasta 15 puntos), para que «distinto cada día» pese de verdad
  const recent=Math.min(1,personal<0?-personal:0);
- const score=Math.round(25*clamp(color)+25*clamp(sil)+20*clamp(style)+20*clamp(context)+10*clamp(personal)-15*recent-(patterns>=3&&!ctx.likes?.has("pattern")?12:0)-(ctx.likes?.has("mono")?0:12)*vividColorRepeat(gs)); // gusto: si te gustan los monocromáticos, repetir color vivo no resta
+ const score=Math.round(25*clamp(color)+25*clamp(sil)+20*clamp(style)+20*clamp(context)+10*clamp(personal)-15*recent-(patterns>=3&&!ctx.likes?.has("pattern")?12:0)-(ctx.likes?.has("vividmono")?0:12)*vividColorRepeat(gs)); // gusto: solo si te gusta el tono sobre tono en color vivo (no basta con «monocromático»)
  return {score,reasons:[...new Set(reasons)].slice(0,3),warnings};
 }
 /* Contexto común (se calcula una vez por llamada: usos, olvidadas y gustos) */
@@ -2020,7 +2021,7 @@ function computeDaily(date,skip=[]){
 let dailyDirty=false;
 function ensureDailyLook(force=false){
  const p=appState.data.preferences,today=dayISO(),temp=currentTemperature();let d=p.dailyLook;
- const wsig=myGarments().length+"|"+myGarments().reduce((m,g)=>String(g.updatedAt||"")>m?String(g.updatedAt||""):m,"")+"|"+(p.dressStyle||"");
+ const wsig=myGarments().length+"|"+myGarments().reduce((m,g)=>String(g.updatedAt||"")>m?String(g.updatedAt||""):m,"")+"|"+(p.dressStyle||"")+"|"+workDress(); // cambiar el código de vestir rehace el look del día (revisión de Codex, #139)
  const stale=!d||d.date!==today||!d.ids?.length||(!d.touched&&(Math.abs((d.temp??temp)-temp)>=5||d.wsig!==wsig));
  if(!stale&&!force)return d;
  dailyDirty=true;

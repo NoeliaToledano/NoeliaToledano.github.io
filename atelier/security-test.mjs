@@ -607,13 +607,15 @@ console.log("PASS: S6 long-offline devices don't resurrect deletions");
   const out={def:at(undefined),arreglado:at("arreglado"),informal:at("informal"),formal:at("formal")};
   appState.data=normalizeData({garments:[G("t1","Arriba","Camisa",{formality:"smartcasual"}),G("p1","Abajo","Pantalón",{formality:"smartcasual"}),G("z1","Zapatos","Deportivas",{name:"Deportivas blancas",favorite:true}),G("z2","Zapatos","Mocasines")]});
   const shoe=w=>{appState.data.preferences.workDress=w;return rankOutfits({max:1,occasion:"work",date:"2026-04-15",temp:20})[0]?.ids.filter(i=>i[0]==="z").join()};
-  out.shoeDef=shoe("arreglado");out.shoeInf=shoe("informal");return out;`);
+  out.shoeDef=shoe("arreglado");out.shoeInf=shoe("informal");appState.data.preferences.workDress="informal";out.plainPack=occasionFits(G("q","Bolsos","Mochila"),"work");
+  const vivid=[G("v1","Arriba","Top",{color:"Rosa"}),G("v2","Abajo","Falda",{color:"Rosa"}),G("v3","Zapatos","Bailarinas",{color:"Rosa"})],c=engineContext({occasion:"daily",temp:20,date:"2026-04-15",extras:{shoes:true,bag:false}});
+  const base=scoreOutfit(vivid,c).score;c.likes=new Set(["mono"]);const mono=scoreOutfit(vivid,c).score;c.likes=new Set(["vividmono"]);out.vivid=[base,mono,scoreOutfit(vivid,c).score];return out;`);
   const r=probe(document,sessionStorage,{randomUUID:()=>"t"});
   // orden: sudadera, deportivas, mochila urbana, mochila de montaña, chanclas, vaqueros, blusa
   assert.equal(r.def,r.arreglado,"Sin ajuste = arreglado");assert.equal(r.arreglado,"0100011","Arreglado: ni sudadera, ni mochilas, ni chanclas; deportivas solo como último recurso");
   assert.equal(r.informal,"1110011","Informal: sudadera, deportivas y mochila urbana sí; mochila de montaña y chanclas, no");
   assert.equal(r.formal,"0000001","Formal: solo prendas arregladas");
-  assert.equal(r.shoeDef,"z2","Arreglado: mocasines antes que deportivas");assert.equal(r.shoeInf,"z1","Informal: las deportivas favoritas valen");
+  assert.equal(r.shoeDef,"z2","Arreglado: mocasines antes que deportivas");assert.equal(r.plainPack,true,"Informal: mochila sin formalidad en la ficha, sí");assert.ok(r.vivid[1]-r.vivid[0]<=4&&r.vivid[2]-r.vivid[1]>=8,"Gustar de «monocromático» no relaja el color vivo repetido; «tono sobre tono vivo», sí ("+r.vivid+")");assert.equal(r.shoeInf,"z1","Informal: las deportivas favoritas valen");
   console.log("PASS: Work dress code per profile (arreglado, formal, informal)");
 }
 
