@@ -1471,7 +1471,7 @@ function renderLooks(root){
 }
 /* Complementos en las propuestas: calzado y bolso se pueden quitar (preferencia por perfil).
    En «Estar en casa» y «Playa y piscina» el calzado no se añade nunca. */
-const NO_SHOES_OCCASIONS=new Set(["home","beach"]);
+const NO_SHOES_OCCASIONS=new Set(["home"]);
 function lookExtras(){const occasion=appState.data.preferences.occasion||"daily";return {shoes:!NO_SHOES_OCCASIONS.has(occasion),bag:occasion!=="home"}}
 function extrasTogglesHtml(){return ""}
 function bindExtrasToggles(){}
@@ -1593,7 +1593,7 @@ function completeOutfitGreedy(base,pool,ctx,used=new Map(),firstPick=null){
   let c=(ctx.byCat?.get(cat)||pool.filter(x=>x.category===cat)).filter(fits);
   if(cat==="Capas"){c=c.filter(x=>warmthOf(x)<=rule.max);if(rule.prefer==="warm")c.sort((a,b)=>warmthOf(b)-warmthOf(a)||pref(b)-pref(a));else c.sort((a,b)=>pref(b)-pref(a))}
   else c.sort((a,b)=>pref(b)-pref(a));
-  if(cat==="Zapatos"&&beach)c=c.filter(x=>/sandal|chancl|alpargat|zueco/i.test(x.type||x.name||""));
+  if(cat==="Zapatos"&&beach)c=c.filter(x=>/sandal|chancl|alpargat|zueco/i.test([x.type,x.name,x.subtype].filter(Boolean).join(" ")));
   if(cat==="Accesorios"&&c[0]&&pref(c[0])<1)continue;     // un complemento solo si de verdad suma
   const pick=cat==="Zapatos"&&firstPick?c.find(x=>x===firstPick):c[0];
   if(pick)l.push(pick);

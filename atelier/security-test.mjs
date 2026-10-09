@@ -69,6 +69,17 @@ console.log("PASS: Sync merges by key, keeps unknown keys, tombstones vs edits, 
 const weatherProbe=new Function("document","sessionStorage","crypto",src+";return {hot:weatherCompatible({category:\"Accesorios\",name:\"Gorro de lana\"},[],{temp:27}),cold:weatherCompatible({category:\"Zapatos\",name:\"Chanclas\"},[],{temp:9}),mixed:weatherCompatible({category:\"Accesorios\",name:\"Gorro de lana\"},[{category:\"Zapatos\",name:\"Chanclas\"}],{temp:16}),summer:weatherCompatible({category:\"Zapatos\",name:\"Sandalias\"},[{category:\"Vestidos\",name:\"Vestido ligero\"}],{temp:27})}")(document,sessionStorage,crypto);
 assert.deepEqual(weatherProbe,{hot:false,cold:false,mixed:false,summer:true});
 console.log("PASS: coherent warm/cold footwear and accessories");
+const beachFootwearProbe=new Function("document","sessionStorage","crypto",src+`
+appState.profile={id:"audit"};appState.data=emptyData();
+appState.data.garments=[
+ {id:"swim",name:"Bañador",category:"Baño",color:"Azul",style:"sport",season:"all"},
+ {id:"flip",name:"Chanclas",type:"Otro",category:"Zapatos",color:"Negro",style:"casual",season:"all"}
+];
+appState.data.preferences.occasion="beach";
+return rankOutfits({occasion:"beach",temp:28,max:2}).map(l=>l.ids);
+`)(document,sessionStorage,{randomUUID:()=>"test"});
+assert.ok(beachFootwearProbe.length>0&&beachFootwearProbe[0].includes("flip"),"Playa debe admitir chanclas aunque su tipo sea Otro");
+console.log("PASS: beach includes flip-flops recognized by name");
 // Motor de estilismo: banco de pruebas con armarios de 20, 100 y 500 prendas
 const engineProbe=new Function("document","sessionStorage","crypto",src+`
 const COLORS=["Negro","Blanco","Gris","Beige","Azul","Vaquero","Rojo","Verde","Rosa","Marrón"],STY=["casual","casual","smart","sport","party"];
