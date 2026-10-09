@@ -47,7 +47,7 @@ Pruebas: `atelier/security-test.mjs` (Node), `atelier/smoke-test.mjs` (Chrome) y
 
 ## Backend (`atelier-api/`): funciones serverless en Vercel
 
-- `/api/login`, `/api/session`: contraseñas scrypt y sesiones firmadas de 30 días. Para añadir un perfil, ver «Añadir un perfil nuevo» en `atelier-api/README.md`.
+- `/api/login`, `/api/session`: contraseñas scrypt y sesiones firmadas de 30 días, renovadas por `/api/session` si tienen más de 7 y revocables por perfil con `ATELIER_SESSION_VERSION_<PERFIL>`. Los errores de la IA son genéricos (sin `detail`) y todas las funciones usan `cors()` de `_lib/store.js`. Para añadir un perfil, ver «Añadir un perfil nuevo» en `atelier-api/README.md`.
 - `/api/analyze`: analiza una foto con OpenAI (`detail: low`).
 - `/api/looks`: crea looks con los IDs recibidos; tiene en cuenta `liked` y `disliked`; máximo 24 prendas.
 - `/api/analyze` y `/api/looks` tienen límite diario **por perfil en el servidor** (`dailyQuota` en Redis: 40 y 20, contado solo para peticiones válidas) y validan todo lo que entra en el prompt.

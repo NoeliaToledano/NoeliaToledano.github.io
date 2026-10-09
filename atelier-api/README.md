@@ -29,6 +29,9 @@ node atelier-api/scripts/hash-password.mjs eva
 ```
 Pide la contraseña sin mostrarla e indica el nombre y el valor de la variable que hay que crear en Vercel. Después hay que volver a desplegar el backend.
 
+## Cerrar las sesiones de un perfil
+Las sesiones duran 30 días y se renuevan solas al abrir la app si tienen más de 7. Para cerrar todas las sesiones de un perfil (móvil perdido, contraseña cambiada), crea o sube en Vercel `ATELIER_SESSION_VERSION_<PERFIL>` (por ejemplo `ATELIER_SESSION_VERSION_EVA=2`) y vuelve a desplegar. Si no existe, vale `1`. Cambiar `ATELIER_SESSION_SECRET` cierra las de todos los perfiles.
+
 ## Añadir un perfil nuevo
 1. `atelier/atelier.js`: añadirlo a `PROFILES`.
 2. `atelier/index.html`: añadir su botón en `.profiles`.

@@ -408,7 +408,7 @@ async function ensurePersistence(){
    - Cada cambio local marca "pendiente" y se sube a los pocos segundos.
    - Si otro dispositivo cambió el servidor a la vez, se fusionan ambos lados (gana la versión más reciente
      de cada prenda/look; lo borrado en cualquiera de los dos queda borrado).
-   - Las fotos se suben y descargan una a una por /api/sync-image.
+   - Las fotos se suben y descargan por /api/sync-image (descarga de 4 en 4); una foto que falla no bloquea el resto.
    - Si el servidor no tiene la base de datos configurada, la app sigue funcionando solo en local. */
 const freshSync=()=>({rev:0,dirty:false,ever:false,lastAt:null,imgs:{},status:"idle",error:""});
 /* sync: estado del perfil activo. syncGen cambia en cada inicio/cierre de sesión: una sincronización
@@ -422,7 +422,7 @@ async function loadSyncMeta(){
 }
 async function saveSyncMeta(profile=appState.profile?.id,s=sync){if(!profile)return;try{await dbSet("sync:"+profile,{rev:s.rev,dirty:s.dirty,ever:s.ever,lastAt:s.lastAt,imgs:s.imgs})}catch(e){console.warn("SYNC_META",e)}}
 function markDirty(){if(!appState.profile)return;editSeq++;sync.dirty=true;saveSyncMeta();scheduleSync(2500)}
-function resetSyncSession(){syncGen++;clearTimeout(syncTimer);syncAgain=false}
+function resetSyncSession(){fetchedImgs.clear();syncGen++;clearTimeout(syncTimer);syncAgain=false}
 function scheduleSync(ms){clearTimeout(syncTimer);if(sync.status==="off")return;syncTimer=setTimeout(()=>syncNow(),ms)}
 async function syncFetch(path,options={},token=appState.token){
  const headers={...(options.headers||{})};if(token)headers.Authorization="Bearer "+token;
@@ -470,24 +470,37 @@ function reuseLocalImages(data,local){
  const byId=new Map(local.garments.map(g=>[g.id,g]));
  for(const g of data.garments){if(validImage(g.image))continue;const l=byId.get(g.id);if(l&&validImage(l.image)&&imgVer(l)===imgVer(g))g.image=l.image}
 }
-async function downloadImages(data,serverImages,call,s){
+/* S3: las fotos se descargan de 4 en 4 y cada una se guarda al llegar (fetchedImgs), así un reintento de la
+   fusión o un fallo de red no obliga a bajarlas otra vez. Una foto que falla no bloquea el resto ni la subida del estado. */
+const fetchedImgs=new Map(),fatalSync=e=>e?.message===SYNC_STALE||e?.message==="SESSION_EXPIRED";
+async function inPool(items,n,fn){let i=0;await Promise.all(Array.from({length:Math.min(n,items.length)},async()=>{while(i<items.length)await fn(items[i++])}))}
+async function downloadImages(data,serverImages,call,s,profile){
+ const key=g=>profile+":"+g.id+"@"+imgVer(g);
  const missing=data.garments.filter(g=>!validImage(g.image)&&serverImages.has(g.id));
- if(missing.length>3)toast("Descargando "+missing.length+" fotos de tu armario…");
- for(const g of missing){
-  const r=await call("/api/sync-image?id="+encodeURIComponent(g.id));
-  if(r.status===200&&validImage(r.body.image)){g.image=r.body.image;s.imgs[g.id]=imgVer(g)}
- }
+ for(const g of missing){const c=fetchedImgs.get(key(g));if(c){g.image=c;s.imgs[g.id]=imgVer(g)}}
+ const rest=missing.filter(g=>!validImage(g.image));let failed=0;
+ if(rest.length>3)toast("Descargando "+rest.length+" fotos de tu armario…");
+ await inPool(rest,4,async g=>{
+  try{const r=await call("/api/sync-image?id="+encodeURIComponent(g.id));
+   if(r.status===200&&validImage(r.body.image)){g.image=r.body.image;fetchedImgs.set(key(g),g.image);s.imgs[g.id]=imgVer(g)}else failed++}
+  catch(e){if(fatalSync(e))throw e;failed++}
+ });
+ return failed;
 }
 async function uploadImages(serverImages,call,s){
+ let failed=0;
  for(const g of myGarments()){
   if(!validImage(g.image))continue;
   const v=imgVer(g),image=g.image,id=g.id;
   if(serverImages.has(id)&&s.imgs[id]===v)continue;
-  const r=await call("/api/sync-image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id,image})});
-  if(r.status!==200)throw new Error(r.body.error||"SYNC_IMG_"+r.status);
-  serverImages.add(id);s.imgs[id]=v;
+  if(s.imgs[id]==="rechazada:"+v)continue; // el servidor ya la rechazó (no válida o demasiado grande): no se reintenta hasta cambiarla
+  try{
+   const r=await call("/api/sync-image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id,image})});
+   if(r.status===200){serverImages.add(id);s.imgs[id]=v}else{failed++;if(r.status===400||r.status===413)s.imgs[id]="rechazada:"+v}
+  }catch(e){if(fatalSync(e))throw e;failed++}
  }
  const ids=new Set(myGarments().map(g=>g.id));for(const id of Object.keys(s.imgs))if(!ids.has(id))delete s.imgs[id];
+ return failed;
 }
 let syncChangedView=false;
 async function applyFromServer(data){
@@ -509,7 +522,7 @@ async function syncNow(){
  s.status="syncing";
  try{
   for(let attempt=0;attempt<3;attempt++){
-   const seqStart=editSeq;syncChangedView=false;
+   const seqStart=editSeq;syncChangedView=false;let photoFail=0;
    const g=await call("/api/sync");
    if(g.status===503){s.status="off";s.error=g.body.error||"";return}
    if(g.status!==200)throw new Error(g.body.error||"SYNC_"+g.status);
@@ -522,14 +535,15 @@ async function syncNow(){
    else needPush=s.dirty;
    if(incoming){
     reuseLocalImages(incoming,local);
-    await downloadImages(incoming,serverImages,call,s);
+    photoFail=await downloadImages(incoming,serverImages,call,s,profile);
     if(editSeq!==seqStart)continue;  // hubo cambios mientras se descargaba: se vuelve a fusionar con ellos
     if(!alive())throw new Error(SYNC_STALE);
     await applyFromServer(incoming);
+    for(const k of [...fetchedImgs.keys()])if(k.startsWith(profile+":"))fetchedImgs.delete(k);
    }
    s.ever=true;s.rev=serverRev;
    const pushSeq=editSeq;
-   await uploadImages(serverImages,call,s);
+   photoFail+=await uploadImages(serverImages,call,s);
    if(needPush){
     const p=await call("/api/sync",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({baseRev:serverRev,data:slimData(appState.data)})});
     if(p.status===409)continue;
@@ -538,8 +552,9 @@ async function syncNow(){
    }
    // Solo queda al día si nadie editó durante la subida; si no, se repite enseguida.
    if(editSeq===pushSeq)s.dirty=false;else syncAgain=true;
-   s.lastAt=new Date().toISOString();s.status="ok";s.error="";
+   s.lastAt=new Date().toISOString();s.status="ok";s.error="";s.photoFail=photoFail;
    await saveSyncMeta(profile,s);
+   if(photoFail&&alive())scheduleSync(60000); // las fotos que fallaron se reintentan; el resto ya está al día
    if(!alive())return;
    // Solo se redibuja si llegaron cambios de otro dispositivo (así no se pierde lo que estés escribiendo).
    if(syncChangedView){syncChangedView=false;render()}else{const st=$("#syncStatus");if(st)st.textContent=syncStatusText()}
@@ -560,7 +575,7 @@ function syncStatusText(){
  if(sync.status==="off")return "La sincronización no está activada en el servidor. Tus datos solo están en este dispositivo.";
  if(sync.status==="syncing")return "Sincronizando…";
  if(sync.status==="error")return "No se pudo sincronizar ("+sync.error+"). Lo reintentaré automáticamente.";
- if(sync.lastAt){const m=Math.round((Date.now()-Date.parse(sync.lastAt))/60000);return "Sincronizado "+(m<1?"hace un momento":m<60?"hace "+plural(m,"minuto","minutos"):"hace "+plural(Math.round(m/60),"hora","horas"))+(sync.dirty?" · hay cambios pendientes":"")+"."}
+ if(sync.lastAt){const m=Math.round((Date.now()-Date.parse(sync.lastAt))/60000);return "Sincronizado "+(m<1?"hace un momento":m<60?"hace "+plural(m,"minuto","minutos"):"hace "+plural(Math.round(m/60),"hora","horas"))+(sync.dirty?" · hay cambios pendientes":"")+(sync.photoFail?" · "+plural(sync.photoFail,"foto","fotos")+" pendiente"+(sync.photoFail>1?"s":"")+", lo reintentaré":"")+"."}
  return "Pendiente de la primera sincronización.";
 }
 
@@ -675,6 +690,7 @@ async function restoreSession(){
   appState.profile=p;appState.token=s.token;
   const check=await rawApi("/api/session");
   if(!check.authenticated||check.profileId!==p.id)throw new Error("SESSION_INVALID");
+  if(typeof check.token==="string"&&check.token){appState.token=check.token;try{localStorage.setItem("atelier-session",JSON.stringify({...s,token:check.token}))}catch{}} // renovación (B4)
   await enterApp();return true;
  }catch(e){
   // Sin conexión: se entra igualmente con los datos locales.

@@ -1,6 +1,6 @@
 import { getProfilePasswordHash, issueSession, verifyPasswordRecord, SESSION_SECONDS } from "../_lib/auth.js";
 
-import { failures, storeConfigured } from "../_lib/store.js";
+import { cors, failures, storeConfigured } from "../_lib/store.js";
 
 // Límite de intentos (#48): en Redis, compartido entre instancias de Vercel. Sin Redis, en memoria (solo orientativo).
 const attempts = new Map();
@@ -36,10 +36,7 @@ async function clearFailures(ip, profileId) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "https://noeliatoledano.github.io");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.setHeader("Cache-Control", "no-store");
+  cors(req, res, "POST");
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Método no permitido." });
 
