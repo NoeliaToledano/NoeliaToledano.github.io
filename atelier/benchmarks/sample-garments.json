@@ -1,0 +1,233 @@
+[
+  {
+    "id": "Ar0",
+    "name": "Camiseta blanca",
+    "category": "Arriba",
+    "color": "Negro",
+    "season": "all",
+    "style": "casual",
+    "image": "",
+    "createdAt": "2026-10-09",
+    "updatedAt": "2026-10-09"
+  },
+  {
+    "id": "Ar1",
+    "name": "Camisa azul",
+    "category": "Arriba",
+    "color": "Blanco",
+    "season": "all",
+    "style": "casual",
+    "image": "",
+    "createdAt": "2026-10-09",
+    "updatedAt": "2026-10-09"
+  },
+  {
+    "id": "Ar2",
+    "name": "Blusa negra",
+    "category": "Arriba",
+    "color": "Beige",
+    "season": "all",
+    "style": "casual",
+    "image": "",
+    "createdAt": "2026-10-09",
+    "updatedAt": "2026-10-09"
+  },
+  {
+    "id": "Ar3",
+    "name": "Jersey beige",
+    "category": "Arriba",
+    "color": "Azul",
+    "season": "all",
+    "style": "smart",
+    "image": "",
+    "createdAt": "2026-10-09",
+    "updatedAt": "2026-10-09"
+  },
+  {
+    "id": "Ab0",
+    "name": "Vaqueros oscuros",
+    "category": "Abajo",
+    "color": "Negro",
+    "season": "all",
+    "style": "casual",
+    "image": "",
+    "createdAt": "2026-10-09",
+    "updatedAt": "2026-10-09"
+  },
+  {
+    "id": "Ab1",
+    "name": "Pantalón negro",
+    "category": "Abajo",
+    "color": "Blanco",
+    "season": "all",
+    "style": "casual",
+    "image": "",
+    "createdAt": "2026-10-09",
+    "updatedAt": "2026-10-09"
+  },
+  {
+    "id": "Ab2",
+    "name": "Falda midi",
+    "category": "Abajo",
+    "color": "Beige",
+    "season": "all",
+    "style": "casual",
+    "image": "",
+    "createdAt": "2026-10-09",
+    "updatedAt": "2026-10-09"
+  },
+  {
+    "id": "Ab3",
+    "name": "Pantalón beige",
+    "category": "Abajo",
+    "color": "Azul",
+    "season": "all",
+    "style": "smart",
+    "image": "",
+    "createdAt": "2026-10-09",
+    "updatedAt": "2026-10-09"
+  },
+  {
+    "id": "Ve0",
+    "name": "Vestido floral",
+    "category": "Vestidos",
+    "color": "Negro",
+    "season": "all",
+    "style": "casual",
+    "image": "",
+    "createdAt": "2026-10-09",
+    "updatedAt": "2026-10-09"
+  },
+  {
+    "id": "Ve1",
+    "name": "Vestido negro",
+    "category": "Vestidos",
+    "color": "Blanco",
+    "season": "all",
+    "style": "casual",
+    "image": "",
+    "createdAt": "2026-10-09",
+    "updatedAt": "2026-10-09"
+  },
+  {
+    "id": "Ve2",
+    "name": "Mono largo",
+    "category": "Vestidos",
+    "color": "Beige",
+    "season": "all",
+    "style": "casual",
+    "image": "",
+    "createdAt": "2026-10-09",
+    "updatedAt": "2026-10-09"
+  },
+  {
+    "id": "Ca0",
+    "name": "Americana negra",
+    "category": "Capas",
+    "color": "Negro",
+    "season": "all",
+    "style": "casual",
+    "image": "",
+    "createdAt": "2026-10-09",
+    "updatedAt": "2026-10-09"
+  },
+  {
+    "id": "Ca1",
+    "name": "Abrigo de lana",
+    "category": "Capas",
+    "color": "Blanco",
+    "season": "all",
+    "style": "casual",
+    "image": "",
+    "createdAt": "2026-10-09",
+    "updatedAt": "2026-10-09"
+  },
+  {
+    "id": "Za0",
+    "name": "Sandalias",
+    "category": "Zapatos",
+    "color": "Negro",
+    "season": "all",
+    "style": "casual",
+    "image": "",
+    "createdAt": "2026-10-09",
+    "updatedAt": "2026-10-09"
+  },
+  {
+    "id": "Za1",
+    "name": "Botines",
+    "category": "Zapatos",
+    "color": "Blanco",
+    "season": "all",
+    "style": "casual",
+    "image": "",
+    "createdAt": "2026-10-09",
+    "updatedAt": "2026-10-09"
+  },
+  {
+    "id": "Za2",
+    "name": "Deportivas blancas",
+    "category": "Zapatos",
+    "color": "Beige",
+    "season": "all",
+    "style": "casual",
+    "image": "",
+    "createdAt": "2026-10-09",
+    "updatedAt": "2026-10-09"
+  },
+  {
+    "id": "Za3",
+    "name": "Zapatos de tacón",
+    "category": "Zapatos",
+    "color": "Azul",
+    "season": "all",
+    "style": "smart",
+    "image": "",
+    "createdAt": "2026-10-09",
+    "updatedAt": "2026-10-09"
+  },
+  {
+    "id": "Bo0",
+    "name": "Bolso negro",
+    "category": "Bolsos",
+    "color": "Negro",
+    "season": "all",
+    "style": "casual",
+    "image": "",
+    "createdAt": "2026-10-09",
+    "updatedAt": "2026-10-09"
+  },
+  {
+    "id": "Bo1",
+    "name": "Bolso marrón",
+    "category": "Bolsos",
+    "color": "Blanco",
+    "season": "all",
+    "style": "casual",
+    "image": "",
+    "createdAt": "2026-10-09",
+    "updatedAt": "2026-10-09"
+  },
+  {
+    "id": "Ac0",
+    "name": "Gorro de lana",
+    "category": "Accesorios",
+    "color": "Negro",
+    "season": "all",
+    "style": "casual",
+    "image": "",
+    "createdAt": "2026-10-09",
+    "updatedAt": "2026-10-09"
+  },
+  {
+    "id": "Ac1",
+    "name": "Cinturón negro",
+    "category": "Accesorios",
+    "color": "Blanco",
+    "season": "all",
+    "style": "casual",
+    "image": "",
+    "createdAt": "2026-10-09",
+    "updatedAt": "2026-10-09"
+  }
+]
