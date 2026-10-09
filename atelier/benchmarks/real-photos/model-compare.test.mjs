@@ -9,7 +9,7 @@ const cli=new URL("./model-compare.mjs",import.meta.url).pathname;
 const file=(name,rows)=>{const p=join(root,name);writeFileSync(p,JSON.stringify(rows));return p};
 try{
  const a=file("baseline.json",[
-  {id:"p01",sa:8,sb:6,noelia:"a",better:"a",occasion:"work",kind:"formalidad"},
+  {id:"p01",sa:8,sb:6,noelia:"a",better:"a",occasion:"work",kind:"formalidad",va:[],vb:[]},
   {id:"p02",sa:3,sb:3,noelia:"=",better:"b",occasion:"daily",kind:"color"},
   {id:"p03",sa:1,sb:2,noelia:"b",better:"b",occasion:"work",kind:"estampados"}
  ]);
@@ -25,6 +25,10 @@ try{
  assert.deepEqual(r.summary.exactHumanAgreement,{atelier:3,external:2});
  assert.equal(r.summary.modelDisagreements,1);
  assert.equal(r.byOccasion.work.pairs,2);
+ const gated=file("gated.json",[{id:"p01",sa:1,sb:9,noelia:"a",better:"a",occasion:"work",kind:"formalidad",va:[],vb:["unfit"]}]);
+ const gatedPred=file("gated-predictions.json",[{id:"p01",sa:0,sb:100}]);
+ const forced=JSON.parse(execFileSync(process.execPath,[cli,gated,gatedPred],{encoding:"utf8"}));
+ assert.equal(forced.summary.exactHumanAgreement.external,1,"Shared restrictions must override external scores");
  const incomplete=file("incomplete.json",[{id:"p01",sa:1,sb:2}]);
  assert.equal(spawnSync(process.execPath,[cli,a,incomplete]).status,2,"Reject incompatible coverage");
  const duplicate=file("duplicate.json",[{id:"p01",sa:1,sb:2},{id:"p01",sa:2,sb:1}]);
