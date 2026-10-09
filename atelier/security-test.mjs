@@ -431,3 +431,31 @@ console.log("PASS: S6 long-offline devices don't resurrect deletions");
   assert.equal(r.workBackpack,false);assert.ok(r.packCount>0&&!r.packSmart,"Combinar una mochila: sin prendas smart ni party");assert.equal(r.backpackWork,false);assert.equal(r.backpackDaily,true);
   console.log("PASS: #108 base variety, work shoes, backpacks only for daily/sport");
 }
+
+// Perfil de prenda: formalidad, manga, grosor, tejido, largo y ocasiones de la ficha mandan sobre el nombre
+{
+  const probe=new Function("document","sessionStorage","crypto",src+`
+  const G=(id,category,type,extra={})=>({id,name:type,category,type,color:"Negro",style:"casual",season:"all",updatedAt:"x",...extra});
+  const fit=(g,o)=>occasionFits(g,o);
+  const dressyPack=G("p1","Bolsos","Mochila",{formality:"smartcasual",subtype:"mochila de piel"}),hikePack=G("p2","Bolsos","Mochila",{subtype:"mochila de montaña"}),plainPack=G("p3","Bolsos","Mochila");
+  const heelSandal=G("s1","Zapatos","Sandalias",{formality:"formal",subtype:"sandalias de tacón"}),flipflop=G("s2","Zapatos","Chanclas");
+  const userPack=G("p4","Bolsos","Mochila",{occasions:["work"]});
+  const casualPack=G("p5","Bolsos","Mochila",{formality:"casual"});
+  appState.profile={id:"noelia"};appState.data=normalizeData({garments:[G("d1","Vestidos","Vestido corto",{style:"party",formality:"party"}),G("s9","Zapatos","Sandalias de tacón",{formality:"formal"})]});
+  const partyShoes=rankOutfits({max:1,occasion:"party",date:"2026-07-15",temp:26})[0]?.ids.includes("s9");
+  const wool=G("t1","Arriba","Jersey",{sleeve:"larga",thickness:"grueso",fabric:"wool"}),linen=G("t2","Arriba","Camisa",{sleeve:"larga",thickness:"ligero",fabric:"linen"}),tank=G("t3","Arriba","Top",{sleeve:"sin mangas",thickness:"ligero"});
+  const mini=G("b1","Abajo","Falda",{length:"cropped"}),midi=G("b2","Abajo","Falda",{length:"midi"});
+  return {
+   casualPackWork:fit(casualPack,"work"),partyShoes,
+   packs:[fit(dressyPack,"work"),fit(hikePack,"work"),fit(plainPack,"work"),fit(userPack,"work"),fit(hikePack,"daily")].join(),
+   shoes:[fit(heelSandal,"work"),fit(heelSandal,"party"),fit(flipflop,"work")].join(),
+   heat:[thermalOk(wool,27),thermalOk(linen,27),thermalOk(tank,27),thermalOk(wool,10)].join(),
+   cold:[thermalOk(mini,10),thermalOk(midi,10),thermalOk(mini,22)].join()};`);
+  const r=probe(document,sessionStorage,{randomUUID:()=>"t"});
+  assert.equal(r.packs,"true,false,false,true,true","Mochila: de vestir sí en trabajo; de montaña o sin datos no; si la ficha dice trabajo, sí");
+  assert.equal(r.casualPackWork,false,"Mochila informal: no al trabajo");assert.equal(r.partyShoes,true,"Fiesta: sandalias de tacón con formalidad formal aunque su estilo sea informal");
+  assert.equal(r.shoes,"true,true,false","Sandalias de tacón (formalidad formal) sí en trabajo y fiesta; chanclas no");
+  assert.equal(r.heat,"false,true,true,true","Jersey de lana grueso no con 27 °C; camisa de lino de manga larga sí");
+  assert.equal(r.cold,"false,true,true","Minifalda no con 10 °C; falda midi sí");
+  console.log("PASS: Garment profile: formality, sleeve, thickness, fabric, length and occasions drive the rules");
+}

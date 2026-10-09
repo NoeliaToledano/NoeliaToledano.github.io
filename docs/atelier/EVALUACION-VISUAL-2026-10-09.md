@@ -174,3 +174,24 @@ Cada cambio debe llevar su prueba de regresión con estos mismos casos. Después
 - **Mochila:** solo en diario o deporte, y nunca con prendas `smart` ni `party`.
 
 **Pendiente (datos):** en Polyvore, los botines de las fotos están etiquetados «todo el año» y salen a 28 °C. Es una etiqueta del banco, no un fallo del motor.
+
+## Perfil de prenda (Claude, `claude/perfil-prenda`) · petición de Noelia
+
+**Petición:** clasificar bien cada prenda y decidir con su contexto, no con su nombre. Una mochila puede ser de vestir, de trabajo o de montaña, y la manga y el grosor cuentan para la temperatura.
+
+**Cambios en el motor:**
+- **Formalidad** (`formality`, del análisis o corregida en la ficha; si falta, el estilo):
+  - **Trabajo:** admite «arreglado informal» y «formal», aunque el nombre diga sandalia o mochila. «Informal» se mira por tipo (fuera shorts, chanclas y gorras); «deporte» y «fiesta», no.
+  - **Fiesta y eventos:** formalidad arreglada o más.
+  - **Playa:** informal o deporte.
+- **Uso exterior o deportivo** (`isOutdoor`: formalidad «deporte» o, sin dato, «montaña», «trekking», «running»…): fuera de trabajo, fiesta y eventos, salvo el calzado.
+- **Abrigo térmico** (`thermal`, de 0 a 6: manga o largo + grosor + tejido):
+  - fuera la manga larga gruesa o de lana con 24 °C o más;
+  - fuera los shorts y minifaldas con menos de 14 °C;
+  - una camisa de lino de manga larga sí vale con calor.
+- **Ocasiones de la ficha:** mandan sobre cualquier regla por nombre. Una mochila marcada «trabajo» va al trabajo.
+- **Mochila con ropa arreglada:** solo si es de vestir (formalidad arreglada) y no de montaña.
+
+**Banco Polyvore:** ahora tiene manga, largo, tejido, grosor y formalidad, sacados del texto de la tienda. **Resultado, sin regresiones:**
+- Polyvore: ningún aviso. Bolso de fiesta fuera de fiesta: 0. Prendas informales en trabajo: 0. Vestidos: 16 de 54.
+- Banco 1: igual que antes.
