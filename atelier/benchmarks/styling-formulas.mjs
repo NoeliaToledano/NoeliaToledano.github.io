@@ -21,7 +21,7 @@ const isPatterned=g=>Boolean(g.pattern&&g.pattern!=="plain"&&g.pattern!=="unknow
 export function matchSlot(item,slot){
  if(!item||item.category!==slot.category)return false;
  if(slot.style&&(!item.style||!slot.style.includes(item.style)))return false;
- if(slot.pattern==="plain"&&isPatterned(item))return false;
+ if(slot.pattern==="plain"&&item.pattern!=="plain")return false; // unknown pattern is not evidence of a plain garment
  if(slot.pattern==="patterned"&&!isPatterned(item))return false;
  return true;
 }
