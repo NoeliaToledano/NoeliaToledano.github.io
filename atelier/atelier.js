@@ -856,23 +856,27 @@ function renderPhotoControls(){
  $("#makeWhite",box)?.addEventListener("click",()=>makeSheetWhite());
  $("#tryWhitePreview",box)?.addEventListener("click",async()=>{
   if(ph.busy||!ph.original)return;
-  ph.busy=true;renderPhotoControls();
+  ph.busy=true;renderPhotoControls();let done;ph.pending=new Promise(r=>done=r);
   try{
    const candidate=await photoJob("whiteBackground",ph.original,whiteBackground);
    if(sheetPhoto!==ph)return;
    if(candidate?.image){ph.altWhite=candidate.image;ph.mode="alt";ph.changed=true}
    else toast("No se pudo separar la prenda del fondo en esta foto");
   }catch(e){console.warn("WHITE_PREVIEW",e);toast("No se pudo generar la vista previa del fondo blanco")}
-  finally{ph.busy=false;if(sheetPhoto===ph)renderPhotoControls()}
+  finally{ph.busy=false;done();if(sheetPhoto===ph)renderPhotoControls()}
  });
 }
 async function makeSheetWhite(){
- const ph=sheetPhoto;if(!ph?.original||ph.busy)return;
+ const ph=sheetPhoto;if(!ph?.original||ph.busy)return ph?.pending;
  ph.busy=true;ph.failed=false;renderPhotoControls();
- const res=await enhancePhoto(ph.original);
+ // ph.pending: «Guardar» espera a que termine la mejora (el retoque va en un Worker y la app sigue respondiendo)
+ let done;ph.pending=new Promise(r=>done=r);
+ try{
+ const res=await enhancePhoto(ph.original).catch(()=>null);
  if(sheetPhoto!==ph)return;
  ph.busy=false;if(res){ph.edited=res.image;ph.editedWhite=res.white;ph.asIs=!!res.asIs;ph.altWhite=res.doubtfulWhite||null;ph.mode="edited";ph.changed=true}else ph.failed=true;
  renderPhotoControls();
+ }finally{ph.busy=false;done()}
 }
 /* Ficha de características dentro de la hoja de la prenda (se crea una vez) */
 function buildMetadataSection(){
@@ -965,8 +969,9 @@ function openGarment(id){
 function closeGarment(){$("#garmentSheet").classList.add("hidden")}
 async function saveGarment(e){
  e.preventDefault();
- const id=$("#garmentId").value||uid(),old=myGarments().find(x=>x.id===id),ph=sheetPhoto;
- if(ph?.busy)return toast("Espera a que termine de mejorar la foto");
+ const ph=sheetPhoto;
+ if(ph?.busy){if(ph.saving)return;ph.saving=true;toast("Terminando de mejorar la foto…");try{await ph.pending}finally{ph.saving=false}if(sheetPhoto!==ph)return}
+ const id=$("#garmentId").value||uid(),old=myGarments().find(x=>x.id===id);
  const image=sheetImage()||old?.image||"",changed=!!ph?.changed&&image!==old?.image,edited=!!ph&&(ph.mode==="edited"&&!!ph.edited||ph.mode==="alt"&&!!ph.altWhite);
  if(!validImage(image)&&!old?.hasImage)return toast("Añade una fotografía de la prenda antes de guardarla");
  if($("#garmentCategory").value==="Interior")return toast("La ropa interior no está admitida");
