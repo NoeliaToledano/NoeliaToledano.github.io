@@ -1777,7 +1777,7 @@ function rankOutfits(o={}){
   // Solo repetir base cuando no haya otra razonablemente buena; no sacrificar
   // la calidad de la propuesta por una combinación muy inferior.
   const strongest=eligible.reduce((v,c)=>Math.max(v,c.score),-Infinity);
-  const diverse=freshBases.filter(c=>c.score>=strongest-12);
+  const diverse=out.length?freshBases.filter(c=>c.score>=strongest-12):[];
   const options=diverse.length?diverse:eligible;
   for(const c of options){const v=c.score-out.reduce((t,x)=>t+overlap(c,x)*14,0)-(dressOut&&hasTopBottom&&c.gs.some(g=>g.category==="Vestidos")?12*dressOut:0);if(v>bv){bv=v;best=c}}
   if(!best)break;picked.add(best);
