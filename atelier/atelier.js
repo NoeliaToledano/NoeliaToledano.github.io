@@ -1768,7 +1768,19 @@ function rankOutfits(o={}){
   let best=null,bv=-1e9;
   // Q1 (#108): variedad de bases; si ya hay un vestido elegido y existen looks de arriba+abajo, el siguiente vestido cuesta más
   const dressOut=out.filter(x=>x.gs.some(g=>g.category==="Vestidos")).length;
-  for(const c of cands){if(picked.has(c)||seen.has(sig(c)))continue;const v=c.score-out.reduce((t,x)=>t+overlap(c,x)*14,0)-(dressOut&&hasTopBottom&&c.gs.some(g=>g.category==="Vestidos")?12*dressOut:0);if(v>bv){bv=v;best=c}}
+  const eligible=cands.filter(c=>!picked.has(c)&&!seen.has(sig(c)));
+  // Una pareja nueva de camiseta+pantalón no es realmente distinta si
+  // reutiliza una de esas dos prendas. Preferir menos piezas principales
+  // repetidas, siempre dentro de un margen razonable de calidad.
+  const principal=c=>new Set(c.gs.filter(g=>["Arriba","Abajo","Vestidos","Casa","Baño"].includes(g.category)).map(g=>g.id));
+  const usedPrincipal=new Set(out.flatMap(c=>[...principal(c)]));
+  const reuse=c=>[...principal(c)].filter(id=>usedPrincipal.has(id)).length;
+  const strongest=eligible.reduce((v,c)=>Math.max(v,c.score),-Infinity);
+  const quality=eligible.filter(c=>c.score>=strongest-12);
+  const leastReuse=quality.length?Math.min(...quality.map(reuse)):Infinity;
+  const diverse=out.length?quality.filter(c=>reuse(c)===leastReuse):[];
+  const options=diverse.length?diverse:eligible;
+  for(const c of options){const v=c.score-out.reduce((t,x)=>t+overlap(c,x)*14,0)-(dressOut&&hasTopBottom&&c.gs.some(g=>g.category==="Vestidos")?12*dressOut:0);if(v>bv){bv=v;best=c}}
   if(!best)break;picked.add(best);
   // Variedad de complementos (D2): se vuelve a completar la base teniendo en cuenta lo ya elegido
   const base=best.gs.filter(g=>!["Zapatos","Capas","Bolsos","Accesorios"].includes(g.category)||g.id===o.required);
