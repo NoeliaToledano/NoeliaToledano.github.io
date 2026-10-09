@@ -1680,6 +1680,11 @@ const bootInHeat=(g,temp)=>temp>=26&&closedBoot(g);
 const isPatterned=g=>colorInfo(g.color,g.pattern).fam==="estampado";
 /* Calzado de reserva de todo el armario: si la ficha indica ocasiones, mandan (revisión de Codex, #117) */
 const fallbackOccOk=(g,occ)=>!(Array.isArray(g.occasions)&&g.occasions.length)||occasionFits(g,occ);
+/* Contexto de bolsos y abrigos (evaluación Polyvore v88/v92) */
+const hasSkirtOrDress=gs=>gs.some(g=>g.category==="Vestidos"||g.category==="Abajo"&&/falda|skirt/i.test(textOf(g)));
+const outdoorPack=g=>isBackpack(g)&&isOutdoor(g); // mochila de montaña o técnica: no con vestido ni falda
+const PUFFER=/plum[ií]fero|plumas|anorak|acolchad|puffer|quilted|parka|cortavientos|softshell|forro polar|fleece/i;
+const casualCoat=g=>g.category==="Capas"&&PUFFER.test(textOf(g))&&formalLevel(g)<2; // en el trabajo, mejor abrigo de paño, gabardina o blazer
 function vividColorRepeat(gs){
  const count=new Map();
  for(const g of gs){
@@ -1698,7 +1703,8 @@ function completeOutfitGreedy(base,pool,ctx,used=new Map(),firstPick=null){
  for(const cat of plan){
   if(!cat||l.some(x=>x.category===cat))continue;
   let c=(ctx.byCat?.get(cat)||pool.filter(x=>x.category===cat)).filter(fits);
-  if(cat==="Capas"){c=c.filter(x=>warmthOf(x)<=rule.max&&!insufficientColdLayer(x,ctx.temp));if(rule.prefer==="warm")c.sort((a,b)=>warmthOf(b)-warmthOf(a)||pref(b)-pref(a));else c.sort((a,b)=>pref(b)-pref(a))}
+  if(cat==="Capas"){c=c.filter(x=>warmthOf(x)<=rule.max&&!insufficientColdLayer(x,ctx.temp));if(rule.prefer==="warm")c.sort((a,b)=>warmthOf(b)-warmthOf(a)||pref(b)-pref(a));else c.sort((a,b)=>pref(b)-pref(a));
+   if(["work","event","formal","party"].includes(ctx.occasion)){const dressy=c.filter(x=>!casualCoat(x)&&(rule.prefer!=="warm"||warmthOf(x)>=warmthOf(c[0]||x)));if(dressy.length)c=[...dressy,...c.filter(x=>!dressy.includes(x))]}}
   else if(cat==="Zapatos"&&["party","event","formal"].includes(ctx.occasion)){
    const formal=c.filter(x=>formalLevel(x)>=2); // por formalidad de la ficha, no solo por estilo (revisión de Codex, #112)
    if(!formal.length)c=(ctx.allShoes||[]).filter(x=>smartFallbackShoes(x)&&fallbackOccOk(x,ctx.occasion)).filter(fits);
@@ -1713,6 +1719,8 @@ function completeOutfitGreedy(base,pool,ctx,used=new Map(),firstPick=null){
   else c.sort((a,b)=>pref(b)-pref(a));
   if(cat==="Zapatos"&&c.some(x=>!bootInHeat(x,ctx.temp)))c=c.filter(x=>!bootInHeat(x,ctx.temp));
   if(cat==="Bolsos"&&l.some(p=>formalLevel(p)>=2))c=c.filter(x=>!isBackpack(x)||formalLevel(x)>=2&&!isOutdoor(x)); // Q3 (#108): mochila de vestir sí
+  if(cat==="Bolsos"&&hasSkirtOrDress(l))c=c.filter(x=>!outdoorPack(x)); // sin bolso antes que mochila de montaña con vestido
+  if(cat==="Bolsos"&&["party","event","formal"].includes(ctx.occasion)){const top=Math.max(0,...c.map(formalLevel));if(top>=2)c=c.filter(x=>formalLevel(x)>=top)} // fiesta: el bolso más arreglado que haya (de fiesta antes que de diario)
   if(cat==="Zapatos"&&beach)c=c.filter(x=>/sandal|chancl|alpargat|zueco/i.test([x.type,x.name,x.subtype].filter(Boolean).join(" ")));
   // P3/P4 (#99): un gorro o sombrero solo con motivo (frío o sol de verano en diario/playa); otros complementos, si suman
   if(cat==="Accesorios")c=c.filter(x=>!HEADWEAR.test([x.type,x.subtype,x.name].filter(Boolean).join(" "))||headwearMakesSense(x,ctx));
@@ -1752,6 +1760,7 @@ function rankOutfits(o={}){
   if(ctx.occasion==="beach")bases=pool.filter(g=>g.category==="Baño").map(g=>[g]);
   bases=[...bases,...outfitBases(pool.filter(g=>!["Casa","Baño"].includes(g.category)))];
   if(req)bases=bases.filter(b=>b.every(p=>!related(req,p)||stylesOk(req,p))&&(!isBackpack(req)||!isOutdoor(req)&&formalLevel(req)>=2||b.every(p=>formalLevel(p)<2))).map(b=>[...b,req]); // mochila elegida: sin prendas smart ni party (revisión de Codex, #111)
+  if(req&&outdoorPack(req)&&bases.some(b=>!hasSkirtOrDress(b)))bases=bases.filter(b=>!hasSkirtOrDress(b)); // mochila de montaña: con pantalón
  }
  bases=bases.filter(b=>b.length&&!b.some(g=>heavyKnitInHeat(g,ctx.temp)||!thermalOk(g,ctx.temp))&&b.every((x,i)=>b.every((y,j)=>i===j||!related(x,y)||stylesOk(x,y))));
  // Bolso o complemento estampado elegido: bases lisas si las hay (revisión de Codex, #117)

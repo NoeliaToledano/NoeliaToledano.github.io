@@ -495,6 +495,35 @@ console.log("PASS: S6 long-offline devices don't resurrect deletions");
   console.log("PASS: Boots only when it is not hot; patterned bag not with a patterned garment; plain heels as work fallback");
 }
 
+// Contexto de bolsos y abrigos (evaluación Polyvore v88/v92): mochila de montaña con vestido, bolso de diario en fiesta, plumífero en el trabajo
+{
+  const probe=new Function("document","sessionStorage","crypto",src+`
+  const G=(id,category,type,extra={})=>({id,name:type,category,type,color:"Negro",style:"casual",season:"all",updatedAt:"x",...extra});
+  appState.profile={id:"noelia"};
+  appState.data=normalizeData({garments:[G("v1","Vestidos","Vestido midi",{color:"Amarillo"}),G("z1","Zapatos","Bailarinas"),
+   G("m1","Bolsos","Mochila",{name:"Mochila North Face",formality:"sport",favorite:true}),G("t1","Arriba","Camiseta",{color:"Blanco"}),G("p1","Abajo","Vaqueros",{color:"Azul"})]});
+  const daily=rankOutfits({max:3,occasion:"daily",date:"2026-07-15",temp:26});
+  const packWithDress=daily.some(l=>l.ids.includes("v1")&&l.ids.includes("m1"));
+  const reqPack=rankOutfits({max:3,occasion:"daily",date:"2026-07-15",temp:26,required:"m1"}).some(l=>l.ids.includes("v1"));
+  appState.data=normalizeData({garments:[G("v2","Vestidos","Vestido de fiesta",{formality:"party",style:"party"}),G("z2","Zapatos","Tacones",{formality:"party",style:"party"}),
+   G("b1","Bolsos","Bolso de hombro",{formality:"smartcasual",style:"smart",favorite:true}),G("b2","Bolsos","Bolso de fiesta",{formality:"party",style:"party"})]});
+  const partyBag=rankOutfits({max:1,occasion:"party",date:"2026-04-15",temp:18})[0]?.ids.filter(i=>i[0]==="b").join();
+  appState.data=normalizeData({garments:[G("t2","Arriba","Camisa",{style:"smart",formality:"smartcasual"}),G("p2","Abajo","Pantalón",{style:"smart",formality:"smartcasual"}),G("z3","Zapatos","Mocasines"),
+   G("c1","Capas","Abrigo",{name:"Plumífero acolchado",warmth:"alto",favorite:true}),G("c2","Capas","Abrigo",{name:"Abrigo de paño",warmth:"alto",formality:"smartcasual"}),G("c3","Capas","Abrigo",{name:"Parka",warmth:"alto"})]});
+  const coat=o=>rankOutfits({max:1,date:"2026-01-15",temp:6,...o})[0]?.ids.filter(i=>i[0]==="c").join();
+  const workCoat=coat({occasion:"work"});
+  appState.data.garments=appState.data.garments.filter(g=>g.id!=="c2");
+  const onlyPuffer=coat({occasion:"work"});
+  return {packWithDress,reqPack,partyBag,workCoat,onlyPuffer};`);
+  const r=probe(document,sessionStorage,{randomUUID:()=>"t"});
+  assert.equal(r.packWithDress,false,"Mochila de montaña: no con vestido");
+  assert.equal(r.reqPack,false,"Combinar la mochila de montaña: con pantalón, no con el vestido");
+  assert.equal(r.partyBag,"b2","Fiesta: bolso de fiesta antes que el de diario, aunque este sea favorito");
+  assert.equal(r.workCoat,"c2","Trabajo con frío: abrigo de paño antes que plumífero o parka");
+  assert.ok(["c1","c3"].includes(r.onlyPuffer),"Si solo hay plumífero o parka, abriga igual");
+  console.log("PASS: Outdoor backpack not with dresses; party bag at parties; dressy coat before puffer at work");
+}
+
 // Foto de look: el análisis devuelve también formalidad, manga y largo (perfil de prenda), solo con valores conocidos
 {
   process.env.ATELIER_SESSION_SECRET="test-secret";process.env.OPENAI_API_KEY="k";
