@@ -460,6 +460,36 @@ console.log("PASS: S6 long-offline devices don't resurrect deletions");
   console.log("PASS: Garment profile: formality, sleeve, thickness, fabric, length and occasions drive the rules");
 }
 
+// Calzado con calor y estampados en complementos (evaluación Polyvore, v87): botines a 28 °C y bolso de camuflaje con falda de cuadros
+{
+  const probe=new Function("document","sessionStorage","crypto",src+`
+  const G=(id,category,type,extra={})=>({id,name:type,category,type,color:"Negro",style:"casual",season:"all",updatedAt:"x",...extra});
+  appState.profile={id:"noelia"};
+  appState.data=normalizeData({garments:[G("v1","Vestidos","Vestido midi",{style:"smart",formality:"smartcasual",sleeve:"sin mangas"}),
+   G("z1","Zapatos","Botines",{formality:"casual"}),G("z2","Zapatos","Deportivas",{style:"sport",formality:"sport"}),G("z3","Zapatos","Tacones",{name:"Salones de piel",style:"party",formality:"party"}),
+   G("z4","Zapatos","Tacones",{name:"Tacones con purpurina",style:"party",formality:"party"})]});
+  const shoesAt=(occ,temp)=>rankOutfits({max:1,occasion:occ,date:temp>20?"2026-07-15":"2026-01-15",temp})[0]?.ids.filter(i=>i[0]==="z").join();
+  const hotWork=shoesAt("work",28),coldWork=shoesAt("work",10),hotDaily=shoesAt("daily",28);
+  appState.data=normalizeData({garments:[G("t1","Arriba","Blusa",{style:"smart"}),G("f1","Abajo","Falda",{pattern:"checks",style:"smart"}),
+   G("b1","Bolsos","Bolso de mano",{pattern:"graphic",color:"Verde",favorite:true}),G("b2","Bolsos","Bolso de hombro",{color:"Negro"}),G("z5","Zapatos","Bailarinas")]});
+  const bag=rankOutfits({max:1,occasion:"daily",date:"2026-04-15",temp:18})[0]?.ids.filter(i=>i[0]==="b").join();
+  myGarments().push(G("f2","Abajo","Pantalón",{style:"smart"}));
+  const reqBag=rankOutfits({max:3,occasion:"daily",date:"2026-04-15",temp:18,required:"b1"}).every(l=>!l.ids.includes("f1"));
+  appState.data=normalizeData({garments:[G("v1","Vestidos","Vestido midi",{style:"smart",formality:"smartcasual"}),G("z1","Zapatos","Botines",{formality:"casual"}),
+   G("z3","Zapatos","Tacones",{name:"Salones de piel",style:"party",formality:"party",occasions:["party"]})]});
+  const occHeels=rankOutfits({max:1,occasion:"work",date:"2026-07-15",temp:28})[0]?.ids.includes("z3");
+  return {hotWork,coldWork,hotDaily,bag,reqBag,occHeels,boot:[closedBoot(G("x","Zapatos","Botines")),closedBoot(G("x","Zapatos","Zapatos",{name:"Zapato con botón"})),closedBoot(G("x","Zapatos","Sandalias",{name:"Botín peep toe"}))].join()};`);
+  const r=probe(document,sessionStorage,{randomUUID:()=>"t"});
+  assert.equal(r.hotWork,"z3","Trabajo a 28 °C: salones lisos antes que botines, deportivas o tacones con purpurina");
+  assert.equal(r.coldWork,"z1","Trabajo a 10 °C: botines");
+  assert.notEqual(r.hotDaily,"z1","Diario a 28 °C: sin botines si hay otro calzado");
+  assert.equal(r.bag,"b2","Falda de cuadros: bolso liso, no el estampado");
+  assert.equal(r.reqBag,true,"Combinar un bolso estampado: sin la falda de cuadros");
+  assert.equal(r.occHeels,false,"Salones marcados solo para fiesta en la ficha: no entran como reserva en el trabajo");
+  assert.equal(r.boot,"true,false,false","Botas y botines detectados por tipo o nombre, sin confundir «botón» ni peep toe");
+  console.log("PASS: Boots only when it is not hot; patterned bag not with a patterned garment; plain heels as work fallback");
+}
+
 // Foto de look: el análisis devuelve también formalidad, manga y largo (perfil de prenda), solo con valores conocidos
 {
   process.env.ATELIER_SESSION_SECRET="test-secret";process.env.OPENAI_API_KEY="k";
