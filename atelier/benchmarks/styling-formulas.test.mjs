@@ -16,6 +16,8 @@ assert.ok(rows.some(x=>x.formulaId==="one-pattern-focus"));
 assert.ok(rows.every(x=>!x.garmentIds.includes("x")));
 assert.ok(rows.every(x=>new Set(x.garmentIds).size===x.garmentIds.length));
 assert.deepEqual(generateFormulaCandidates(items,{occasion:"daily",limit:1}).length,1);
+const varied=generateFormulaCandidates(items,{occasion:"daily",limit:3});
+assert.ok(new Set(varied.map(x=>x.formulaId)).size>=2,"The first formula must not monopolize recommendations");
 assert.deepEqual(generateFormulaCandidates(items,{occasion:"sport"}),[]);
 assert.deepEqual(generateFormulaCandidates(items.filter(x=>x.id!=="s"),{occasion:"daily"}),[]);
 assert.throws(()=>generateFormulaCandidates(items,{limit:0}));
