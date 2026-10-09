@@ -1898,7 +1898,7 @@ function scoreOutfit(gs,ctx){
   if(fit>=.85&&ctx.dress)reasons.push("Encaja con tu estilo de hoy: "+DRESS_LABEL[ctx.dress].toLowerCase());else if(fit>=.85)reasons.push("Arreglado para el trabajo")}
  // Detalles de estilista (banco A/B, #128): doble vaquero sin contraste y prendas llamativas en el trabajo restan un poco
  // La ficha manda: el nombre solo cuenta si falta el dato (revisión de Codex, #134)
- if(!ctx.likes?.has("denim")&&big.filter(isDenimPiece).length>=2&&big.filter(g=>g.category!=="Capas").every(isDenimPiece))style-=.15; // gusto: si te gusta el doble vaquero, no resta
+ if(!ctx.likes?.has("denim")&&big.filter(isDenimPiece).length>=2&&big.filter(g=>g.category!=="Capas").every(isDenimPiece))style-=.25; // gusto: si te gusta el doble vaquero, no resta (sube de .15 a .25 al corregir la camisa vaquera del banco a «informal», 10/10/2026)
  // Animal print y pelo sí valen para la oficina (votos de Noelia, #128); brillos de noche, no
  const isLoud=g=>/lentejuel|sequin|purpurina|glitter|strass|rhinestone/i.test(textOf(g));
  if(ctx.occasion==="work"){const loud=gs.filter(isLoud).length;if(loud)style-=Math.min(.3,.15*loud)}
