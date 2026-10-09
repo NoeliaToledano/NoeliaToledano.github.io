@@ -86,6 +86,8 @@ try{
  });
  assert.ok(colorPriority.harmonious>colorPriority.decorated,
   "Los accesorios neutros no pueden superar una armonía real entre las prendas principales");
+ assert.ok(colorPriority.decorated<=colorPriority.main,
+  "Añadir complementos neutros no debe mejorar una base de colores discordantes");
 
  // Collages complejos: ocupan toda la fila también tras el breakpoint de 700 px.
  for(const width of [320,390,700,768,999]){
