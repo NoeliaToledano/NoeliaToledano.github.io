@@ -406,3 +406,25 @@ console.log("PASS: S6 long-offline devices don't resurrect deletions");
   assert.deepEqual(r.fitsParty,[false,false],"Fiesta (y sugerencias con IA): sin gorra ni sombrero");
   console.log("PASS: #99 work looks without casual pieces; headwear only when it makes sense");
 }
+
+// #108: variedad de bases (no todo vestidos), trabajo sin deportivas si hay otro calzado, mochila solo en diario o deporte
+{
+  const probe=new Function("document","sessionStorage","crypto",src+`
+  const G=(id,category,type,color,style="casual",season="all")=>({id,name:type+" "+color,category,type,color,style,season,updatedAt:"x"});
+  appState.profile={id:"noelia"};appState.data=normalizeData({garments:[
+   G("t1","Arriba","Blusa","Blanco","smart"),G("t2","Arriba","Camiseta","Negro"),G("t3","Arriba","Top","Beige"),
+   G("b1","Abajo","Pantalón","Negro","smart"),G("b2","Abajo","Vaqueros","Vaquero"),G("b3","Abajo","Falda","Gris","smart"),
+   G("d1","Vestidos","Vestido midi","Azul"),G("d2","Vestidos","Vestido midi","Verde"),G("d3","Vestidos","Vestido midi","Rosa"),
+   G("z1","Zapatos","Deportivas","Blanco","sport"),G("z2","Zapatos","Bailarinas","Negro","smart"),
+   G("m1","Bolsos","Mochila","Gris"),G("m2","Bolsos","Bolso de hombro","Negro","smart")]});
+  const looks=o=>rankOutfits({max:3,date:"2026-04-15",temp:20,...o});
+  const daily=looks({occasion:"daily"}),work=looks({occasion:"work"});
+  return {dressesDaily:daily.filter(l=>l.garments.some(g=>g.category==="Vestidos")).length,
+   workSneakers:work.filter(l=>l.ids.includes("z1")).length,workBackpack:work.some(l=>l.ids.includes("m1")),
+   backpackWork:occasionFits(myGarments().find(g=>g.id==="m1"),"work"),backpackDaily:occasionFits(myGarments().find(g=>g.id==="m1"),"daily")};`);
+  const r=probe(document,sessionStorage,{randomUUID:()=>"t"});
+  assert.ok(r.dressesDaily<=2,"Con partes de arriba y de abajo, no todas las propuestas son vestidos ("+r.dressesDaily+")");
+  assert.equal(r.workSneakers,0,"Trabajo: bailarinas antes que deportivas");
+  assert.equal(r.workBackpack,false);assert.equal(r.backpackWork,false);assert.equal(r.backpackDaily,true);
+  console.log("PASS: #108 base variety, work shoes, backpacks only for daily/sport");
+}

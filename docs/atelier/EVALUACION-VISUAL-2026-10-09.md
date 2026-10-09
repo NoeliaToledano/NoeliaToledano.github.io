@@ -156,3 +156,21 @@ Cada cambio debe llevar su prueba de regresión con estos mismos casos. Después
 - **Q1:** igualar la silueta cuando no se conoce el corte (0,75 en los dos casos). Además, si hay prendas de arriba y de abajo, como mucho 1 vestido entre las 3 propuestas, o en proporción al armario.
 - **Q2:** en trabajo, con vestido, preferir bailarinas, mocasines o botines a las deportivas.
 - **Q3:** mochila solo en diario o deporte, y nunca con prendas `smart` ni `party`.
+
+## Tras Q1–Q3 (Claude, `claude/motor-q1-q3`) · los dos bancos
+
+| Patrón | Polyvore antes | Polyvore después | Banco 1 antes | Banco 1 después |
+| --- | --- | --- | --- | --- |
+| Looks con vestido | 50 de 54 | **16** | 47 de 100 | **11** |
+| Trabajo idéntico a diario | 11 | **2** | 8 | **0** |
+| Trabajo con deportivas | 21 | **0** | — | 3 (armarios sin calzado arreglado) |
+| Mochila en trabajo o fiesta | 3 | **0** | 0 | 0 |
+| 3 o más piezas del mismo color vivo | 4 | **0** | 3 | **0** |
+
+**Cambios en el motor:**
+- **Silueta:** vale 0,75 tanto para arriba + abajo sin corte conocido como para vestido (antes 0,65 frente a 0,8).
+- **Variedad:** si ya hay un vestido entre las propuestas y existen looks de arriba + abajo, cada vestido más resta 12 puntos.
+- **Trabajo:** las deportivas solo salen si no hay otro calzado; es preferible repetir bailarinas o mocasines.
+- **Mochila:** solo en diario o deporte, y nunca con prendas `smart` ni `party`.
+
+**Pendiente (datos):** en Polyvore, los botines de las fotos están etiquetados «todo el año» y salen a 28 °C. Es una etiqueta del banco, no un fallo del motor.
