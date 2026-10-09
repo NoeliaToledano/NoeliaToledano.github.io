@@ -1632,7 +1632,7 @@ function completeOutfitGreedy(base,pool,ctx,used=new Map(),firstPick=null){
   if(cat==="Capas"){c=c.filter(x=>warmthOf(x)<=rule.max&&!insufficientColdLayer(x,ctx.temp));if(rule.prefer==="warm")c.sort((a,b)=>warmthOf(b)-warmthOf(a)||pref(b)-pref(a));else c.sort((a,b)=>pref(b)-pref(a))}
   else if(cat==="Zapatos"&&["party","event","formal"].includes(ctx.occasion)){
    const formal=c.filter(x=>["party","smart"].includes(x.style));
-   if(!formal.length)c=c.filter(smartFallbackShoes);
+   if(!formal.length)c=(ctx.allShoes||[]).filter(smartFallbackShoes).filter(fits);
    c.sort((a,b)=>(Number(["party","smart"].includes(b.style))-Number(["party","smart"].includes(a.style)))*2+pref(b)-pref(a));
   }
   else c.sort((a,b)=>pref(b)-pref(a));
@@ -1661,6 +1661,7 @@ function completeOutfit(base,pool,ctx,used=new Map()){
 function rankOutfits(o={}){
  const ctx=engineContext(o),max=o.max||3;
  let pool=(o.pool||myGarments()).filter(g=>seasonFits(g,ctx.season)||g.id===o.required);
+ ctx.allShoes=pool.filter(g=>g.category==="Zapatos");
  const byOcc=pool.filter(g=>occasionFits(g,ctx.occasion)||g.id===o.required);
  const warn=[];if(ctx.occasion)pool=byOcc;
  const req=o.required?myGarments().find(g=>g.id===o.required):null;
