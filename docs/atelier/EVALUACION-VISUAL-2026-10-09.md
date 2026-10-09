@@ -102,3 +102,19 @@ Cada cambio debe llevar su prueba de regresión con estos mismos casos. Después
 - **Gorros y sombreros:** solo en diario o playa, con motivo. El gorro de lana, por debajo de 12 °C; la gorra o el sombrero, a partir de 24 °C. El resto de complementos necesita sumar más que antes (umbral de 1 a 1,2).
 
 **Efecto en P5:** sube de 7 a 12. Al quitar los gorros cambian las combinaciones elegidas, y aparecen más jerséis etiquetados como «todo el año» a 28 °C. Queda pendiente para P5.
+
+## Estado en `main` v81 (tras #100, #102 y #103) · mismos armarios y escenarios
+
+| Patrón | Inicio | v81 |
+| --- | --- | --- |
+| Trabajo idéntico a diario | 36 de 36 | 8 |
+| Con gorra, gorro, boina o sombrero | 57 | 13 (solo con frío o calor de verdad, en diario o playa) |
+| Gorra o gorro en trabajo o fiesta | 14 | 0 |
+| 3 o más piezas del mismo color vivo | 29 | 3 |
+| Jersey a 24 °C o más | 7 | 0 |
+| Gorro de lana a 15 °C o más | 4 | 0 |
+| Playa con jersey o capa | 3 | 0 |
+| Prendas informales en el trabajo | 9 | 0 |
+| Fiesta sin calzado | 8 | 4 |
+
+**Pendiente (menor):** los 4 looks de fiesta sin calzado son a 28 °C en los armarios A y B. Solo tienen sandalias planas, deportivas y botines, y los botines son de invierno. Es un límite de los datos. Una opción: en fiesta y con calor, aceptar sandalias como último recurso.
