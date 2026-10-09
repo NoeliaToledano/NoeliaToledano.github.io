@@ -249,7 +249,10 @@ function garmentMask(d,w,h,stats){
  if(stats)Object.assign(stats,{spread,noise,borderBg,edge,frac,chroma:Math.hypot(ba,bb),bl,solidity,holeFrac,kept,nearFrac,softFrac,tGlobal,tLocal,rough});
  // No se recorta si: casi nada o casi todo es prenda; la «prenda» toca mucho borde (llena la foto);
  // o el fondo no es liso (colores muy variados en el borde, como un cuarto desordenado)
- if(frac<.04||frac>.9||edge>.3||spread>22||borderBg<.85)return null;
+ // Motivo (para explicar a la usuaria qué hacer): contraste, encuadre o fondo
+ if(frac<.04){if(stats)stats.reason="contraste";return null}
+ if(frac>.9||edge>.3){if(stats)stats.reason="encuadre";return null}
+ if(spread>22||borderBg<.85){if(stats)stats.reason="fondo";return null}
  // Recorte dudoso (probado con fotos reales de ropa): se ha quedado con poca prenda tras limpiar,
  // la silueta es muy irregular o el borde está «mordido», o la prenda es casi del color del fondo y los bordes son blandos.
  // No se usa por defecto, pero se ofrece para que decida la usuaria.
@@ -281,12 +284,12 @@ function sharpen(ctx,w,h,amount=.45){
  ctx.putImageData(id,0,0);
 }
 /* Fondo blanco → {image, doubtful} o null. doubtful: puede que falte algún trozo de la prenda */
-async function whiteBackground(src){
+async function whiteBackground(src,info){ // info.reason: por qué no se pudo recortar
  try{
   const img=await loadImg(src),W=img.naturalWidth||img.width,H=img.naturalHeight||img.height;
   const k=Math.min(1,MASK_MAX/Math.max(W,H)),w=Math.max(1,Math.round(W*k)),h=Math.max(1,Math.round(H*k));
   const c=mkCanvas(w,h),cx=c.getContext("2d",{willReadFrequently:true});cx.drawImage(img,0,0,w,h);
-  const small=cx.getImageData(0,0,w,h).data,m=garmentMask(small,w,h);if(!m)return null;
+  const small=cx.getImageData(0,0,w,h).data,st={},m=garmentMask(small,w,h,st);if(!m){if(info)info.reason=st.reason||"fondo";return null}
   // Recorte de la prenda con margen, a la resolución completa de la foto
   const s=W/w,pad=.04*Math.max(m.x1-m.x0,m.y1-m.y0);
   const fx0=Math.max(0,Math.floor((m.x0-pad)*s)),fy0=Math.max(0,Math.floor((m.y0-pad)*s)),fx1=Math.min(W,Math.ceil((m.x1+1+pad)*s)),fy1=Math.min(H,Math.ceil((m.y1+1+pad)*s));
@@ -358,14 +361,21 @@ async function isCatalogPhoto(src){
 async function enhancePhotoHere(src){ // → {image, white, asIs?, doubtful?, retouched?, doubtfulWhite?} o null
 
  if(await isCatalogPhoto(src))return {image:src,white:true,asIs:true};
- const white=await whiteBackground(src);if(white&&!white.doubtful)return {image:white.image,white:true};
+ const info={},white=await whiteBackground(src,info);if(white&&!white.doubtful)return {image:white.image,white:true};
  // Recorte dudoso: por defecto también fondo blanco, como en una tienda online (decisión de Noelia, 09/10);
  // el retoque conservando el fondo se ofrece como alternativa (retouched) por si falta algún trozo.
  // Si el recorte está roto, por defecto solo retoque y el fondo blanco se ofrece aparte (doubtfulWhite).
  const tuned=await retouchOnly(src);
  if(white&&!white.broken)return {image:white.image,white:true,doubtful:true,retouched:tuned};
- return tuned?{image:tuned,white:false,doubtfulWhite:white?.image||null}:null;
+ return tuned?{image:tuned,white:false,doubtfulWhite:white?.image||null,reason:white?"roto":info.reason||"fondo"}:null;
 }
+/* Por qué no hubo fondo blanco y cómo conseguirlo en la próxima foto */
+const PHOTO_TIPS={
+ fondo:"El fondo tiene demasiadas cosas. Extiende la prenda sobre una superficie lisa: suelo, cama lisa o una toalla.",
+ contraste:"La prenda se confunde con el fondo. Usa un fondo que contraste: oscuro para prendas claras y claro para las oscuras.",
+ encuadre:"La prenda llena la foto o toca los bordes. Aléjate un poco y deja espacio alrededor.",
+ roto:"Hay sombras o zonas del mismo color que el fondo. Prueba con más luz, sin flash directo, y un fondo que contraste."
+};
 /* R3: el retoque se hace en un Worker para no congelar la app (sobre todo con «Mejorar todas»). El Worker se
    construye con estas mismas funciones (no hay otro archivo que mantener). Si el navegador no lo permite
    (sin OffscreenCanvas, por ejemplo) o falla, se hace en la página como antes. */
@@ -846,7 +856,7 @@ function renderPhotoControls(){
  preview.src=img||"";preview.classList.toggle("hidden",!img);preview.classList.toggle("on-white",!!img&&(ph?.mode==="alt"||ph?.mode==="edited"&&!!ph.editedWhite));
  if(!ph||!img){box.innerHTML="";return}
  if(ph.busy){box.innerHTML='<p class="helper" role="status">Mejorando la foto…</p>';return}
- const keep='<p class="helper">Hemos mejorado la fotografía conservando el fondo.'+(ph.altWhite?' Para verla como en una tienda online, elige «Fondo blanco».':' Para fondo blanco, extiéndela sobre una superficie lisa de otro color.')+'</p>';
+ const keep='<p class="helper">Hemos mejorado la fotografía conservando el fondo.'+(ph.altWhite?' Para verla como en una tienda online, elige «Fondo blanco».':'')+'</p>'+(PHOTO_TIPS[ph.reason]?'<p class="helper photo-tip">'+fx(PHOTO_TIPS[ph.reason])+' <button type="button" class="link-button" data-photo-retake>Cambiar foto</button></p>':'');
  const note=ph.asIs&&ph.mode==="edited"?'<p class="helper">La foto ya tenía aspecto de catálogo: se usa tal cual, sin retocar.</p>'
   :ph.mode==="alt"?'<p class="helper">Revisa la prenda: puede que al quitar el fondo falte algún trozo. Si no te convence, elige '+(ph.edited?'«Mejorada» (conserva el fondo) u ':'')+'«Original».</p>'
   :ph.edited&&!ph.editedWhite&&ph.mode==="edited"?keep:'';
@@ -859,6 +869,7 @@ function renderPhotoControls(){
  box.innerHTML=(ph.draft&&!ph.changed?'<p class="notice-card">Esta foto es un recorte de la foto de un look. Para verla como en una tienda, cámbiala por una foto de la prenda extendida sobre una superficie lisa.</p>':'')+'<p class="helper">Compara los resultados y elige cuál guardar. Tu foto original siempre estará disponible.</p>'+choices+improve+tryWhite+(ph.failed?'<p class="helper">No he podido mejorar esta foto automáticamente.</p>':'')+note;
  $$("[data-photo-mode]",box).forEach(b=>b.addEventListener("click",()=>{ph.mode=b.dataset.photoMode;ph.changed=true;renderPhotoControls()}));
  $("#makeWhite",box)?.addEventListener("click",()=>makeSheetWhite());
+ $("[data-photo-retake]",box)?.addEventListener("click",()=>($("#garmentCamera")||$("#garmentImage"))?.click());
  $("#tryWhitePreview",box)?.addEventListener("click",async()=>{
   if(ph.busy||!ph.original)return;
   ph.busy=true;renderPhotoControls();let done;ph.pending=new Promise(r=>done=r);
@@ -881,7 +892,7 @@ async function makeSheetWhite(){
  if(sheetPhoto!==ph)return;
  ph.busy=false;
  if(res?.doubtful){ph.edited=res.retouched||null;ph.editedWhite=false;ph.asIs=false;ph.altWhite=res.image;ph.mode="alt";ph.changed=true}
- else if(res){ph.edited=res.image;ph.editedWhite=res.white;ph.asIs=!!res.asIs;ph.altWhite=res.doubtfulWhite||null;ph.mode="edited";ph.changed=true}else ph.failed=true;
+ else if(res){ph.edited=res.image;ph.editedWhite=res.white;ph.asIs=!!res.asIs;ph.altWhite=res.doubtfulWhite||null;ph.reason=res.white?null:res.reason||null;ph.mode="edited";ph.changed=true}else ph.failed=true;
  renderPhotoControls();
  }finally{ph.busy=false;done()}
 }
