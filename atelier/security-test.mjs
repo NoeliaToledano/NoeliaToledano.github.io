@@ -62,6 +62,9 @@ assert.equal(syncProbe.stale,0,"Un plan borrado después de su última edición 
 assert.ok(syncProbe.bases<=400&&syncProbe.dresses===2&&syncProbe.tops===25,"Las bases deben incluir los vestidos y repartir las prendas");
 console.log("PASS: Sync merges by key, keeps unknown keys, tombstones vs edits, balanced outfit bases");
 
+const weatherProbe=new Function("document","sessionStorage","crypto",src+";return {hot:weatherCompatible({category:\"Accesorios\",name:\"Gorro de lana\"},[],{temp:27}),cold:weatherCompatible({category:\"Zapatos\",name:\"Chanclas\"},[],{temp:9}),mixed:weatherCompatible({category:\"Accesorios\",name:\"Gorro de lana\"},[{category:\"Zapatos\",name:\"Chanclas\"}],{temp:16}),summer:weatherCompatible({category:\"Zapatos\",name:\"Sandalias\"},[{category:\"Vestidos\",name:\"Vestido ligero\"}],{temp:27})}")(document,sessionStorage,crypto);
+assert.deepEqual(weatherProbe,{hot:false,cold:false,mixed:false,summer:true});
+console.log("PASS: coherent warm/cold footwear and accessories");
 // Motor de estilismo: banco de pruebas con armarios de 20, 100 y 500 prendas
 const engineProbe=new Function("document","sessionStorage","crypto",src+`
 const COLORS=["Negro","Blanco","Gris","Beige","Azul","Vaquero","Rojo","Verde","Rosa","Marrón"],STY=["casual","casual","smart","sport","party"];
