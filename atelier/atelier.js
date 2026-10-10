@@ -839,7 +839,7 @@ function renderWardrobe(root){
  root.innerHTML=heroHtml("Mi armario","Toda tu ropa, aprovechada al máximo.")+safetyBanner()+
   '<div class="stats">'+miniStat("prendas",myGarments().length)+miniStat("favoritas",myGarments().filter(g=>g.favorite).length)+miniStat("olvidadas",myGarments().filter(g=>forgottenStatus(g).forgotten).length)+miniStat("looks",myLooks().length)+'</div>'+
   '<details class="wardrobe-summary"><summary>Resumen del armario</summary><div class="wardrobe-summary-body"><p class="helper">'+fx(myGarments().length)+' prendas · '+fx(myLooks().length)+' looks · '+fx(logs().length)+' usos registrados</p><button type="button" class="secondary small" id="wardrobeHistory">Calendario e historial</button><button type="button" class="secondary small" id="wardrobeForgotten">Prendas olvidadas</button></div></details>'+
-  (incomplete&&!ui.onlyIncomplete?'<div class="notice-card gaps-card"><div><p><strong>'+fx(plural(incomplete,"prenda tiene","prendas tienen"))+' la ficha por completar.</strong> Las etiquetas (sobre todo formalidad y ocasiones) deciden qué looks te propongo.</p></div><div class="notice-actions"><button class="chip-button" id="showIncomplete">Revisarlas</button></div></div>':'')+
+  (incomplete&&!ui.onlyIncomplete?'<div class="notice-card gaps-card"><div><p><strong>'+fx(plural(incomplete,"prenda tiene","prendas tienen"))+' la ficha por completar.</strong> Las etiquetas (sobre todo formalidad y ocasiones) deciden qué looks te propongo.</p></div><div class="notice-actions"><button class="chip-button" id="showIncomplete">Revisarlas</button>'+(sheetFill?'<span class="muted">Completando '+sheetFill.done+' de '+sheetFill.total+'…</span>':fillCandidates().length?(AI_LIMITS.analyze>aiUsage().analyze?'<button class="chip-button" id="fillSheets">✨ Completar con IA ('+Math.min(fillCandidates().length,AI_LIMITS.analyze-aiUsage().analyze)+')</button>':'<span class="muted">Mañana podrás completarlas con IA.</span>'):'')+'</div></div>':'')+
   '<div class="section-head"><h2>Prendas <span class="muted">('+gs.length+')</span></h2><span class="head-actions"><button class="secondary" data-outfit-photo aria-label="Guardar el look que llevo con una foto">📸 Mi look</button><button id="addGarment" class="primary">+ Añadir</button></span></div>'+filters+
   (gs.length?'<div class="grid">'+cards+'</div>':'<div class="empty"><h3>No hay prendas con estos filtros</h3><p class="muted">Prueba otro filtro o añade una prenda.</p><button class="primary" id="emptyAdd">Añadir prenda</button></div>');
  $("#bannerBackup")?.addEventListener("click",downloadBackup);
@@ -848,6 +848,7 @@ function renderWardrobe(root){
  $("#emptyAdd")?.addEventListener("click",()=>openGarment());
  $("#wardrobeSearch")?.addEventListener("input",e=>{ui.search=e.target.value;const pos=e.target.selectionStart;renderWardrobe(root);const input=$("#wardrobeSearch");input.focus();input.setSelectionRange(pos,pos)});
  $("#showIncomplete")?.addEventListener("click",()=>{ui.onlyIncomplete=true;render()});
+ $("#fillSheets")?.addEventListener("click",completeSheetsWithAI);
  for(const [id,key] of [["filterCategory","category"],["filterSeason","season"],["filterSort","sort"],["onlyFavorites","onlyFavorites"],["onlyForgotten","onlyForgotten"],["onlyIncomplete","onlyIncomplete"]])
   $("#"+id)?.addEventListener("change",e=>{ui[key]=e.target.type==="checkbox"?e.target.checked:e.target.value;renderWardrobe(root);const dt=$("#advancedFilters");if(dt)dt.open=true});
  $("#resetFilters")?.addEventListener("click",()=>{Object.assign(ui,{search:"",category:"",season:"",onlyFavorites:false,onlyForgotten:false,onlyIncomplete:false,sort:"recent"});render()});
@@ -1003,6 +1004,36 @@ function openGarment(id){
  const auto=$("#autoAnalyze");if(auto)auto.checked=appState.data.preferences.autoAnalyze!==false;
  const aw=$("#autoWhite");if(aw)aw.checked=appState.data.preferences.autoWhite!==false;
  lastAnalysis=null;$("#garmentSheet").classList.remove("hidden");
+}
+/* Completar fichas con IA en bloque (10/10/2026): tras una subida grande, o al día siguiente si se acabó el límite,
+   un toque analiza las prendas con foto que tienen la ficha incompleta, hasta lo que quede del límite diario.
+   Solo rellena lo que falta (nunca pisa lo que ya escribiste) y cada prenda se analiza una vez (aiFilledAt). */
+let sheetFill=null;
+const fillCandidates=()=>myGarments().filter(g=>sheetGaps(g).length&&validImage(g.image)&&!g.aiFilledAt);
+async function completeSheetsWithAI(){
+ if(sheetFill)return;const prof=appState.profile?.id,left=Math.max(0,AI_LIMITS.analyze-aiUsage().analyze),todo=fillCandidates().slice(0,left);
+ if(!left)return toast("Has llegado al límite de "+AI_LIMITS.analyze+" análisis de hoy. Mañana podrás seguir.");
+ if(!todo.length)return toast("No hay fichas que completar con foto");
+ sheetFill={done:0,total:todo.length,ok:0};render();
+ let fails=0;
+ try{for(const g0 of todo){
+  if(appState.profile?.id!==prof)break; /* cambio de perfil: se para */
+  let a=null,d=null,err=false;
+  try{const out=await api("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image:g0.image})});const raw=out.garment||out.result||out;
+   if(raw?.type!=="underwear"&&raw?.category!=="Interior"){d=mapAnalysis(raw);a=cleanAnalysis(d)}}
+  catch(e){if(e.message==="AI_QUOTA")break;console.error("FILL",e);err=true}
+  if(appState.profile?.id!==prof)break;
+  if(err){sheetFill.done++;if(++fails>=2)break;render();continue} /* un fallo de red no marca la prenda: se podrá reintentar (revisión de Codex, #198); dos seguidos, se para */
+  fails=0;
+  const now=new Date().toISOString();
+  await mutate(()=>{const g=myGarments().find(x=>x.id===g0.id);if(!g)return;
+   if(a){for(const [k,v] of Object.entries(a))if(k!=="confidence"&&k!=="occasions"&&!g[k])g[k]=v;
+    if(!g.category&&d.category)g.category=d.category;if(!g.color&&d.color)g.color=d.color;if(!g.season&&d.season)g.season=d.season;
+    if(!(Array.isArray(g.occasions)&&g.occasions.length)){const o=occasionDefaults(g.category,g.type,a.occasions);if(o.length)g.occasions=o}
+    if(!g.style&&SHEET_STYLE[g.formality])g.style=SHEET_STYLE[g.formality];sheetFill.ok++}
+   g.aiFilledAt=now;g.updatedAt=now});
+  sheetFill.done++;render()}}
+ finally{const f=sheetFill;sheetFill=null;render();if(f)toast(f.ok?plural(f.ok,"ficha completada","fichas completadas")+". Revisa la formalidad y las ocasiones.":"No se pudo completar ninguna ficha")}
 }
 /* «Combina con» (#160): las relaciones de la prenda con el resto del armario, agrupadas por registro; sin IA */
 const META_NAME=Object.fromEntries(META_FIELDS.map(f=>[f[0],f[1].replace(/ \(.*/,"").toLowerCase()]));
