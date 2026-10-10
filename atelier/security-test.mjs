@@ -156,8 +156,8 @@ console.log("PASS: Styling engine (20/100/500 prendas): capas según tiempo, var
   const G=(id,category,type,color,extra={})=>({id,name:type+" "+color,category,type,color,style:"casual",season:"all",pattern:"plain",updatedAt:"x",...extra});
   appState.profile={id:"noelia"};const by=id=>myGarments().find(g=>g.id===id),out={};
   // 1) La tercera pieza se mide con todas: la americana de cuadros va con la camisa, no con el pantalón de rayas
-  appState.data=normalizeData({garments:[G("t","Arriba","Camisa","Blanco",{style:"smart",sleeve:"larga"}),G("p","Abajo","Pantalón","Azul",{style:"smart",pattern:"stripes"}),
-   G("c","Capas","Americana","Gris",{style:"smart",warmth:"bajo",pattern:"checks"}),G("z","Zapatos","Mocasines","Negro",{style:"smart"}),G("a","Accesorios","Pañuelo","Rosa",{pattern:"graphic"})]});
+  appState.data=normalizeData({garments:[G("t","Arriba","Camisa","Blanco",{style:"smart",sleeve:"larga"}),G("p","Abajo","Pantalón","Azul",{style:"smart",pattern:"stripes",materialAttributes:{patternScale:"large",patternContrast:"high",patternPlacement:"allover"}}),
+   G("c","Capas","Americana","Gris",{style:"smart",warmth:"bajo",pattern:"checks",materialAttributes:{patternScale:"large",patternContrast:"high",patternPlacement:"allover"}}),G("z","Zapatos","Mocasines","Negro",{style:"smart"}),G("a","Accesorios","Pañuelo","Rosa",{pattern:"graphic"})]});
   let ctx=engineContext({occasion:"daily",temp:18,date:"2026-04-15"});
   out.ct=relationOf(by("c"),by("t"),ctx).s;out.cp=relationOf(by("c"),by("p"),ctx).s;
   out.third=rankOutfits({max:3,occasion:"daily",temp:18,date:"2026-04-15"}).map(l=>l.ids);
