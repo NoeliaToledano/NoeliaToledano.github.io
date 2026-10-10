@@ -481,3 +481,10 @@ p.notice-card{display:block}
 .version-note{font-size:12px;margin:0 0 6px}
 .gap-hint{color:#8a5a12;font-weight:600}
 .explore-occs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:6px}.explore-occs .chip-button{white-space:nowrap}.explore-note{font-size:12px;margin:0 0 10px}
+/* Editar look */
+.edit-rows{display:grid;gap:6px;margin:10px 0}.edit-row{display:flex;justify-content:space-between;align-items:center;gap:8px;border-bottom:1px solid var(--line);padding-bottom:6px;min-width:0}
+.edit-row>span:first-child{min-width:0;overflow-wrap:anywhere;font-size:14px}.edit-row-actions{display:flex;gap:6px;flex:none}
+.edit-add{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px}.edit-pick{display:grid;gap:8px;margin:8px 0}
+.edit-option{display:grid;gap:4px;justify-items:center;min-width:92px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:8px;font-size:12px;cursor:pointer;color:var(--ink)}
+.edit-option img{width:56px;height:56px;object-fit:contain}
+.edit-pick .swap-options{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
