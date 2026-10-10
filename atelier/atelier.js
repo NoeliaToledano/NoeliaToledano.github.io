@@ -84,6 +84,7 @@ const META_FIELDS=[
  ["patternContrast","Contraste del estampado",["low","medium","high"],"ia"],
  ["secondaryColor","Color secundario",60,"ia"],
  ["fabric","Tejido aparente",ANALYSIS_FIELDS.fabric,"ia"],
+ ["denimWash","Lavado vaquero (si se distingue)",["raw","clean","light","medium","dark","stone","acid","bleached","gradient","other"],"ia"],
  ["fit","Corte",["oversize","holgado","regular","entallado","ajustado","recto"],"ia"],
  ["length","Largo",ANALYSIS_FIELDS.length,"ia"],
  ["sleeve","Manga",["sin mangas","corta","tres cuartos","larga","no aplica"],"ia"],

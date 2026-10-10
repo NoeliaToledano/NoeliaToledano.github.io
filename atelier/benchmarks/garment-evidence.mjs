@@ -13,6 +13,7 @@ export function garmentEvidence(garment={}) {
   const pattern=finiteString(g.pattern)==="unknown"?null:finiteString(g.pattern);
   const composition=finiteString(g.composition);
   const advanced=g.materialAttributes&&typeof g.materialAttributes==="object"?g.materialAttributes:{};
+  const advancedWash=finiteString(advanced.wash);
   const extraPatterns=Array.isArray(advanced.patterns)?advanced.patterns.map(x=>finiteString(x)==="unknown"?null:finiteString(x)):[];
   const motifs=unique([...extraPatterns,pattern&&pattern!=="plain"?pattern:null]);
   const patternKnown=pattern==="plain"||motifs.length>0;
@@ -24,7 +25,7 @@ export function garmentEvidence(garment={}) {
     construction:value(finiteString(advanced.construction),advanced.constructionSource),
     composition:value(composition,"user"),
     pattern:{motifs,known:patternKnown,plain:explicitlyPlain,source:!patternKnown?"unknown":(extraPatterns.filter(Boolean).length ? (KNOWN.has(advanced.patternsSource)?advanced.patternsSource:"legacy") : "legacy")},
-    wash:value(finiteString(advanced.wash),advanced.washSource),
+    wash:value(advancedWash??finiteString(g.denimWash),advancedWash?advanced.washSource:"legacy"),
     decoration:value(Array.isArray(advanced.decoration)?unique(advanced.decoration.map(finiteString)):null,advanced.decorationSource),
     drape:value(finiteString(advanced.drape),advanced.drapeSource),
     metadataWarnings:[
