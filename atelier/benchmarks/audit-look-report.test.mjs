@@ -3,7 +3,10 @@ import { test } from "node:test";
 import { auditReport } from "./audit-look-report.mjs";
 
 test("accepts both current report formats",()=>{
-  assert.equal(auditReport([{ids:["a","b"],occ:"daily",issues:["frío"]}]).count,1);
+  const legacy=auditReport([{ids:["a","b"],occ:"daily",issues:["frío"]}]);
+  assert.equal(legacy.count,1);
+  assert.equal(legacy.rows[0].coreCount,null);
+  assert.ok(legacy.rows[0].flags.includes("category_data_unavailable"));
   assert.equal(auditReport({looks:[{garments:[{id:"d",category:"Vestidos"}],occasion:"party"}]}).flagged,0);
 });
 test("detects missing and competing cores without inventing gender or taste rules",()=>{
