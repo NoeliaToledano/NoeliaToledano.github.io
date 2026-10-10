@@ -2020,7 +2020,7 @@ function scoreOutfit(gs,ctx){
  if(layer&&rule.need)reasons.push("Abrigo para "+ctx.temp+" °C");else if(layer&&rule.max>=0)reasons.push("Capa ligera para "+ctx.temp+" °C");
  // Abrigo del conjunto (clo) frente a lo que pide la temperatura: penaliza de forma gradual quedarse corto o pasarse (en casa o en bañador, no)
  if(Number.isFinite(ctx.temp)&&big.length&&ctx.occasion!=="home"&&!gs.some(g=>["Casa","Baño"].includes(g.category))){const d=outfitClo(gs)-cloTarget(ctx.temp),tol=["party","event","formal"].includes(ctx.occasion)?.45:.3;
-  if(d<-tol){context-=Math.min(.45,(-d-tol)*1.2);if(d<-tol-.12){if(rule.need)context-=.25; /* con frío de verdad (< 15 °C), quedarse corto es un fallo de función, no de gusto: pesa más que un detalle de estilo */if(!warnings.length)warnings.push("Puede que pases frío con "+ctx.temp+" °C")}}
+  if(d<-tol){context-=Math.min(.45,(-d-tol)*1.2);if(d<-tol-.12){if(rule.need)context-=.25; /* con frío de verdad (< 15 °C), quedarse corto es un fallo de función, no de gusto: pesa más que un detalle de estilo */if(!warnings.some(w=>/frío/i.test(w)))warnings.push("Puede que pases frío con "+ctx.temp+" °C")}}
   else if(d>tol+.05){context-=Math.min(.3,(d-tol-.05));if(d>tol+.2)warnings.push("Quizá demasiado abrigo para "+ctx.temp+" °C")}}
  if(ctx.extras.shoes&&!gs.some(g=>g.category==="Zapatos")){context-=.25;warnings.push(myGarments().some(g=>g.category==="Zapatos")?"No hay calzado que combine":"Añade calzado a tu armario para completar el look")}
  if(ctx.occasion&&gs.every(g=>occasionFits(g,ctx.occasion)))context+=.2;
