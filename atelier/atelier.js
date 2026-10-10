@@ -1030,6 +1030,39 @@ function renderGarmentPairs(g){
 /* Subida en lote: cola de fotos que se van abriendo en la ficha, una a una */
 let bulkQueue=[],bulkTotal=0,loadSheetFile=null;
 function updateBulkTitle(){if(bulkTotal>1)$("#garmentTitle").textContent="Nueva prenda · "+(bulkTotal-bulkQueue.length)+" de "+bulkTotal}
+/* Editar cualquier look (Noelia, 10/10/2026): la app aconseja y la persona perfecciona. Cambiar, quitar o añadir piezas con
+   opciones que combinan; se guarda como look suyo («edited») y se aprende: sus parejas suman y lo que quitó resta un poco */
+const EDIT_ADD=["Zapatos","Capas","Bolsos","Accesorios"];
+function openLookEditor(ids,opts={}){
+ const st={ids:[...new Set(ids)].filter(id=>myGarments().some(g=>g.id===id)),orig:[...ids],removed:new Set(opts.removed||[]),pick:null};if(!st.ids.length)return;
+ const by=id=>myGarments().find(g=>g.id===id),ctx=()=>engineContext({occasion:opts.occasion??null});
+ const candidates=(cat,without)=>{const rest=st.ids.filter(x=>x!==without).map(by).filter(Boolean),c=ctx(),before=new Set(lookIssues(rest,c)),notes=pieceNotes();
+  return myGarments().filter(g=>g.category===cat&&!st.ids.includes(g.id)&&!notes.disliked.has(g.id)&&rest.every(r=>(relationOf(g,r,c)?.s??1)>=REL_WEAK)&&lookIssues([...rest,g],c).every(x=>before.has(x)))
+   .map(g=>({g,s:scoreOutfit([...rest,g],c).score})).sort((a,b)=>b.s-a.s).slice(0,10)};
+ const body=()=>{const gs=st.ids.map(by).filter(Boolean),c=ctx(),nuc=nucleusOf(gs),issues=lookIssues(gs,c),missing=EDIT_ADD.filter(cat=>!gs.some(g=>g.category===cat));
+  let pickHtml="";if(st.pick){const [kind,val]=st.pick,cat=kind==="add"?val:by(val)?.category,opts2=candidates(cat,kind==="swap"?val:null);
+   pickHtml='<div class="edit-pick"><p class="muted">'+(kind==="add"?"Añadir "+fx(cat.toLowerCase()):"Cambiar «"+fx(by(val)?.name||"")+"»")+': prendas que combinan con el resto</p>'+(opts2.length?'<div class="swap-options">'+opts2.map(o=>'<button type="button" class="edit-option" data-edit-use="'+fx(o.g.id)+'">'+(validImage(o.g.image)?'<img src="'+photoUrl(o.g)+'" alt="" loading="lazy">':'<span aria-hidden="true">◇</span>')+'<span>'+fx(o.g.name)+'</span></button>').join("")+'</div>':'<p class="muted">No hay otra prenda que combine con el resto.</p>')+'<button type="button" class="link-button" data-edit-cancel>Cancelar</button></div>'}
+  return '<div class="section-head"><h2 id="editSheetTitle">Editar look</h2><button type="button" class="secondary" data-close-sheet>Cerrar</button></div>'+
+   '<p class="muted">Cambia lo que quieras: se guardará como tu look y tendré en cuenta tu gusto.</p><div class="daily-board">'+outfitBoard(gs)+'</div>'+
+   '<div class="edit-rows">'+gs.map(g=>'<div class="edit-row"><span>'+fx(g.name)+'</span><span class="edit-row-actions"><button type="button" class="chip-button" data-edit-swap="'+fx(g.id)+'">Cambiar</button>'+(nuc.includes(g)?'':'<button type="button" class="chip-button" data-edit-remove="'+fx(g.id)+'">Quitar</button>')+'</span></div>').join("")+'</div>'+
+   (missing.length?'<div class="edit-add">'+missing.map(cat=>'<button type="button" class="chip-button" data-edit-add="'+cat+'">+ '+fx(cat)+'</button>').join("")+'</div>':'')+pickHtml+
+   (issues.length?'<ul class="look-reasons">'+issues.map(w=>'<li class="warn">'+fx(w)+'</li>').join("")+'</ul>':'')+
+   '<div class="actions"><button type="button" class="primary wide" id="editSave"'+(lookComplete(gs)?'':' disabled')+'>'+(opts.lookId?"Guardar cambios":"♡ Guardar como mi look")+'</button></div>'};
+ const {el,close}=showSheet("editSheet",body());
+ const redraw=()=>{$(".sheet",el).innerHTML=body();bind();$(".edit-pick",el)?.scrollIntoView({block:"nearest",behavior:"smooth"})};
+ const bind=()=>{$$("[data-close-sheet]",el).forEach(b=>b.addEventListener("click",close));
+  $$("[data-edit-swap]",el).forEach(b=>b.addEventListener("click",()=>{st.pick=["swap",b.dataset.editSwap];redraw()}));
+  $$("[data-edit-add]",el).forEach(b=>b.addEventListener("click",()=>{st.pick=["add",b.dataset.editAdd];redraw()}));
+  $$("[data-edit-remove]",el).forEach(b=>b.addEventListener("click",()=>{const id=b.dataset.editRemove;st.ids=st.ids.filter(x=>x!==id);if(st.orig.includes(id))st.removed.add(id);redraw()}));
+  $("[data-edit-cancel]",el)?.addEventListener("click",()=>{st.pick=null;redraw()});
+  $$("[data-edit-use]",el).forEach(b=>b.addEventListener("click",()=>{const id=b.dataset.editUse,[kind,val]=st.pick;if(kind==="swap"){st.ids=st.ids.map(x=>x===val?id:x);if(st.orig.includes(val))st.removed.add(val)}else st.ids.push(id);st.removed.delete(id);st.pick=null;redraw()}));
+  $("#editSave",el)?.addEventListener("click",async()=>{const ids=[...st.ids],now=new Date().toISOString(),removed=[...st.removed].filter(x=>!ids.includes(x));
+   if(!opts.lookId&&myLooks().some(x=>lookSig(x.garmentIds||[])===lookSig(ids)))return toast("Ese look ya está en Mis looks");
+   const ok=await mutate(()=>{if(opts.lookId){const l=myLooks().find(x=>x.id===opts.lookId);if(l){l.garmentIds=ids;l.edited=true;l.removed=[...new Set([...(l.removed||[]),...removed])];l.updatedAt=now}}
+    else myLooks().unshift({id:uid(),name:(opts.name||"Mi look").slice(0,80),garmentIds:ids,occasion:opts.occasion||appState.data.preferences.occasion||"daily",ai:false,edited:true,removed,updatedAt:now})},opts.lookId?"Look actualizado":"Guardado en Mis looks como tu look");
+   if(ok){close();opts.onSaved?.(ids)}});
+ };bind();
+}
 function closeGarment(fromSave=false){fromSave=fromSave===true;$("#garmentSheet").classList.add("hidden");if(!fromSave&&bulkTotal>1){const left=bulkQueue.length+1;toast(plural(left,"foto se ha quedado","fotos se han quedado")+" sin añadir")} /* la que estaba abierta también (revisión de Codex, #177) */if(!fromSave){bulkQueue=[];bulkTotal=0}}
 async function saveGarment(e){
  e.preventDefault();
@@ -1227,12 +1260,14 @@ let relCache={sig:"",ev:new Map(),learn:new Map(),fast:new Map(),feat:new Map(),
 /* Huella por prenda de los datos que usan las relaciones (no basta el updatedAt máximo: una edición sincronizada puede traer una fecha anterior; revisión de ChatGPT, #164) */
 const REL_FIELDS=["id","name","category","type","subtype","color","secondaryColor","pattern","fabric","fit","length","sleeve","neckline","thickness","warmth","formality","occasions","season","style","details","archived"];
 const relPrint=g=>REL_FIELDS.map(k=>{const v=g[k];return v==null?"":Array.isArray(v)?v.join("+"):String(v)}).join("\u0001");
-function relSig(){const d=appState.data||{};return (d.garments||[]).map(relPrint).join("\u0002")+"|"+JSON.stringify(d.feedback||{})+"|"+(d.looks||[]).map(l=>l.id+":"+(l.favorite?"f":"")+(l.inspired?"i":"")+(l.dislikeReason||"")+":"+(l.garmentIds||[]).join(".")).join(",") /* lo que enseña relaciones: favorito, inspiración, motivo y prendas (revisión de Codex, #164) */+"|"+(d.preferences?.workDress||"")}
+function relSig(){const d=appState.data||{};return (d.garments||[]).map(relPrint).join("\u0002")+"|"+JSON.stringify(d.feedback||{})+"|"+(d.looks||[]).map(l=>l.id+":"+(l.favorite?"f":"")+(l.inspired?"i":"")+(l.edited?"e"+(l.removed||[]).join("."):"")+(l.dislikeReason||"")+":"+(l.garmentIds||[]).join(".")).join(",") /* lo que enseña relaciones: favorito, inspiración, motivo y prendas (revisión de Codex, #164) */+"|"+(d.preferences?.workDress||"")}
 /* Una vez por cálculo (rankOutfits, ficha): si el armario, el feedback o el código de vestir cambian, se rehace la caché */
 function ensureRelations(){
  const sig=relSig();if(relCache.sig===sig)return;
  relCache={sig,ev:new Map(),learn:new Map(),fast:new Map(),feat:new Map(),block:pieceNotes().pairs};const fb=appState.data.feedback||{};
- for(const l of myLooks()){const v=fb[l.id]==="down"?(l.dislikeReason==="hoy"||l.dislikeReason==="color"?0:-1):fb[l.id]==="up"||l.favorite||l.inspired?1:0;if(!v)continue;const ids=l.garmentIds||[];
+ for(const l of myLooks()){const v=fb[l.id]==="down"?(l.dislikeReason==="hoy"||l.dislikeReason==="color"?0:-1):l.edited?2:fb[l.id]==="up"||l.favorite||l.inspired?1:0;const ids=l.garmentIds||[]; /* editar es la señal más clara: cuenta doble */
+  /* look editado: lo que quitó la persona resta un poco con lo que dejó */for(const r of (l.edited&&Array.isArray(l.removed)?l.removed:[]))for(const x of ids){const k=[r,x].sort().join("|");relCache.learn.set(k,(relCache.learn.get(k)||0)-2)}
+  if(!v)continue;
   for(let i=0;i<ids.length;i++)for(let j=i+1;j<ids.length;j++){const k=[ids[i],ids[j]].sort().join("|");relCache.learn.set(k,(relCache.learn.get(k)||0)+v)}}
 }
 /* la formalidad de la ficha manda sobre el estilo (un vestido de fiesta etiquetado «casual» es de fiesta) */
@@ -1273,6 +1308,7 @@ function contextualizePair(ev,ctx){
  return r; /* la caché vive en relationOf, por objeto */
 }
 /* acceso rápido por objeto (sin construir claves de texto): el motor pregunta cientos de miles de veces por las mismas parejas */
+const learnOf=(a,b)=>{if(!a?.id||!b?.id)return 0;const n=relCache.learn.get(a.id<b.id?a.id+"|"+b.id:b.id+"|"+a.id)||0;return Math.max(-3,Math.min(3,n))}; /* señal aprendida del perfil para una pareja (votos, favoritos, looks editados) */
 function relationOf(a,b,ctx){
  if(!a||!b)return null;const ck=(ctx?.occasion||"")+(ctx?.likes?.has("pattern")?"|p":"");
  let m=relCache.fast.get(ck);if(!m)relCache.fast.set(ck,m=new Map());
@@ -1671,15 +1707,15 @@ function renderLooks(root){
   '<details class="looks-tools"><summary>Más opciones para mis looks</summary><div class="looks-tools-body">'+tasteCardHtml()+'</div></details>'+
   (looks.length?'<div class="grid">'+looks.map(l=>'<div class="look-tile">'+lookCard(l)+(()=>{const m=(l.garmentIds||[]).map(id=>myGarments().find(g=>g.id===id)).filter(Boolean),k="look:"+l.id,c=engineContext({occasion:l.occasion||null}),pk=pickedLook(k,m,c);
     return versionsRow(k,m,c)+(pk!==m?'<div class="version-preview">'+outfitBoard(pk)+'<button class="chip-button" data-save-version="'+fx(l.id)+'">♡ Guardar esta versión</button></div>':'')})()+
-   '<div class="tile-tools"><button class="chip-button" data-look-fav="'+fx(l.id)+'" aria-label="'+(l.favorite?'Quitar de favoritos':'Añadir a favoritos')+'" aria-pressed="'+!!l.favorite+'">'+(l.favorite?'♥':'♡')+'</button><button class="chip-button" data-look-wear="'+fx(l.id)+'">✓ Llevado</button><button class="chip-button" data-look-swap="'+fx(l.id)+'">↻ Cambiar prenda</button></div>'+
+   '<div class="tile-tools"><button class="chip-button" data-look-fav="'+fx(l.id)+'" aria-label="'+(l.favorite?'Quitar de favoritos':'Añadir a favoritos')+'" aria-pressed="'+!!l.favorite+'">'+(l.favorite?'♥':'♡')+'</button><button class="chip-button" data-look-wear="'+fx(l.id)+'">✓ Llevado</button><button class="chip-button" data-look-edit="'+fx(l.id)+'">✎ Editar</button></div>'+
    '<div class="look-votes"><button class="chip-button'+(fb[l.id]==="up"?' on':'')+'" data-feedback="'+fx(l.id)+'" data-vote="up" aria-label="Me gusta" aria-pressed="'+(fb[l.id]==="up")+'">👍</button><button class="chip-button'+(fb[l.id]==="down"?' on':'')+'" data-feedback="'+fx(l.id)+'" data-vote="down" aria-label="No me gusta" aria-pressed="'+(fb[l.id]==="down")+'">👎</button><button class="chip-button" data-look-almost="'+fx(l.id)+'" aria-label="Casi: algo no me cuadra">Casi</button></div>'+
    (fb[l.id]==="down"?'<div class="dislike-why" role="group" aria-label="Por qué no te gusta (opcional)"><span>¿Por qué?</span>'+Object.entries(DISLIKE_WHY).map(([k,t])=>'<button class="chip-button small'+(l.dislikeReason===k?' on':'')+'" data-why="'+fx(l.id)+'" data-reason="'+k+'" aria-pressed="'+(l.dislikeReason===k)+'">'+t+'</button>').join("")+'</div>':'')+ 
-   '<div class="tile-hints">'+(l.ai?"IA":"Manual")+(lookComplete((l.garmentIds||[]).map(id=>myGarments().find(g=>g.id===id)))?'':' · <span title="'+BASE_MSG+'">Incompleto: falta arriba, abajo o vestido</span>')+'</div></div>').join("")+'</div>':'<div class="empty">Todavía no tienes looks para este filtro.</div>'));
+   '<div class="tile-hints">'+(l.edited?"Tuyo":l.ai?"IA":"Manual")+(lookComplete((l.garmentIds||[]).map(id=>myGarments().find(g=>g.id===id)))?'':' · <span title="'+BASE_MSG+'">Incompleto: falta arriba, abajo o vestido</span>')+'</div></div>').join("")+'</div>':'<div class="empty">Todavía no tienes looks para este filtro.</div>'));
  $("#newLook")?.addEventListener("click",()=>openLook());bindOutfitPhoto(root);
  $$("[data-look-filter]",root).forEach(b=>b.addEventListener("click",()=>{ui.lookFilter=b.dataset.lookFilter;render()}));
  $$("[data-look]",root).forEach(b=>b.addEventListener("click",()=>openLook(b.dataset.look)));
  $$("[data-look-fav]",root).forEach(b=>b.addEventListener("click",async()=>{const l=myLooks().find(l=>l.id===b.dataset.lookFav);if(l)await mutate(()=>{l.favorite=!l.favorite;l.updatedAt=new Date().toISOString()},"Look actualizado")}));
- $$("[data-look-swap]",root).forEach(b=>b.addEventListener("click",()=>openSwap(b.dataset.lookSwap)));
+ $$("[data-look-edit]",root).forEach(b=>b.addEventListener("click",()=>{const l=myLooks().find(x=>x.id===b.dataset.lookEdit);if(l)openLookEditor(l.garmentIds||[],{lookId:l.id,occasion:l.occasion||null,removed:l.removed})}));
  bindVersions(root);
  $$("[data-save-version]",root).forEach(b=>b.addEventListener("click",async()=>{const l=myLooks().find(x=>x.id===b.dataset.saveVersion);if(!l)return;const k="look:"+l.id,m=(l.garmentIds||[]).map(id=>myGarments().find(g=>g.id===id)).filter(Boolean),c=engineContext({occasion:l.occasion||null}),v=pickedVersion(k,m,c);if(!v)return;
   if(myLooks().some(x=>lookSig(x.garmentIds||[])===lookSig(v.ids)))return toast("Esa versión ya está guardada");
@@ -1928,6 +1964,7 @@ function scoreOutfit(gs,ctx){
  const issues=lookIssues(gs,ctx);if(issues.length){context-=Math.min(.6,.3*issues.length);warnings.push(...issues.slice(0,2))}
  // Personal (10): favoritas, olvidadas, usado hace poco, Tus gustos
  let personal=.5;const fav=gs.filter(g=>g.favorite).length,forg=gs.filter(g=>ctx.forgotten.has(g.id));
+ {let ln=0;for(let i=0;i<gs.length;i++)for(let j=i+1;j<gs.length;j++)ln+=learnOf(gs[i],gs[j]);personal+=Math.max(-.3,Math.min(.3,ln*.05))} /* parejas aprendidas del perfil */
  personal+=Math.min(.3,fav*.1)+Math.min(.3,forg.length*.15)-gs.reduce((t,g)=>t+(ctx.avoid.has(g.id)?(BIG.includes(g.category)?.45:.1):0),0);
  if(forg.length)reasons.push("Rescata «"+forg[0].name+"», que hace tiempo que no te pones");
  if(ctx.formalBias){const lv=gs.reduce((t,g)=>t+formalLevel(g),0)/gs.length;personal-=.3*ctx.formalBias*(lv-1.5)/1.5} // 👎 «muy arreglado/informal»
@@ -2024,7 +2061,7 @@ function completeOutfitGreedy(base,pool,ctx,used=new Map(),firstPick=null){
  const fits=x=>!l.includes(x)&&!(l.some(g=>isBackpack(g)&&(isOutdoor(g)||formalLevel(g)<2))&&formalLevel(x)>=2)&&!heavyKnitInHeat(x,ctx.temp)&&!insufficientColdLayer(x,ctx.temp)&&weatherCompatible(x,l,ctx)&&l.every(p=>!related(x,p)||stylesOk(x,p))&&l.every(p=>pairColor(x,p).s>=.45||!BIG.includes(p.category)||!BIG.includes(x.category)||ctx.likes?.has("pattern")&&pairColor(x,p).k==="two-patterns")&&!(isPatterned(x)&&!BIG.includes(x.category)&&l.some(isPatterned))&&!(["Bolsos","Accesorios"].includes(x.category)&&newColorOverflow(x,l,ctx))&&l.every(p=>(relationOf(x,p,ctx)?.s??1)>=REL_WEAK); // ninguna pareja débil (calzado incluido: mejor sin calzado que uno que no combina)
  const relMean=x=>{const rs=l.map(p=>relationOf(x,p,ctx)?.s).filter(v=>v!=null);return rs.length?rs.reduce((a,b)=>a+b,0)/rs.length:.6};
  let pm=new Map();const pref=x=>pm.has(x)?pm.get(x):pm.set(x,prefRaw(x)).get(x); /* memo por categoría: el orden compara muchas veces */
- const prefRaw=x=>(relMean(x)-.6)+(x.favorite?.5:0)+(["Bolsos","Accesorios","Zapatos"].includes(x.category)&&colorKey(x)&&paletteOf(l).has(colorKey(x))?.6:0)+ /* repetir un color del look: ritmo (regla de tres colores) */1/(1+(ctx.worn.get(x.id)||0))+(ctx.forgotten.has(x.id)?.5:0)-(ctx.avoid.has(x.id)?2:0)-(used.get(x.id)||0)*1.5+
+ const prefRaw=x=>(relMean(x)-.6)+l.reduce((t,p)=>t+learnOf(x,p)*.4,0)+ /* lo que la persona ha elegido o editado (looks guardados) */(x.favorite?.5:0)+(["Bolsos","Accesorios","Zapatos"].includes(x.category)&&colorKey(x)&&paletteOf(l).has(colorKey(x))?.6:0)+ /* repetir un color del look: ritmo (regla de tres colores) */1/(1+(ctx.worn.get(x.id)||0))+(ctx.forgotten.has(x.id)?.5:0)-(ctx.avoid.has(x.id)?2:0)-(used.get(x.id)||0)*1.5+
   l.reduce((t,p)=>t+pairColor(x,p).s,0)/Math.max(1,l.length);
  const plan=[ctx.extras.shoes&&!home&&!beach?"Zapatos":beach&&ctx.extras.shoes?"Zapatos":null,!home&&rule.max>=0?"Capas":null,ctx.extras.bag&&!home?"Bolsos":null,!home?"Accesorios":null];
  for(const cat of plan){
@@ -2160,7 +2197,7 @@ function renderExplore(root){
  const body='<div class="explore-occs" role="group" aria-label="Ocasión">'+avail.map(o=>'<button type="button" class="chip-button'+(o===occ?' on':'')+'" aria-pressed="'+(o===occ)+'" data-explore-occ="'+o+'">'+fx(occasions[o]||o)+'</button>').join("")+'</div>'+
   '<p class="muted explore-note">'+fx(sd?seasons[p.season]+" ("+SEASON_TEMP[p.season]+" °C)":currentTemperature()+" °C")+' · cada propuesta usa una prenda principal distinta; debajo tienes sus versiones.</p>'+
   (looks.length?'<div class="grid">'+looks.map((l,i)=>{const gs=shown[i];return '<div class="look-tile"><article class="card">'+outfitBoard(gs)+'<div class="card-body"><div class="look-items">'+gs.map(x=>'<span class="look-chip">'+fx(x.name)+'</span>').join("")+'</div>'+(gs===l.garments&&l.reasons?.length?'<ul class="look-reasons">'+l.reasons.slice(0,2).map(r=>'<li>'+fx(r)+'</li>').join("")+'</ul>':'')+(gs===l.garments&&l.warnings?.length?'<ul class="look-reasons">'+l.warnings.map(w=>'<li class="warn">'+fx(w)+'</li>').join("")+'</ul>':'')+'</div></article>'+
-   versionsRow(key(i),l.garments,ctx)+'<div class="tile-tools"><button class="chip-button" data-explore-save="'+i+'">♡ Guardar</button><button class="chip-button" data-explore-wear="'+i+'">✓ Llevado</button><button class="chip-button" data-explore-almost="'+i+'">Casi</button></div></div>'}).join("")+'</div>'
+   versionsRow(key(i),l.garments,ctx)+'<div class="tile-tools"><button class="chip-button" data-explore-save="'+i+'">♡ Guardar</button><button class="chip-button" data-explore-wear="'+i+'">✓ Llevado</button><button class="chip-button" data-explore-edit="'+i+'">✎ Editar</button><button class="chip-button" data-explore-almost="'+i+'">Casi</button></div></div>'}).join("")+'</div>'
   :'<div class="empty"><p class="muted">'+(occ?'No encuentro looks para «'+fx((occasions[occ]||occ).toLowerCase())+'» con '+fx(sd?SEASON_TEMP[p.season]:currentTemperature())+' °C. Revisa las ocasiones y la temporada de tus prendas.':'Añade prendas de arriba y de abajo (o vestidos) para ver looks.')+'</p></div>');
  stylistShell(root,"Explorar looks","Todo lo que puedes ponerte, por ocasión, con versiones de cada look.",body);
  $$("[data-explore-occ]",root).forEach(b=>b.addEventListener("click",()=>{ui.exploreOcc=b.dataset.exploreOcc;render()}));
@@ -2168,6 +2205,7 @@ function renderExplore(root){
  $$("[data-explore-save]",root).forEach(b=>b.addEventListener("click",async()=>{const gs=shown[Number(b.dataset.exploreSave)];if(!gs)return;const ids=gs.map(g=>g.id);
   if(myLooks().some(x=>lookSig(x.garmentIds||[])===lookSig(ids)))return toast("Ese look ya está guardado");
   await mutate(()=>myLooks().unshift({id:uid(),name:"Look de "+(occasions[occ]||occ).toLowerCase(),garmentIds:ids,occasion:occ,ai:false,updatedAt:new Date().toISOString()}),"Look guardado")}));
+ $$("[data-explore-edit]",root).forEach(b=>b.addEventListener("click",()=>{const gs=shown[Number(b.dataset.exploreEdit)];if(gs)openLookEditor(gs.map(g=>g.id),{occasion:occ,name:"Mi look de "+(occasions[occ]||occ).toLowerCase()})}));
  $$("[data-explore-wear]",root).forEach(b=>b.addEventListener("click",()=>{const gs=shown[Number(b.dataset.exploreWear)];if(gs)promptWear(gs.map(g=>g.id),null)}));
  $$("[data-explore-almost]",root).forEach(b=>b.addEventListener("click",()=>{const gs=shown[Number(b.dataset.exploreAlmost)];if(gs)openAlmost(gs.map(g=>g.id),occ)}));
 }
@@ -2178,7 +2216,7 @@ function renderAround(root){
  let body='<div class="feature-card" id="aroundCard"><div class="section-head"><h2>Combina una prenda</h2><span class="muted">Sin IA</span></div>'+
   extrasTogglesHtml()+'<label class="field"><span>¿Qué prenda quieres ponerte?</span><select id="aroundSelect">'+optionList([["","Elige una prenda"],...gs.map(g=>[g.id,g.name+(g.category?" · "+g.category:"")])],ui.aroundId)+'</select></label>'+
   (occs.length>0?'<div class="explore-occs" role="group" aria-label="Ocasión">'+[[null,"Cualquier ocasión"],...occs.map(o=>[o,occasions[o]||o])].map(([k,t])=>'<button type="button" class="chip-button'+(k===aocc?' on':'')+'" aria-pressed="'+(k===aocc)+'" data-around-occ="'+(k||"")+'">'+fx(t)+'</button>').join("")+'</div>':'');
- if(sel)body+=looks.length?'<p class="muted">'+plural(looks.length,"combinación","combinaciones")+' con «'+fx(sel.name)+'», de mejor a peor combinación.</p><div class="grid">'+looks.map((l,i)=>'<div class="look-tile"><article class="card">'+outfitBoard(l)+'<div class="card-body"><div class="look-items">'+l.map(x=>'<span class="look-chip'+(x.id===sel.id?' new':'')+'">'+fx(x.name)+'</span>').join("")+'</div>'+(l.reasons?.length?'<ul class="look-reasons">'+l.reasons.map(r=>'<li>'+fx(r)+'</li>').join("")+'</ul>':'')+'</div></article>'+versionsRow(vkey(i),mains[i],vctx)+'<div class="tile-tools"><button class="chip-button" data-around-save="'+i+'">Guardar look</button><button class="chip-button" data-around-wear="'+i+'">✓ Llevado</button></div></div>').join("")+'</div>'
+ if(sel)body+=looks.length?'<p class="muted">'+plural(looks.length,"combinación","combinaciones")+' con «'+fx(sel.name)+'», de mejor a peor combinación.</p><div class="grid">'+looks.map((l,i)=>'<div class="look-tile"><article class="card">'+outfitBoard(l)+'<div class="card-body"><div class="look-items">'+l.map(x=>'<span class="look-chip'+(x.id===sel.id?' new':'')+'">'+fx(x.name)+'</span>').join("")+'</div>'+(l.reasons?.length?'<ul class="look-reasons">'+l.reasons.map(r=>'<li>'+fx(r)+'</li>').join("")+'</ul>':'')+'</div></article>'+versionsRow(vkey(i),mains[i],vctx)+'<div class="tile-tools"><button class="chip-button" data-around-save="'+i+'">Guardar look</button><button class="chip-button" data-around-wear="'+i+'">✓ Llevado</button><button class="chip-button" data-around-edit="'+i+'">✎ Editar</button></div></div>').join("")+'</div>'
   :'<p class="muted">No encuentro combinaciones para esta prenda'+(aocc?' para «'+fx((occasions[aocc]||aocc).toLowerCase())+'». Prueba otra ocasión o':' con tu armario actual.')+' Mira «Recomendaciones» en Compras para ver qué le falta.</p>';
  stylistShell(root,"Tu estilista","Elige una prenda y te digo con qué ponértela.",body+'</div>');
  $("#aroundSelect")?.addEventListener("change",e=>{ui.aroundId=e.target.value;render()});
@@ -2187,6 +2225,7 @@ function renderAround(root){
  $$("[data-around-save]",root).forEach(b=>b.addEventListener("click",async()=>{const l=looks[Number(b.dataset.aroundSave)];if(!l)return;
   const sig=l.map(x=>x.id).sort().join("|");if(myLooks().some(x=>(x.garmentIds||[]).slice().sort().join("|")===sig))return toast("Ese look ya está guardado");
   await mutate(()=>myLooks().unshift({id:uid(),name:"Con "+sel.name,garmentIds:l.map(x=>x.id),occasion:aocc||appState.data.preferences.occasion||"daily",ai:false,updatedAt:new Date().toISOString()}),"Look guardado")}));
+ $$("[data-around-edit]",root).forEach(b=>b.addEventListener("click",()=>{const l=looks[Number(b.dataset.aroundEdit)];if(l)openLookEditor(l.map(x=>x.id),{occasion:aocc,name:"Mi look con "+sel.name})}));
  $$("[data-around-wear]",root).forEach(b=>b.addEventListener("click",()=>{const l=looks[Number(b.dataset.aroundWear)];if(l)promptWear(l.map(x=>x.id),null)}));
 }
 /* Tiempo de hoy con Open-Meteo (gratis, sin tokens). Por defecto, 25 °C. */
@@ -2411,7 +2450,7 @@ function dailyLookHtml(){
   (why?.reasons.length||why?.warnings.length?'<ul class="look-reasons">'+why.reasons.map(r=>'<li>'+fx(r)+'</li>').join("")+why.warnings.map(w=>'<li class="warn">'+fx(w)+'</li>').join("")+'</ul>':'')+
   '<div class="daily-actions">'+(d.worn||logs().some(x=>x.date===dayISO()&&lookSig(x.garmentIds||[])===lookSig(d.ids||[]))?'<span class="badge-ok">✓ Te lo has puesto hoy</span>':'<button type="button" class="primary" id="dailyWear">Me lo pongo</button>')+
   '<button type="button" class="secondary" id="dailyNext">↻ Otro look</button></div>'+
-  '<div class="plan-actions"><button type="button" class="chip-button" id="dailySave">♡ Guardar en Mis looks</button><button type="button" class="chip-button" id="dailySwap">Cambiar una prenda</button><button type="button" class="chip-button" id="dailyAlmost">Casi: algo no me cuadra</button></div></section>';
+  '<div class="plan-actions"><button type="button" class="chip-button" id="dailySave">♡ Guardar en Mis looks</button><button type="button" class="chip-button" id="dailyEdit">✎ Editar</button><button type="button" class="chip-button" id="dailyAlmost">Casi: algo no me cuadra</button></div></section>';
 }
 /* «Casi»: marcar la prenda que no cuadra y por qué. Sin IA: lo aprende el motor del perfil (pieceNotes) */
 function openAlmost(ids,occasion,onDone){
@@ -2445,6 +2484,7 @@ function bindDailyLook(root){
   if(myLooks().some(l=>lookSig(l.garmentIds||[])===lookSig(d.ids)))return toast("Ese look ya está guardado");
   await mutate(()=>{d.touched=true;myLooks().unshift({id:uid(),name:"Look del "+fmtDay(today),garmentIds:[...d.ids],occasion:p.occasion||"daily",ai:false,updatedAt:new Date().toISOString()})},"Look guardado")});
  // Cambiar una prenda: el look de hoy pasa a ser el plan de hoy, y se abre «Cambiar prenda» sobre él
+ $("#dailyEdit",root)?.addEventListener("click",()=>{const d=p.dailyLook;if(!d?.ids?.length)return;openLookEditor(d.ids,{occasion:p.occasion||"daily",name:"Mi look del "+fmtDay(today),onSaved:async ids=>{d.ids=[...ids];d.touched=true;d.worn=false;await saveState();render()}})});
  $("#dailySwap",root)?.addEventListener("click",async()=>{const d=p.dailyLook;if(!d?.ids?.length)return;d.touched=true;
   if(await setPlan(today,d.ids,{name:"Look de hoy"})){const t=planFor(today);if(t)openSwap(t.id,"plan")}});
  $("#dailyWeather",root)?.addEventListener("click",async e=>{e.target.disabled=true;e.target.textContent="Consultando…";

@@ -388,6 +388,20 @@ console.log("PASS: Styling engine (20/100/500 prendas): capas según tiempo, var
   console.log("PASS: goes() uses the profile context");
 }
 
+// Looks editados: lo que la persona pone suma y lo que quita resta; el motor acaba proponiendo su versión
+{
+  const r=new Function("document","sessionStorage","crypto",src+`
+  const G=(id,category,type,color,extra={})=>({id,name:type+" "+color,category,type,color,style:"casual",season:"all",pattern:"plain",updatedAt:"x",...extra});
+  appState.profile={id:"noelia"};
+  appState.data=normalizeData({garments:[G("v","Vestidos","Vestido midi","Negro",{formality:"smartcasual",style:"smart",sleeve:"corta"}),G("a","Zapatos","Bailarinas","Negro",{formality:"smartcasual",style:"smart"}),G("b","Zapatos","Sandalias","Marrón",{formality:"smartcasual",style:"smart"})]});
+  const first=rankOutfits({max:1,occasion:"daily",temp:24,date:"2026-07-15"})[0].ids,shoe=first.find(x=>x!=="v"),other=shoe==="a"?"b":"a";
+  appState.data.looks=[{id:"E",name:"Mi look",garmentIds:["v",other],edited:true,removed:[shoe],updatedAt:"x"}];
+  ensureRelations();const after=rankOutfits({max:1,occasion:"daily",temp:24,date:"2026-07-15"})[0].ids;
+  return {shoe,other,after};`)(document,sessionStorage,{randomUUID:()=>"t"});
+  assert.ok(r.after.includes(r.other)&&!r.after.includes(r.shoe),"Tras editar (cambiar "+r.shoe+" por "+r.other+"), el motor propone la versión de la persona ("+r.after+")");
+  console.log("PASS: Edited looks teach the engine");
+}
+
 // Estilos flexibles (#52): deportivas + vaqueros + americana sí; mallas + sudadera en informal; nada de gimnasio en boda ni con vestido de fiesta
 const styleProbe=new Function("document","sessionStorage","crypto",src+`
 const G=(id,category,color,style,extra={})=>({id,name:id,category,color,style,season:"all",pattern:"plain",createdAt:"2026-10-01",updatedAt:"x",...extra});
