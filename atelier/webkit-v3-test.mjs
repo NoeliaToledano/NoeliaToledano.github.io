@@ -1,5 +1,6 @@
 import {webkit,devices} from "playwright";
 import assert from "node:assert/strict";
+import { auditPhotoFidelity } from "./photo-fidelity-test.mjs";
 
 const browser=await webkit.launch({headless:true});
 const context=await browser.newContext({...devices["iPhone 13"],acceptDownloads:true});
@@ -79,6 +80,7 @@ try{
  await page.locator("#password").fill("test");
  await page.locator("#loginBtn").click();
  await page.getByRole("heading",{name:"Hoy",exact:true}).waitFor();
+ await auditPhotoFidelity(page);
  await page.locator('[data-view="wardrobe"]').click();
  assert.equal(await page.getByText("Camiseta WebKit").count(),0,"Cross-profile leak");
  assert.equal(await page.getByText("Tu armario está vacío").count(),1,"Armario vacío: bienvenida");

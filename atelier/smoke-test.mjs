@@ -1,5 +1,6 @@
 import { chromium, devices } from "playwright";
 import assert from "node:assert/strict";
+import { auditPhotoFidelity } from "./photo-fidelity-test.mjs";
 const browser=await chromium.launch({headless:true,channel:"chrome"});
 const context=await browser.newContext({...devices["iPhone 13"],browserName:undefined});
 const page=await context.newPage();
@@ -96,6 +97,10 @@ try{
   return failures;
  });
  assert.deepEqual(collageAudit,[],"Regresión de composición fotográfica de looks");
+
+ // Fidelity audit using actual rendered pixels at real mobile viewport widths.
+ await auditPhotoFidelity(page);
+
  // In dense looks, small accessories get a quieter presentation than clothing.
  const accessoryHierarchy=await page.evaluate(()=>{
   const canvas=document.createElement("canvas");canvas.width=40;canvas.height=80;
