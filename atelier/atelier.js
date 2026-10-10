@@ -1960,6 +1960,15 @@ const warmthOf=g=>({bajo:0,medio:1,alto:2}[g.warmth]??(g.thickness==="ligero"?0:
 /* Capa según la temperatura: < 15 °C hace falta y mejor de abrigo; 15–19 °C ligera o media; 20–23 °C solo ligera; ≥ 24 °C ninguna */
 function layerRule(temp){return temp<15?{need:true,max:2,prefer:"warm"}:temp<20?{need:false,max:1,prefer:"mid"}:temp<24?{need:false,max:0,prefer:"light"}:{need:false,max:-1}}
 /* Puntuación de un look completo → {score 0–100, reasons[], warnings[]} */
+/* Evidence-aware visual hierarchy: a loud garment needs known contrast AND distribution.
+   Never infer this from number of patterns, gender, or an unknown photo. */
+function focalCompetition(gs,ctx){
+ const loud=gs.filter(g=>BIG.includes(g.category)&&g.pattern&&g.pattern!=="plain"&&g.pattern!=="unknown"
+  &&(g.patternContrast||g.materialAttributes?.patternContrast)==="high"
+  &&(g.patternPlacement||g.materialAttributes?.patternPlacement)==="allover");
+ const competing=loud.length>=3&&!ctx.likes?.has("pattern")&&!ctx.likes?.has("multicolor");
+ return {competing,knownFoci:loud.length,scoreAdjustment:competing?-3:0};
+}
 function scoreOutfit(gs,ctx){
  const reasons=[],warnings=[],big=gs.filter(g=>BIG.includes(g.category));
  // Color (25): el conjunto principal manda. Bolsos y accesorios no deben
@@ -2042,7 +2051,7 @@ function scoreOutfit(gs,ctx){
  const clamp=v=>Math.max(0,Math.min(1,v));
  // Lo usado hace poco resta aparte (hasta 15 puntos), para que «distinto cada día» pese de verdad
  const recent=Math.min(1,personal<0?-personal:0);
- const score=Math.round(25*clamp(color+colorAdj)+25*clamp(sil)+20*clamp(style)+20*clamp(context)+10*clamp(personal)-15*recent-(patterns>=3&&!ctx.likes?.has("pattern")?12:0)-(ctx.likes?.has("vividmono")?0:12)*vividColorRepeat(gs)); // gusto: solo si te gusta el tono sobre tono en color vivo (no basta con «monocromático»)
+ const score=Math.round(25*clamp(color+colorAdj)+25*clamp(sil)+20*clamp(style)+20*clamp(context)+10*clamp(personal)-15*recent+focalCompetition(gs,ctx).scoreAdjustment-(ctx.likes?.has("vividmono")?0:12)*vividColorRepeat(gs)); // gusto: solo si te gusta el tono sobre tono en color vivo (no basta con «monocromático»)
  return {score,reasons:[...new Set(reasons)].slice(0,3),warnings};
 }
 /* Contexto común (se calcula una vez por llamada: usos, olvidadas y gustos) */
