@@ -1,5 +1,8 @@
 # Atelier — Revisión completa del motor de estilismo (09/10/2026)
 
+> **Estado actualizado — 10/10/2026:** Documento histórico de diagnóstico/estrategia, NO auditoría vigente de producción. Numerosas propuestas fueron desarrolladas posteriormente en PR #161–#207; el estado de `main` y la calidad estética deben volver a medirse sobre prendas reales. Investigación actualizada: PR #136, #219 y #220. Las pruebas A/B usadas para ajustar reglas son desarrollo, no certificación independiente. Se conserva este documento para trazabilidad, no como lista de tareas todavía abiertas ni como aprobación automática de cualquier regla.
+
+
 > Documento de trabajo de Claude y ChatGPT, a petición de Noelia: **1) revisar cómo está implementado todo, 2) juntar lo que hemos descubierto los dos y 3) montar la estrategia con toda la información.** Este documento cubre 1 y 2 desde el lado de Claude; ChatGPT completa y corrige en esta misma PR o en comentarios. La estrategia (3) irá en un documento aparte cuando estemos de acuerdo en el diagnóstico.
 
 ## 0. Por qué paramos
