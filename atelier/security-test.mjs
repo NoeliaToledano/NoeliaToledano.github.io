@@ -388,6 +388,22 @@ console.log("PASS: Styling engine (20/100/500 prendas): capas según tiempo, var
   console.log("PASS: goes() uses the profile context");
 }
 
+// Primero la ropa (Noelia, 10/10/2026): la ropa combina con ropa; zapatos, bolsos y complementos se miden contra looks enteros
+{
+  const r=new Function("document","sessionStorage","crypto",src+`
+  const G=(id,category,type,color,extra={})=>({id,name:type+" "+color,category,type,color,style:"casual",formality:"casual",season:"all",pattern:"plain",occasions:["daily"],updatedAt:"x",...extra});
+  appState.profile={id:"noelia"};
+  appState.data=normalizeData({garments:[G("t","Arriba","Camiseta","Blanco"),G("b","Abajo","Vaquero","Azul"),G("b2","Abajo","Pantalón","Negro"),G("d","Vestidos","Vestido","Negro"),G("s","Zapatos","Zapatillas","Blanco"),G("e","Accesorios","Pendientes","Dorado")]});
+  ensureRelations();
+  const jacket=evaluateCandidate({name:"Chaqueta vaquera",category:"Capas",type:"Chaqueta",color:"Azul",style:"casual",formality:"casual",season:"all",pattern:"plain"});
+  const bag=evaluateCandidate({name:"Bolso negro",category:"Bolsos",type:"Bolso",color:"Negro",style:"casual",formality:"casual",season:"all",pattern:"plain"});
+  return {jacket:jacket.compatible.map(g=>g.category),bagCore:bag.core.map(b=>b.map(g=>g.id).sort().join("+")),bagReason:bag.reasons[0]};`)(document,sessionStorage,{randomUUID:()=>"t"});
+  assert.ok(r.jacket.length&&r.jacket.every(c=>["Arriba","Abajo","Vestidos","Capas"].includes(c)),"Una chaqueta solo cuenta ropa ("+r.jacket+")");
+  assert.ok(r.bagCore.length&&r.bagCore.every(k=>k==="d"||k.split("+").length===2),"Un bolso se mide contra bases de look ("+r.bagCore+")");
+  assert.match(r.bagReason,/look/,"El veredicto del bolso habla de looks");
+  console.log("PASS: Clothes-first: clothing pairs with clothing, accessories with whole look bases");
+}
+
 // Looks editados: lo que la persona pone suma y lo que quita resta; el motor acaba proponiendo su versión
 {
   const r=new Function("document","sessionStorage","crypto",src+`
