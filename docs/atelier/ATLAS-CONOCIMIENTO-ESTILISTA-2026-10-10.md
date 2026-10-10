@@ -220,7 +220,7 @@ No tocar código del motor en paralelo a Claude; revisión cruzada y pruebas ant
 
 - Utah State University Extension, *Design Principles for Clothing and Textiles*: https://extension.usu.edu/research/principles-of-design — balance, proporción, énfasis, ritmo y armonía; el juicio estético conserva subjetividad.
 - ISO 9920:2007 (confirmada en 2026), *Estimation of thermal insulation and water vapour resistance of a clothing ensemble*: https://www.iso.org/standard/39257.html — estimación térmica para conjuntos, con límites explícitos.
-- Documentación de investigación Atelier: `docs/atelier/INVESTIGACION-ESTILISMO-Y-ALGORITMO-2026-10-09.md` (PR #136) y `docs/atelier/ESTUDIO-ESTAMPADOS-DENIM-2026-10-10.md` (PR #219).
+- Investigación de Atelier disponible en PR pendientes de fusión: [PR #136](https://github.com/NoeliaToledano/NoeliaToledano.github.io/pull/136) y [PR #219](https://github.com/NoeliaToledano/NoeliaToledano.github.io/pull/219). Los documentos están en las ramas respectivas, no todavía en `main`.
 - Levi's, *Denim Dictionary*: https://www.levi.com/ES/es_ES/features/denim-dictionary — vocabulario de acabados/lavados.
 - Fashion Institute of Technology, *Elements and Principles of Fashion Design*: https://www.fitnyc.edu/museum/documents/elements-and-principles-of-fashion-design.pdf — referencia general de principios de diseño.
 
