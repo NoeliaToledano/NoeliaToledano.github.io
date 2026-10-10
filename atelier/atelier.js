@@ -700,8 +700,9 @@ function mapAnalysis(d){
 }
 
 /* ===================== 5. Sesión y navegación ===================== */
+function resetBulk(){bulkQueue=[];bulkTotal=0} /* al salir o cambiar de perfil, la cola no pasa a otra persona (revisión de Codex, #177) */
 function showAuth(){
- resetSyncSession();clearPhotoUrls();
+ resetSyncSession();clearPhotoUrls();resetBulk();
  appState.profile=null;appState.token=null;appState.data=emptyData();lastSavedData=emptyData();appState.view="wardrobe";
  buyCheck=null;storedImages=new Map();ui.aroundId="";
  $("#content").replaceChildren();$("#profileName").textContent="";$("#garmentForm").reset();$("#lookForm").reset();$("#lookGarments").replaceChildren();
@@ -1018,7 +1019,10 @@ function renderGarmentPairs(g){
  if(marks.length){box.insertAdjacentHTML("beforeend",'<div class="pair-marks"><p class="muted pair-note">Lo que has marcado con «Casi»:</p>'+marks.map(([k,t])=>'<span class="look-chip">'+fx(t)+' <button type="button" class="link-button" data-unmark="'+fx(k)+'" aria-label="Quitar: '+fx(t)+'">Quitar</button></span>').join("")+'</div>');
   $$("[data-unmark]",box).forEach(b=>b.addEventListener("click",async()=>{const k=b.dataset.unmark;if(await mutate(()=>{delete appState.data.feedback[k]},"Quitado"))renderGarmentPairs(myGarments().find(x=>x.id===g.id))}))}
 }
-function closeGarment(){$("#garmentSheet").classList.add("hidden")}
+/* Subida en lote: cola de fotos que se van abriendo en la ficha, una a una */
+let bulkQueue=[],bulkTotal=0,loadSheetFile=null;
+function updateBulkTitle(){if(bulkTotal>1)$("#garmentTitle").textContent="Nueva prenda · "+(bulkTotal-bulkQueue.length)+" de "+bulkTotal}
+function closeGarment(fromSave=false){fromSave=fromSave===true;$("#garmentSheet").classList.add("hidden");if(!fromSave&&bulkTotal>1){const left=bulkQueue.length+1;toast(plural(left,"foto se ha quedado","fotos se han quedado")+" sin añadir")} /* la que estaba abierta también (revisión de Codex, #177) */if(!fromSave){bulkQueue=[];bulkTotal=0}}
 async function saveGarment(e){
  e.preventDefault();
  const ph=sheetPhoto;
@@ -1037,7 +1041,9 @@ async function saveGarment(e){
  if(!await saveState())return;
  // La original se guarda solo en este móvil, para poder volver a ella; se toca solo si el guardado ha ido bien
  try{if(edited&&!ph.asIs&&validImage(ph.original))await dbSet(origKey(id),ph.original);else if(ph&&(!edited||ph.asIs))await dbBatch([],[origKey(id)])}catch(err){console.warn("ORIG",err)}
- closeGarment();render();toast("Prenda guardada");
+ const next=!old&&bulkQueue.length?bulkQueue.shift():null;
+ closeGarment(true);render();toast(next?"Prenda guardada. Siguiente foto…":"Prenda guardada");
+ if(next&&loadSheetFile){openGarment();updateBulkTitle();await loadSheetFile(next)}else if(!next&&bulkTotal>1&&!old){toast("Listo: "+plural(bulkTotal,"prenda añadida","prendas añadidas"));bulkTotal=0}
 }
 async function deleteGarment(){
  const id=$("#garmentId").value;if(!id||!confirm("¿Eliminar esta prenda?"))return;
@@ -2887,7 +2893,11 @@ function bind(){
  $$("[data-garment-category]").forEach(btn=>btn.addEventListener("click",()=>{$("#garmentCategory").value=btn.dataset.garmentCategory;syncGarmentCategory(true);suggestOccasionsForSelection()}));
  $("#garmentForm").addEventListener("submit",saveGarment);$("#closeGarment").addEventListener("click",closeGarment);$("#deleteGarment").addEventListener("click",deleteGarment);$("#analyzeBtn").addEventListener("click",analyzeGarment);
  const onPhoto=async e=>{
-  const f=e.target.files[0];e.target.value="";if(!f)return;
+  const files=[...(e.target.files||[])],f=files[0];e.target.value="";if(!f)return;
+  /* Varias fotos de la galería (subir el armario): se añaden una a una con la ficha de siempre, para revisar sus etiquetas */
+  if(files.length>1&&!$("#garmentId").value){bulkQueue=files.slice(1);bulkTotal=files.length;updateBulkTitle()}
+  await loadSheetFile(f)};
+ loadSheetFile=async f=>{
   let original;try{original=await readImage(f)}catch(err){return toast(err.message==="IMAGE_TOO_LARGE"?"La imagen es demasiado grande":"No se pudo leer la foto")}
   const ph=sheetPhoto={original,edited:null,mode:"original",changed:true};renderPhotoControls();
   if($("#autoWhite")?.checked)await makeSheetWhite();
