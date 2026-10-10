@@ -2,8 +2,7 @@ import assert from "node:assert/strict";
 import {test} from "node:test";
 import fs from "node:fs";
 const source=fs.readFileSync(new URL("../atelier.js",import.meta.url),"utf8");
-const inspect=new Function("document","sessionStorage","crypto",source+"
-return focalCompetition;");
+const inspect=new Function("document","sessionStorage","crypto",source+"\nreturn focalCompetition;");
 const focal=inspect({addEventListener(){},querySelector(){return null},querySelectorAll(){return []}},{getItem(){return null},removeItem(){}},{randomUUID:()=>"t"});
 const garment=(id,category,extra={})=>({id,category,pattern:"floral",...extra});
 const loud=category=>garment(category,category,{patternContrast:"high",patternPlacement:"allover"});
