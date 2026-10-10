@@ -337,6 +337,14 @@ try{
  await page.locator('#lookGarments input[value="bottomAudit"]').check();
  await page.locator("#lookForm button[type=submit]").click();
  await page.getByText("Look auditado").waitFor();
+ // A saved look keeps the less-used controls behind a discoverable summary.
+ const actions=page.locator(".look-tile .look-secondary-actions").first();
+ await actions.locator("summary").waitFor();
+ assert.equal(await actions.evaluate(el=>el.open),false,"Extra look actions start collapsed");
+ const disclosure=await actions.locator("summary").evaluate(el=>({height:el.getBoundingClientRect().height,display:getComputedStyle(el).display}));
+ assert.ok(disclosure.height>=44&&disclosure.display==="list-item","The actions disclosure is both tappable and visibly expandable");
+ await actions.locator("summary").click();
+ assert.equal(await actions.locator('[data-look-edit]').isVisible(),true,"Edit remains available after opening more actions");
  await page.locator('[data-view="wardrobe"]').click();
  await page.locator("#addGarment").click();
  await page.locator("#autoAnalyze").check();
