@@ -324,6 +324,10 @@ try{
  await wardrobeSummary.locator("#wardrobeHistory").waitFor({state:"visible"});
  await page.reload({waitUntil:"networkidle"});
  await page.locator('[data-view="today"]').click();
+ // Hoy stays uncluttered without hiding valid occasions or weather refresh.
+ assert.equal(await page.locator(".today-unified-options").count(),0);
+ for(const occasion of ["daily","work","sport","beach","home","event","party","formal"])assert.equal(await page.locator(`#dailyOccasion option[value="${occasion}"]`).count(),1);
+ assert.equal(await page.locator("#dailyWeather").count(),1);
  await page.locator('[data-open-week]').first().click();
  assert.equal(await page.evaluate(()=>appState.view),"stylist");
  assert.equal(await page.evaluate(()=>ui.stylistTab),"week");
