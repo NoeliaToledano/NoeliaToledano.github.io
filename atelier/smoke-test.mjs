@@ -437,6 +437,21 @@ try{
   let err="";try{await api("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image:cv.toDataURL("image/jpeg")})})}catch(e){err=e.message}
   const r={err,full:aiUsage().analyze>=AI_LIMITS.analyze};u.analyze=prev;await saveState();return r});
  assert.deepEqual(quota,{err:"AI_QUOTA",full:true},"Un 429 del servidor agota el límite local");
+ // Subida de varias fotos: cada prenda se guarda sola (analizada; sin análisis disponibles, pendiente para «Completar con IA»)
+ const pngs=["iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/pVYAAAAASUVORK5CYII=","iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==","iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="];
+ const bulkFiles=pngs.map((b,i)=>({name:"bulk"+i+".png",mimeType:"image/png",buffer:Buffer.from(b,"base64")}));
+ const countBy=()=>page.evaluate(()=>({ai:myGarments().filter(g=>g.name==="Camisa reconocida por IA").length,pend:myGarments().filter(g=>g.needsAI).length}));
+ const before=await countBy();
+ await page.evaluate(()=>{appState.data.preferences.autoAnalyze=true;appState.data.preferences.autoWhite=false;setView("wardrobe");openGarment()});
+ await page.locator("#garmentImage").setInputFiles(bulkFiles);
+ await page.waitForFunction(n=>myGarments().filter(g=>g.name==="Camisa reconocida por IA").length>=n,before.ai+3,{timeout:20000});
+ assert.equal(await page.locator("#garmentSheet").evaluate(el=>el.classList.contains("hidden")),true,"La subida termina sola, sin dejar la ficha abierta");
+ await page.evaluate(()=>{const u=aiUsage();u.analyze=AI_LIMITS.analyze;setView("wardrobe");openGarment()});
+ await page.locator("#garmentImage").setInputFiles(bulkFiles.slice(1).map((f,i)=>({...f,name:"q"+i+".png"})));
+ await page.waitForFunction(n=>myGarments().filter(g=>g.needsAI).length>=n,before.pend+2,{timeout:20000});
+ const pend=await page.evaluate(()=>myGarments().filter(g=>g.needsAI).map(g=>({color:g.color,cand:pendingAI().includes(g)})));
+ assert.ok(pend.every(x=>x.color&&x.cand),"Sin análisis: color estimado y pendiente de IA "+JSON.stringify(pend));
+ await page.evaluate(async()=>{const ids=myGarments().filter(g=>g.needsAI||g.name==="Camisa reconocida por IA"&&g.createdAt>new Date(Date.now()-600000).toISOString()).map(g=>g.id);appState.data.garments=myGarments().filter(g=>!ids.includes(g.id));ids.forEach(tomb);aiUsage().analyze=0;appState.data.preferences.autoAnalyze=false;await saveState()});
  await page.evaluate(async()=>{appState.data.garments=myGarments().filter(g=>g.id!=="fill-1");tomb("fill-1");await saveState()});
  await page.evaluate(()=>openGarment(myGarments().find(g=>validImage(g.image))?.id));
  forceUnauthorized=true;

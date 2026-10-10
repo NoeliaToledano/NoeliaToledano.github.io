@@ -774,6 +774,7 @@ function render(){
  const root=$("#content");if(!appState.profile)return;
  const views={today:renderToday,wardrobe:renderWardrobe,stylist:renderStylist,trips:renderTrips,looks:renderLooks,shopping:renderShopping,calendar:renderCalendar,settings:renderSettings};
  (views[appState.view]||renderWardrobe)(root);
+ maybeAutoFill();
 }
 
 /* ===================== 6. Armario, prendas y looks ===================== */
@@ -842,7 +843,7 @@ function renderWardrobe(root){
   '<details class="wardrobe-summary"><summary>Resumen del armario</summary><div class="wardrobe-summary-body"><p class="helper">'+fx(myGarments().length)+' prendas · '+fx(myLooks().length)+' looks · '+fx(logs().length)+' usos registrados</p><button type="button" class="secondary small" id="wardrobeHistory">Calendario e historial</button><button type="button" class="secondary small" id="wardrobeForgotten">Prendas olvidadas</button></div></details>')+ /* armario vacío: sin contadores a cero ni filtros, directo a la bienvenida */
   (incomplete&&!ui.onlyIncomplete?'<div class="notice-card gaps-card"><div><p><strong>'+fx(plural(incomplete,"prenda tiene","prendas tienen"))+' la ficha por completar.</strong> Las etiquetas (sobre todo formalidad y ocasiones) deciden qué looks te propongo.</p></div><div class="notice-actions"><button class="chip-button" id="showIncomplete">Revisarlas</button>'+(sheetFill?'<span class="muted">Completando '+sheetFill.done+' de '+sheetFill.total+'…</span>':fillCandidates().length?(AI_LIMITS.analyze>aiUsage().analyze?'<button class="chip-button" id="fillSheets">✨ Completar con IA ('+Math.min(fillCandidates().length,AI_LIMITS.analyze-aiUsage().analyze)+')</button>':'<span class="muted">Mañana podrás completarlas con IA.</span>'):'')+'</div></div>':'')+
   '<div class="section-head"><h2>Prendas <span class="muted">('+gs.length+')</span></h2><span class="head-actions"><button class="secondary" data-outfit-photo aria-label="Guardar el look que llevo con una foto">📸 Mi look</button><button id="addGarment" class="primary">+ Añadir</button></span></div>'+(myGarments().length?filters:'')+
-  (gs.length?'<div class="grid">'+cards+'</div>':!myGarments().length?'<div class="empty welcome-empty"><h3>Tu armario está vacío</h3><p class="muted">Empieza por 8–10 prendas que te pongas mucho: un par de partes de arriba, de abajo, unos zapatos y una chaqueta. Desde la galería puedes elegir varias fotos a la vez.</p><button class="primary" id="emptyAdd">+ Añadir prendas</button></div>':'<div class="empty"><h3>No hay prendas con estos filtros</h3><p class="muted">Prueba otro filtro o añade una prenda.</p><button class="primary" id="emptyAdd">Añadir prenda</button></div>');
+  (gs.length?'<div class="grid">'+cards+'</div>':!myGarments().length?'<div class="empty welcome-empty"><h3>Tu armario está vacío</h3><p class="muted">Empieza por 8–10 prendas que te pongas mucho: un par de partes de arriba, de abajo, unos zapatos y una chaqueta. Desde la galería puedes elegir muchas fotos a la vez: se guardan solas.</p><button class="primary" id="emptyAdd">+ Añadir prendas</button></div>':'<div class="empty"><h3>No hay prendas con estos filtros</h3><p class="muted">Prueba otro filtro o añade una prenda.</p><button class="primary" id="emptyAdd">Añadir prenda</button></div>');
  $("#bannerBackup")?.addEventListener("click",downloadBackup);
  $("#bannerHide")?.addEventListener("click",()=>setPref("installHintHidden",true));
  $("#addGarment")?.addEventListener("click",()=>openGarment());bindOutfitPhoto(root);
@@ -1013,10 +1014,15 @@ function openGarment(id){
    Solo rellena lo que falta (nunca pisa lo que ya escribiste) y cada prenda se analiza una vez (aiFilledAt). */
 let sheetFill=null;
 const fillCandidates=()=>myGarments().filter(g=>sheetGaps(g).length&&validImage(g.image)&&!g.aiFilledAt);
-async function completeSheetsWithAI(){
- if(sheetFill)return;const prof=appState.profile?.id,left=Math.max(0,AI_LIMITS.analyze-aiUsage().analyze),todo=fillCandidates().slice(0,left);
- if(!left)return toast("Has llegado al límite de "+AI_LIMITS.analyze+" análisis de hoy. Mañana podrás seguir.");
- if(!todo.length)return toast("No hay fichas que completar con foto");
+const pendingAI=()=>myGarments().filter(g=>g.needsAI&&sheetGaps(g).length&&validImage(g.image)&&!g.aiFilledAt); /* subidas en bloque que se guardaron sin análisis (límite agotado) */
+let autoFillTried="";
+function maybeAutoFill(){ /* «Analizar automáticamente» activado: las fichas pendientes se completan solas una vez por sesión y día (sin pulsar nada) */
+ const k=(appState.profile?.id||"")+"|"+dayISO();if(autoFillTried===k||sheetFill||appState.data.preferences.autoAnalyze===false||bulkTotal>1)return;
+ if(!pendingAI().length||aiUsage().analyze>=AI_LIMITS.analyze)return;autoFillTried=k;setTimeout(()=>completeSheetsWithAI(true),1500)}
+async function completeSheetsWithAI(quiet=false){
+ if(sheetFill)return;const prof=appState.profile?.id,left=Math.max(0,AI_LIMITS.analyze-aiUsage().analyze),todo=(quiet?pendingAI():fillCandidates()).slice(0,left);
+ if(!left)return quiet?null:toast("Has llegado al límite de "+AI_LIMITS.analyze+" análisis de hoy. Mañana podrás seguir.");
+ if(!todo.length)return quiet?null:toast("No hay fichas que completar con foto");
  sheetFill={done:0,total:todo.length,ok:0};render();
  let fails=0;
  try{for(const g0 of todo){
@@ -1034,9 +1040,9 @@ async function completeSheetsWithAI(){
     if(!g.category&&d.category)g.category=d.category;if(!g.color&&d.color)g.color=d.color;if(!g.season&&d.season)g.season=d.season;
     if(!(Array.isArray(g.occasions)&&g.occasions.length)){const o=occasionDefaults(g.category,g.type,a.occasions);if(o.length)g.occasions=o}
     if(!g.style&&SHEET_STYLE[g.formality])g.style=SHEET_STYLE[g.formality];sheetFill.ok++}
-   g.aiFilledAt=now;g.updatedAt=now});
+   g.aiFilledAt=now;delete g.needsAI;g.updatedAt=now});
   sheetFill.done++;render()}}
- finally{const f=sheetFill;sheetFill=null;render();if(f)toast(f.ok?plural(f.ok,"ficha completada","fichas completadas")+". Revisa la formalidad y las ocasiones.":"No se pudo completar ninguna ficha")}
+ finally{const f=sheetFill;sheetFill=null;render();if(f&&(f.ok||!quiet))toast(f.ok?plural(f.ok,"ficha completada","fichas completadas")+" con IA.":"No se pudo completar ninguna ficha")}
 }
 /* «Combina con» (#160): las relaciones de la prenda con el resto del armario, agrupadas por registro; sin IA */
 const META_NAME=Object.fromEntries(META_FIELDS.map(f=>[f[0],f[1].replace(/ \(.*/,"").toLowerCase()]));
@@ -1105,7 +1111,7 @@ function openLookEditor(ids,opts={}){
    if(ok){close();opts.onSaved?.(ids)}});
  };bind();
 }
-function closeGarment(fromSave=false){fromSave=fromSave===true;$("#garmentSheet").classList.add("hidden");if(!fromSave&&bulkTotal>1){const left=bulkQueue.length+1;toast(plural(left,"foto se ha quedado","fotos se han quedado")+" sin añadir")} /* la que estaba abierta también (revisión de Codex, #177) */if(!fromSave){bulkQueue=[];bulkTotal=0}}
+function closeGarment(fromSave=false){fromSave=fromSave===true;$("#garmentSheet").classList.add("hidden");if(!fromSave&&bulkTotal>1){const left=bulkQueue.length+1;toast(plural(left,"foto se ha quedado","fotos se han quedado")+" sin añadir")} /* la que estaba abierta también (revisión de Codex, #177) */if(!fromSave){bulkQueue=[];bulkTotal=0;sheetPhoto=null}} /* cerrar anula el guardado automático pendiente (revisión de Codex, #207) */
 async function saveGarment(e){
  e.preventDefault();
  const ph=sheetPhoto;
@@ -1117,6 +1123,7 @@ async function saveGarment(e){
  const kept=Object.fromEntries(Object.entries(old||{}).filter(([k])=>!META_KEYS.has(k)));
  const g={...kept,...readMetadata(),id,name:$("#garmentName").value.trim()||"Sin nombre",category:$("#garmentCategory").value,type:$("#garmentType").value,color:$("#garmentColor").value.trim(),notes:$("#garmentNotes").value.trim(),season:$("#garmentSeason").value,style:$("#garmentStyle").value,price:$("#garmentPrice").value===""?null:Number($("#garmentPrice").value),boughtAt:$("#garmentBought").value,favorite:$("#garmentFavorite").checked,createdAt:old?.createdAt||new Date().toISOString(),image,updatedAt:new Date().toISOString()};
  if(!validImage(image)&&old?.hasImage)g.hasImage=true;
+ if(!old&&bulkTotal>1&&!lastAnalysis)g.needsAI=1; /* se guardó sola sin análisis: «Completar con IA» la termina cuando haya análisis disponibles */
  if(changed)delete g.photoDraft; // ya no es el recorte de la foto de un look
  if(ph){g.bgWhite=edited&&(ph.mode==="alt"||!!ph.editedWhite);if(edited)g.photoFx=1;else delete g.photoFx;if(edited&&ph.asIs)g.catalogPhoto=1;else delete g.catalogPhoto}
  g.imageAt=changed?new Date().toISOString():old?.imageAt;if(!g.imageAt)delete g.imageAt;
@@ -1141,7 +1148,7 @@ async function analyzeGarment(){
   const out=await api("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image})});
   if(sheetPhoto!==ph)return; // No aplicar un análisis antiguo a una foto nueva.
   const raw=out.garment||out.result||out;
-  if(raw?.type==="underwear"||raw?.category==="Interior"){setAnalyzeStatus("La ropa interior no se añade a Atelier.");toast("Ropa interior no admitida");return}
+  if(raw?.type==="underwear"||raw?.category==="Interior"){setAnalyzeStatus("La ropa interior no se añade a Atelier.");toast("Ropa interior no admitida");return "rejected"}
   const d=mapAnalysis(raw);lastAnalysis=cleanAnalysis(d);
   // Solo se rellena lo que la IA reconoce: no se borra lo que ya estaba escrito
   if(d.name||!$("#garmentName").value.trim())$("#garmentName").value=d.name||"Prenda sin identificar";if(d.category){$("#garmentCategory").value=d.category;syncGarmentCategory(true)}const typeOptions=GARMENT_TYPES[d.category]||[];const detected=[d.garmentType,d.subtype].find(t=>typeof t==="string"&&typeOptions.some(o=>o.toLocaleLowerCase("es")===t.trim().toLocaleLowerCase("es")));if(detected)$("#garmentType").value=typeOptions.find(t=>t.toLocaleLowerCase("es")===detected.trim().toLocaleLowerCase("es"));if(d.color)$("#garmentColor").value=d.color;
@@ -3070,14 +3077,24 @@ function bind(){
  $("#garmentForm").addEventListener("submit",saveGarment);$("#closeGarment").addEventListener("click",closeGarment);$("#deleteGarment").addEventListener("click",deleteGarment);$("#analyzeBtn").addEventListener("click",analyzeGarment);
  const onPhoto=async e=>{
   const files=[...(e.target.files||[])],f=files[0];e.target.value="";if(!f)return;
-  /* Varias fotos de la galería (subir el armario): se añaden una a una con la ficha de siempre, para revisar sus etiquetas */
+  /* Varias fotos de la galería (subir el armario): se procesan una a una y se guardan solas (loadSheetFile) */
   if(files.length>1&&!$("#garmentId").value){bulkQueue=files.slice(1);bulkTotal=files.length;updateBulkTitle()}
   await loadSheetFile(f)};
  loadSheetFile=async f=>{
   let original;try{original=await readImage(f)}catch(err){return toast(err.message==="IMAGE_TOO_LARGE"?"La imagen es demasiado grande":"No se pudo leer la foto")}
-  const ph=sheetPhoto={original,edited:null,mode:"original",changed:true};renderPhotoControls();
+  const ph=sheetPhoto={original,edited:null,mode:"original",changed:true},bulk=bulkTotal>1&&!$("#garmentId").value,prof=appState.profile?.id;renderPhotoControls();
+  const live=()=>sheetPhoto===ph&&appState.profile?.id===prof&&!$("#garmentSheet").classList.contains("hidden"); /* sigue abierta, misma foto y mismo perfil */
   if($("#autoWhite")?.checked)await makeSheetWhite();
-  if(sheetPhoto===ph&&$("#autoAnalyze")?.checked){if(aiUsage().analyze>=AI_LIMITS.analyze)setAnalyzeStatus(QUOTA_SHEET_MSG);else analyzeGarment()}}; /* sin análisis hoy: no insistir en cada foto de la subida */
+  if(sheetPhoto!==ph)return;
+  const auto=$("#autoAnalyze")?.checked,canAI=auto&&aiUsage().analyze<AI_LIMITS.analyze;
+  if(auto&&!canAI)setAnalyzeStatus(QUOTA_SHEET_MSG); /* sin análisis hoy: no insistir en cada foto de la subida */
+  let verdict=null;if(canAI){if(bulk)verdict=await analyzeGarment();else analyzeGarment()}
+  /* Subida de varias fotos (Noelia, 10/10/2026: «el usuario tiene que hacer lo mínimo posible»): cada prenda se guarda sola tras
+     mejorarla y analizarla; si no hubo análisis, con el color estimado en el móvil, y «Completar con IA» la termina después */
+  if(bulk&&live()){
+   if(verdict==="rejected"){const next=bulkQueue.shift();if(next){openGarment();updateBulkTitle();return loadSheetFile(next)}closeGarment(true);bulkTotal=0;return render()} /* ropa interior: no se guarda, se pasa a la siguiente (revisión de Codex, #207) */
+   if(!$("#garmentColor").value.trim()){const c=await guessColor(sheetImage());if(live()&&c)$("#garmentColor").value=c}
+   if(live())$("#garmentForm").requestSubmit()}};
  $("#garmentImage").addEventListener("change",onPhoto);$("#garmentCamera").addEventListener("change",onPhoto);
  // Botones «Hacer foto» y «Galería»: abren el selector correspondiente (en la ficha y en «¿Lo compro?»)
  document.addEventListener("click",e=>{const b=e.target.closest?.("[data-photo-pick]");if(b)$("#"+b.dataset.photoPick)?.click()});
