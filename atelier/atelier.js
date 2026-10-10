@@ -1178,7 +1178,8 @@ function styleAffinity(a,b){
 }
 const STYLE_OK=Object.fromEntries(Object.entries(STYLE_AFF).map(([k,m])=>[k,Object.keys(m).filter(x=>m[x]>=.3)]));
 /* Combinan de verdad: reglas básicas (pairs) y relación de estilista ≥ 0,6 con el gusto del perfil. Lo usan «¿Lo compro?», Recomendaciones y Maletas (revisión general) */
-const goes=(a,b,ctx)=>pairs(a,b)&&(relationOf(a,b,ctx)?.s??1)>=REL_OK;
+let goesMemo={sig:null,ctx:null};const goesCtx=()=>{if(goesMemo.sig!==relCache.sig)goesMemo={sig:relCache.sig,ctx:engineContext({occasion:null})};return goesMemo.ctx}; /* con el gusto del perfil (revisión de Codex, #181) */
+const goes=(a,b,ctx=goesCtx())=>pairs(a,b)&&(relationOf(a,b,ctx)?.s??1)>=REL_OK;
 function pairs(a,b){
  if(a.id&&a.id===b.id)return false;
  if(a.category&&b.category&&!(PAIRS[a.category]||[]).includes(b.category))return false;
