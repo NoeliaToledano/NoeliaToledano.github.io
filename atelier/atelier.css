@@ -546,3 +546,7 @@ p.notice-card{display:block}
 .base-card{border:1px solid var(--line);border-radius:14px;padding:6px;background:var(--surface);min-width:0}
 .base-card .thumb-row{overflow:hidden;padding:0;gap:6px;justify-content:center}
 .base-card .thumb{width:calc(50% - 3px);height:auto;aspect-ratio:4/5}
+
+/* A dress is the hero when a two-piece look contains a dress and a supporting piece. */
+.look-mixed-board[data-count="2"][data-hero-category="dress"]>.look-mixed-item:first-child{grid-area:1/1/13/9}
+.look-mixed-board[data-count="2"][data-hero-category="dress"]>.look-mixed-item:nth-child(2){grid-area:7/9/13/13}

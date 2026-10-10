@@ -794,7 +794,7 @@ function outfitBoard(pieces){
   // Un vestido manda siempre sobre el abrigo que lleva encima (revisión con fotos reales, 10/10/2026).
   const hero=items.find(g=>g.category==="Vestidos")||items.find(g=>g.bgWhite&&(visualPriority[g.category]??7)<=3)||items[0];
   const arranged=[hero,...items.filter(g=>g!==hero)];
-  return '<div class="look-mixed-board" data-count="'+arranged.length+'" role="group" aria-label="Prendas del conjunto">'+arranged.map(g=>'<div class="look-mixed-item"><img src="'+photoUrl(g)+'" alt="'+fx(g.name||g.category||"Prenda")+'" loading="lazy"></div>').join("")+'</div>';
+  return '<div class="look-mixed-board" data-count="'+arranged.length+'" data-hero-category="'+(hero.category==="Vestidos"?"dress":"other")+'" role="group" aria-label="Prendas del conjunto">'+arranged.map(g=>'<div class="look-mixed-item"><img src="'+photoUrl(g)+'" alt="'+fx(g.name||g.category||"Prenda")+'" loading="lazy"></div>').join("")+'</div>';
 }
 function thumbs(list,max=12){
  if(!list.length)return "";
