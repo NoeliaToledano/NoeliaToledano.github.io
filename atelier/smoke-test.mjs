@@ -4,7 +4,7 @@ const browser=await chromium.launch({headless:true,channel:"chrome"});
 const context=await browser.newContext({...devices["iPhone 13"],browserName:undefined});
 const page=await context.newPage();
 const errors=[];
-let forceUnauthorized=false,forceServerError=false;
+let forceUnauthorized=false,forceServerError=false,forceQuota=false;
 page.on("pageerror",e=>{errors.push(e.message);console.log("PAGEERROR_STACK",e.stack)});
 page.on("console",m=>{if(m.type()==="error")console.log("BROWSER_CONSOLE",m.text())});
 page.on("requestfailed",r=>console.log("FAILED_REQUEST",r.url(),r.failure()?.errorText));
@@ -15,6 +15,7 @@ await page.route("https://atelier-ai-backend-pi.vercel.app/**",async route=>{
  if(url.endsWith("/api/login")){const body=JSON.parse(req.postData()||"{}");return route.fulfill({status:200,headers,body:JSON.stringify({profileId:body.profileId,token:"test-token"})})}
  if(url.endsWith("/api/session"))return route.fulfill({status:200,headers,body:JSON.stringify({authenticated:true,profileId:currentProfile})});
  if(url.endsWith("/api/analyze")&&forceUnauthorized){forceUnauthorized=false;return route.fulfill({status:401,headers,body:JSON.stringify({error:"Sesión caducada"})})}
+ if(url.endsWith("/api/analyze")&&forceQuota){forceQuota=false;return route.fulfill({status:429,headers,body:JSON.stringify({error:"Límite diario alcanzado"})})}
  if(url.endsWith("/api/analyze")&&forceServerError){forceServerError=false;return route.fulfill({status:503,headers,body:JSON.stringify({error:"Servicio no disponible"})})}
  if(url.endsWith("/api/analyze"))return route.fulfill({status:200,headers,body:JSON.stringify({garment:{name:"Camisa reconocida por IA",type:"top",color:"Azul",fabric:"cotton",pattern:"stripes",fit:"regular",sleeve:"larga",subtype:"camisa",confidence:"media",details:"botones frontales",occasions:["daily","work"]}})});
  if(url.endsWith("/api/looks")&&forceUnauthorized){forceUnauthorized=false;return route.fulfill({status:401,headers,body:JSON.stringify({error:"Sesión caducada"})})}
@@ -411,6 +412,12 @@ try{
   await completeSheetsWithAI();others.forEach(g=>delete g.aiFilledAt);const g=myGarments().find(x=>x.id==="fill-2");const r={marked:!!g.aiFilledAt,still:fillCandidates().some(x=>x.id==="fill-2")};
   appState.data.garments=myGarments().filter(x=>x.id!=="fill-2");tomb("fill-2");await saveState();return r});
  assert.ok(!retry.marked&&retry.still,"Tras un error 503 la prenda sigue pendiente "+JSON.stringify(retry));
+ // Límite agotado en el servidor (otro móvil): este dispositivo deja de intentarlo hoy
+ forceQuota=true;
+ const quota=await page.evaluate(async()=>{const u=aiUsage(),prev=u.analyze;const cv=document.createElement("canvas");cv.width=20;cv.height=44;cv.getContext("2d").fillRect(0,0,20,44);
+  let err="";try{await api("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image:cv.toDataURL("image/jpeg")})})}catch(e){err=e.message}
+  const r={err,full:aiUsage().analyze>=AI_LIMITS.analyze};u.analyze=prev;await saveState();return r});
+ assert.deepEqual(quota,{err:"AI_QUOTA",full:true},"Un 429 del servidor agota el límite local");
  await page.evaluate(async()=>{appState.data.garments=myGarments().filter(g=>g.id!=="fill-1");tomb("fill-1");await saveState()});
  await page.evaluate(()=>openGarment(myGarments().find(g=>validImage(g.image))?.id));
  forceUnauthorized=true;

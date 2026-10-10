@@ -687,7 +687,8 @@ async function api(path,options={}){
   setTimeout(()=>toast(kind==="analyze"?"Has llegado al límite de "+AI_LIMITS.analyze+" análisis de hoy. Mañana podrás seguir.":"Has llegado al límite de "+AI_LIMITS.looks+" sugerencias de hoy. Mañana podrás seguir."),80);
   throw new Error("AI_QUOTA");
  }
- const out=await rawApi(path,{...options,body:JSON.stringify(body)});
+ let out;try{out=await rawApi(path,{...options,body:JSON.stringify(body)})}
+ catch(e){if(e.message==="AI_QUOTA"){usage[kind]=AI_LIMITS[kind];saveState({fromSync:true})}throw e} /* límite agotado en el servidor (p. ej., desde otro móvil): este también deja de intentarlo hoy (revisión de Codex, #199) */
  usage[kind]++;saveState({fromSync:true});
  if(kind==="analyze"){analyzeCache.set(cacheKey,structuredClone(out));if(analyzeCache.size>30)analyzeCache.delete(analyzeCache.keys().next().value);return out}
  if(Array.isArray(out?.looks))out.looks=out.looks.map(l=>({...l,ids:(Array.isArray(l.ids)?l.ids:[]).map(String).filter(id=>toLong.has(id)).map(id=>toLong.get(id))}));
