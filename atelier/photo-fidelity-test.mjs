@@ -39,7 +39,7 @@ export async function auditPhotoFidelity(page){
      const contentW=Math.max(0,rect.width-pl-pr),contentH=Math.max(0,rect.height-pt-pb);
      const factor=Math.min(contentW/90,contentH/150);
      const left=pl+(contentW-90*factor)/2,top=pt+(contentH-150*factor)/2;
-     samplePoints.push([[45,75],[10,75],[45,5],[45,145]].map(([x,y])=>({
+     samplePoints.push([[45,75],[10,75],[85,75],[45,5],[45,145]].map(([x,y])=>({
       x:(left+x*factor)/rect.width,y:(top+y*factor)/rect.height
      })));
     }
@@ -47,9 +47,9 @@ export async function auditPhotoFidelity(page){
    },width);
    assert.deepEqual(setup.failures,[],"Photo geometry at "+width+"px");
    const expected=[
-    [[232,217,193],[255,255,255],[255,255,255],[255,255,255]],
-    [[33,52,91],[153,153,153],[153,153,153],[153,153,153]],
-    [[21,21,21],[197,162,125],[197,162,125],[197,162,125]]
+    [[232,217,193],[255,255,255],[255,255,255],[255,255,255],[255,255,255]],
+    [[33,52,91],[153,153,153],[153,153,153],[153,153,153],[153,153,153]],
+    [[21,21,21],[197,162,125],[197,162,125],[197,162,125],[197,162,125]]
    ];
    for(let i=0;i<expected.length;i++){
     const png=await page.locator("#photoRenderAudit .look-mixed-item img").nth(i).screenshot();
