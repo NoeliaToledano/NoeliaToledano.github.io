@@ -3041,7 +3041,7 @@ function renderSettings(root){
   '<div class="feature-card"><h2>Preferencias del estilista</h2>'+
   '<label class="field"><span>Temporada para las propuestas</span><select id="settingsSeason">'+optionList(Object.entries(seasons),p.season||"all")+'</select></label>'+
   '<label class="field"><span>Temperatura si no usas el tiempo de tu zona (°C)</span><input id="settingsTemperature" type="number" min="-30" max="55" step="1" value="'+fx(currentTemperature())+'"></label>'+
-  '<label class="field"><span>Prenda olvidada tras (días)</span><input id="settingsForget" type="number" min="30" max="365" value="'+fx(p.forgottenDays)+'"></label>'+
+  '<label class="switch-line"><input id="settingsAvoidRepeats" type="checkbox"'+(p.avoidRepeats?' checked':'')+'> Evitar repetir combinaciones recientes</label>'+'<label class="field"><span>Prenda olvidada tras (días)</span><input id="settingsForget" type="number" min="30" max="365" value="'+fx(p.forgottenDays)+'"></label>'+
   '<label class="field"><span>Código de vestir en tu trabajo</span><select id="settingsWorkDress">'+Object.entries(WORK_DRESS).map(([k,v])=>'<option value="'+k+'"'+(workDress()===k?' selected':'')+'>'+fx(v)+'</option>').join("")+'</select></label><p class="helper">Lo uso en los looks de trabajo: en una oficina informal valen deportivas y sudaderas; en una formal, solo prendas arregladas.</p>'+
   '</div>'+ 
   '<div class="feature-card"><h2>Uso de la IA hoy</h2><p class="muted">Análisis de fotos: '+u.analyze+' de '+AI_LIMITS.analyze+'.</p><p class="helper">Solo el análisis de fotos usa la IA. Los looks, «¿Lo compro?», las recomendaciones, las maletas y el fondo blanco se calculan en tu móvil.</p></div>'+
@@ -3058,6 +3058,7 @@ function renderSettings(root){
  $("#settingsWorkDress")?.addEventListener("change",e=>{setPref("workDress",WORK_DRESS[e.target.value]?e.target.value:"arreglado");toast("Código de vestir del trabajo: "+WORK_DRESS[e.target.value].toLowerCase())});
  $("#settingsSeason")?.addEventListener("change",e=>{const d=p.dailyLook;if(d&&!d.touched)d.date=null;setPref("season",e.target.value,false)});
  $("#settingsTemperature")?.addEventListener("change",e=>{const n=Number(e.target.value);if(e.target.value===""||!Number.isFinite(n)||n< -30||n>55)return toast("Introduce entre -30 y 55 °C");p.autoWeather=false;if(p.dailyLook&&!p.dailyLook.touched)p.dailyLook.date=null;setPref("temperature",n,true)});
+ $("#settingsAvoidRepeats")?.addEventListener("change",e=>setPref("avoidRepeats",e.target.checked,false));
  $("#settingsForget")?.addEventListener("change",e=>{const n=Number(e.target.value);if(Number.isInteger(n)&&n>=30&&n<=365)setPref("forgottenDays",n);else toast("Introduce entre 30 y 365 días")});
  $("#exportBackup")?.addEventListener("click",downloadBackup);
  $("#importBackup")?.addEventListener("change",e=>importBackup(e.target.files[0]));
