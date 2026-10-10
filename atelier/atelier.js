@@ -2451,7 +2451,7 @@ function renderWeek(root){
   (days.some(d=>d>=today&&!planFor(d))?'<button type="button" class="primary wide" id="weekFill">✦ Planificar los días libres</button>':'')+
   '<div class="week-list">'+days.map(d=>{const p=planFor(d);return '<section class="day-card'+(d===today?' is-today':'')+'" aria-label="'+fx(capFirst(weekdayName(d))+" "+fmtDay(d))+'"><div class="day-head"><strong>'+fx(capFirst(weekdayName(d)))+'</strong><span class="muted">'+fx(fmtDay(d))+(d===today?' · hoy':'')+'</span></div>'+
    (p?planCardHtml(p):d<today?(()=>{const worn=logs().filter(l=>l.date===d),nm=id=>myGarments().find(g=>g.id===id)?.name; /* días pasados: lo que llevaste, o apuntarlo (no se planifica el pasado) */
-    return worn.length?worn.map(l=>'<p class="muted day-worn">Llevaste: '+fx((l.garmentIds||[]).map(nm).filter(Boolean).join(" · ")||"un look")+'</p>').join(""):'<button type="button" class="chip-button" data-plan-pick="'+d+'">+ Apuntar lo que llevé</button>'})():'<button type="button" class="secondary wide" data-plan-pick="'+d+'">+ Elegir look</button>')+'</section>'}).join("")+'</div>');
+    return worn.length?worn.map(l=>'<p class="muted day-worn">Llevaste: '+fx((l.garmentIds||[]).map(nm).filter(Boolean).join(" · ")||"un look")+'</p>').join(""):'<button type="button" class="chip-button" data-plan-pick="'+d+'">+ Apuntar lo que llevé</button>'})():(d===today?logs().filter(l=>l.date===d).map(l=>'<p class="muted day-worn">Llevaste: '+fx((l.garmentIds||[]).map(id=>myGarments().find(g=>g.id===id)?.name).filter(Boolean).join(" · ")||"un look")+'</p>').join(""):"")+'<button type="button" class="secondary wide" data-plan-pick="'+d+'">+ Elegir look</button>')+'</section>'}).join("")+'</div>');
  $("#weekPrev").addEventListener("click",()=>{ui.weekStart=addDays(ws,-7);render()});
  $("#weekNext").addEventListener("click",()=>{ui.weekStart=addDays(ws,7);render()});
  $("#weekToday")?.addEventListener("click",()=>{ui.weekStart=weekStartOf(today);render()});
@@ -2852,7 +2852,7 @@ function shoppingSuggestions(){
  const lb=lookBases(gs),lonely=new Set(gs.filter(g=>gs.filter(o=>goes(g,o)).length<2).map(g=>g.id)),partner={Arriba:["Abajo"],Abajo:["Arriba"]},out=[];
  for(const c of CATALOG){
   if(wished.has(norm(c.name))||gs.some(g=>isDuplicate(c,g)))continue;
-  const clothes=isClothes(c),nb=clothes?0:basesFor(c,lb).length,compatible=clothes?gs.filter(g=>isClothes(g)&&goes(c,g)):[...new Set(basesFor(c,lb).flat())];if(!compatible.length)continue; /* ropa con ropa; el resto, con looks completos */
+  const clothes=isClothes(c),cb=clothes?[]:basesFor(c,lb),nb=cb.length,compatible=clothes?gs.filter(g=>isClothes(g)&&goes(c,g)):[...new Set(cb.flat())];if(!compatible.length)continue; /* ropa con ropa; el resto, con looks completos */
   const sim=simulate(c,gs,bases),rescued=compatible.filter(g=>lonely.has(g.id)&&(partner[c.category]||[]).includes(g.category));
   if(sim.count<2&&!rescued.length)continue;
   const seasonBoost=c.season==="all"?1:c.season===season?1.2:.5;
