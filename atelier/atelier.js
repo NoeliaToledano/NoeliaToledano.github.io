@@ -2148,12 +2148,12 @@ function completeOutfitGreedy(base,pool,ctx,used=new Map(),firstPick=null){
   else c.sort((a,b)=>pref(b)-pref(a));
   if(cat==="Zapatos"&&c.some(x=>!bootInHeat(x,ctx.temp)))c=c.filter(x=>!bootInHeat(x,ctx.temp));
   if(cat==="Zapatos"&&c.some(x=>!newColorOverflow(x,l,ctx)))c=c.filter(x=>!newColorOverflow(x,l,ctx)); // calzado: sin cuarto color si hay alternativa
-  if(cat==="Zapatos"){const ok=c.filter(x=>l.every(p=>(relationOf(x,p,ctx)?.s??1)>=REL_OK));if(ok.length)c=ok} // calzado que combina con todo el look si lo hay (tacones de fiesta con camisa vaquera, no)
   if(cat==="Bolsos"&&l.some(p=>formalLevel(p)>=2))c=c.filter(x=>!isBackpack(x)||formalLevel(x)>=2&&!isOutdoor(x)); // Q3 (#108): mochila de vestir sí
   if(cat==="Bolsos"&&hasSkirtOrDress(l))c=c.filter(x=>!outdoorPack(x)); // sin bolso antes que mochila de montaña con vestido
   if(cat==="Bolsos"&&ctx.occasion!=="sport")c=c.filter(x=>!outdoorPack(x)); // mochila de montaña solo en deporte (cata n.º 4: «sobra» en looks de ciudad)
   if(cat==="Bolsos"&&["party","event","formal"].includes(ctx.occasion)){const lv=x=>Array.isArray(x.occasions)&&x.occasions.includes(ctx.occasion)?3:formalLevel(x),top=Math.max(0,...c.map(lv));if(top>=2)c=c.filter(x=>lv(x)>=top)} // fiesta: el bolso más arreglado que haya (de fiesta antes que de diario)
   if(cat==="Zapatos"&&beach)c=c.filter(x=>/sandal|chancl|alpargat|zueco/i.test([x.type,x.name,x.subtype].filter(Boolean).join(" ")));
+  if(cat==="Zapatos"){const ok=c.filter(x=>l.every(p=>(relationOf(x,p,ctx)?.s??1)>=REL_OK));if(ok.length)c=ok} // calzado que combina con todo el look si lo hay, después de los filtros funcionales como la playa (revisión de Codex, #210; tacones de fiesta con camisa vaquera, no)
   // P3/P4 (#99): un gorro o sombrero solo con motivo (frío o sol de verano en diario/playa); otros complementos, si suman
   if(cat==="Accesorios")c=c.filter(x=>!HEADWEAR.test([x.type,x.subtype,x.name].filter(Boolean).join(" "))||headwearMakesSense(x,ctx));
   const optional=cat==="Bolsos"||cat==="Accesorios"||cat==="Capas"&&!rule.need;
