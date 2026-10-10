@@ -2,6 +2,19 @@
 
 > Documento de investigación, **no cambios implementados**. Trabajo paralelo a los pares A/B de Claude (#131, #128). No entrenar con las etiquetas del conjunto de evaluación y después anunciar resultados sobre ese mismo conjunto.
 
+
+## Resumen ejecutivo — decisiones operativas (10/10/2026)
+
+**Adoptar:** restricciones funcionales separadas de gustos, metadatos con incertidumbre, compatibilidad contextual de parejas, evaluación **global** de conjuntos, accesorios solo si aportan y pruebas independientes; sin sesgos de género.
+
+**Solo experimentar:** MMR, fórmulas de estilismo, FashionCLIP, métodos de grafos y modelos visuales; ningún modelo externo debe actuar como juez de producción sin medición independiente y revisión de licencia, coste y rendimiento.
+
+**Descartar como reglas universales:** «dos estampados no combinan», «double denim prohibido», «oversize requiere prenda ceñida», «vestido obliga tacones» o «dos colores coincidentes bastan para aprobar un look».
+
+**Cómo medir:** looks completos no vistos, armarios reales y coherentes, votos A/B ciegos con opción «ambos/ninguno», contexto y gusto por separado, robustez de metadatos y coste/latencia móvil. Los pares históricos usados para ajustar reglas son **desarrollo**, no certificación externa.
+
+**Estado:** investigación histórica que sirvió a las PR #161–#207; el motor de producción ya evolucionó después de esta primera investigación. El [atlas posterior de prendas, tejidos y evaluación global](https://github.com/NoeliaToledano/NoeliaToledano.github.io/pull/220) y el [estudio de denim y estampados](https://github.com/NoeliaToledano/NoeliaToledano.github.io/pull/219) amplían este documento. No presentar los algoritmos propuestos aquí como implementados automáticamente.
+
 ## 1. Qué hace realmente una estilista
 
 Una estilista evalúa la intención (qué quiere comunicar la persona), las restricciones (ocasión, clima, movilidad, comodidad, normas del entorno), la composición visual (color, proporción, textura, estructura, foco) y la identidad personal. **La compatibilidad no es mera similitud** y la estética no es objetiva ni estática. Evitar normas universales que penalicen expresiones culturales, cuerpos, estilos personales o combinaciones maximalistas.
@@ -358,7 +371,7 @@ Solo utilizar preferencias de ajuste, comodidad y estilo **declaradas voluntaria
 **Plan de validación:** comparar un baseline (motor actual), un reranker MMR y un scoring contextual simple en los casos fáciles y difíciles del banco A/B; mantener fuera del entrenamiento la parte ciega. Registrar intervalos de incertidumbre y desacuerdos de jueces. No afirmar rendimiento superior hasta evaluarlo.
 
 
-## 25. Quinta ronda (fuentes verificadas): color real frente a color de cámara
+## 29.1 Quinta ronda adicional (fuentes verificadas): color real frente a color de cámara
 
 La CIE (Commission Internationale de l’Éclairage), en **CIE 015:2018, Colorimetry**, formaliza iluminantes, observadores estándar, condiciones de iluminación/observación, espacios y diferencias de color: https://www.cie.co.at/publications/colorimetry-4th-edition .
 
@@ -366,7 +379,7 @@ La CIE (Commission Internationale de l’Éclairage), en **CIE 015:2018, Colorim
 
 **Consecuencia:** el RGB dominante de una foto doméstica no es un color material fiable. No usar Delta-E entre píxeles de dos fotografías como regla estricta de compatibilidad. Normalizar balance de blancos, segmentar prenda frente a fondo, obtener paleta de varios colores y registrar incertidumbre/iluminación. Pedir corrección humana para casos relevantes (negro vs azul marino, beige vs crema, metal dorado vs plateado). Comparar decisiones bajo fotos distintas de una misma prenda: el ranking debería permanecer estable.
 
-## 26. Recomendación diversa sin sacrificar calidad: MMR
+## 29.2 Recomendación diversa sin sacrificar calidad: MMR
 
 Carbonell y Goldstein (SIGIR 1998) introdujeron **Maximal Marginal Relevance (MMR)** para equilibrar relevancia y novedad en resultados: https://doi.org/10.1145/290941.291025 . No es moda, pero es una técnica de reranking reutilizable.
 
@@ -378,19 +391,19 @@ candidate_utility = calibrated_outfit_quality - lambda * max_similarity_with_sel
 
 Sin porcentajes ni pesos definitivos inventados. Reportar diferencia de calidad top-1/top-3, diversidad de plantillas, cobertura de prendas y número de propuestas repetitivas frente a baseline.
 
-## 27. Arranque en frío y preguntas inteligentes
+## 29.3 Arranque en frío y preguntas inteligentes
 
 Nguyen et al. (UAI 2024), *Cold-start Recommendation by Personalized Embedding Region Elicitation*, desarrollan una estrategia de dos fases: primero preferencias iniciales y después preguntas adaptativas, evitando un conjunto fijo de ejemplos para todo el mundo: https://proceedings.mlr.press/v244/nguyen24a.html . No es un modelo de moda directamente listo para usar.
 
 Para Atelier, probar **microelecciones opcionales**: dos looks contrastados con la misma ocasión, eligiendo “A/B/ambos/ninguno”; escoger la siguiente pregunta donde más difiera la predicción de gustos y donde cambie la recomendación. No preguntar por preguntar; detenerse cuando el conocimiento adicional no altere resultados. Mantener separadas las preferencias de la sesión y las duraderas.
 
-## 28. Modelo reciente con pocos datos: investigación, no adopción directa
+## 29.4 Modelo reciente con pocos datos: investigación, no adopción directa
 
 Khalid y Gong, **FABRIC** (Expert Systems with Applications, mayo 2026), proponen recomendación personalizada con escaso historial mediante memorias prototípicas compartidas, de usuario y de arranque en frío: https://www.sciencedirect.com/science/article/pii/S0957417426000758 . El artículo presenta mejoras experimentales, pero no está demostrado que el modelo sea útil en la arquitectura local de Atelier o que sus pesos puedan redistribuirse.
 
 Idea ligera a ensayar: prototipos de looks preferidos/descartados por perfil, asociados a contexto e intención, con actualización lenta y explicable. Evitar almacenar imágenes crudas si bastan atributos calculados y datos ya presentes.
 
-## 29. Qué medir de verdad
+## 29.5 Qué medir de verdad
 
 La revisión de Deldjoo et al., *A Review of Modern Fashion Recommender Systems* (ACM CSUR 2024), diferencia tareas de generación, recomendación, completado de looks, compatibilidad y evaluación, que no deben mezclarse bajo una sola métrica: https://iris.poliba.it/handle/11589/270980 . La revisión de Selwon y Szymański (ACM CSUR 2024) enfatiza reproducibilidad, explicabilidad y sesgos de los datos: https://doi.org/10.1145/3664614 .
 
