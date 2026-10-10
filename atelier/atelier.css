@@ -551,3 +551,7 @@ p.notice-card{display:block}
 .look-mixed-board[data-count="2"][data-hero-category="dress"]>.look-mixed-item:first-child{grid-area:1/1/13/9}
 .look-mixed-board[data-count="2"][data-hero-category="dress"]>.look-mixed-item:nth-child(2){grid-area:7/9/13/13}
 .day-worn{margin:4px 0 0;font-size:13px;overflow-wrap:anywhere}
+
+/* Dense collages: treat small accessories as supporting details. */
+.look-mixed-board:is([data-count="6"],[data-count="7"])>.look-mixed-item[data-piece-kind="accessory"] img{padding:18%}
+.look-mixed-board:is([data-count="6"],[data-count="7"])>.look-mixed-item[data-piece-kind="bag"] img{padding:9%}
