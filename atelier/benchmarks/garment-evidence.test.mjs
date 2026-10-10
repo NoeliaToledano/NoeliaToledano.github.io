@@ -62,3 +62,10 @@ test("unknown pattern sentinel is missing evidence",()=>{
  assert.equal(e.pattern.motifs.length,0);
  assert.equal(evidenceNeedsReview(e),true);
 });
+
+test("explicit unknown pattern stays unknown",()=>{
+ const e=garmentEvidence({fabric:"cotton",pattern:"unknown"});
+ assert.equal(e.pattern.known,false);
+ assert.deepEqual(e.pattern.motifs,[]);
+ assert.equal(evidenceNeedsReview(e),true);
+});
