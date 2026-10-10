@@ -86,6 +86,8 @@ const META_FIELDS=[
  ["fabric","Tejido aparente",ANALYSIS_FIELDS.fabric,"ia"],
  ["denimWash","Lavado vaquero (si se distingue)",["raw","clean","light","medium","dark","stone","acid","bleached","gradient","other"],"ia"],
  ["fit","Corte",["oversize","holgado","regular","entallado","ajustado","recto"],"ia"],
+ ["drape","Caída visual",["fluid","soft","structured"],"ia"],
+ ["surfaceSheen","Brillo de la superficie",["matte","soft","shiny"],"ia"],
  ["length","Largo",ANALYSIS_FIELDS.length,"ia"],
  ["sleeve","Manga",["sin mangas","corta","tres cuartos","larga","no aplica"],"ia"],
  ["neckline","Escote / cuello",["redondo","pico","camisero","alto","barco","palabra de honor","no aplica"],"ia"],
