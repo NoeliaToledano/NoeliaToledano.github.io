@@ -71,6 +71,30 @@ try{
  });
  assert.deepEqual(collageAudit,[],"Regresión de composición fotográfica de looks");
 
+ // A dress with shoes should not present the shoes as an equally important tile.
+ const dressLayout=await page.evaluate(()=>{
+  const cv=document.createElement("canvas");cv.width=40;cv.height=80;cv.getContext("2d").fillRect(0,0,40,80);
+  const image=cv.toDataURL("image/png");
+  const host=document.createElement("div");host.style.cssText="width:300px;position:fixed;left:0;top:0;visibility:hidden";
+  document.body.append(host);
+  try{
+   const dress={id:"hero-dress",name:"Vestido",category:"Vestidos",image};
+   const shoes={id:"side-shoes",name:"Zapatos",category:"Zapatos",image};
+   host.innerHTML=outfitBoard([shoes,dress]);
+   const board=host.querySelector(".look-mixed-board");
+   const cards=[...host.querySelectorAll(".look-mixed-item")];
+   const dressArea=cards[0].getBoundingClientRect(),shoeArea=cards[1].getBoundingClientRect();
+   const ratio=(dressArea.width*dressArea.height)/(shoeArea.width*shoeArea.height);
+   const dressOk=board.dataset.heroCategory==="dress"&&cards[0].querySelector("img").alt==="Vestido"&&ratio>2;
+   host.innerHTML=outfitBoard([{id:"a",name:"Camisa",category:"Arriba",image},{id:"b",name:"Pantalón",category:"Abajo",image}]);
+   const ordinary=host.querySelector(".look-mixed-board");
+   return {dressOk,ordinaryOk:ordinary.dataset.heroCategory==="other"};
+  }finally{host.remove()}
+ });
+ assert.equal(dressLayout.dressOk,true,"Dress must dominate shoes in a 2-piece collage");
+ assert.equal(dressLayout.ordinaryOk,true,"Top-and-bottom looks retain their standard layout");
+
+
  // Premium: test actual responsive media queries, at each viewport width.
  const originalViewport=page.viewportSize();
  const cardOverflow=[];
