@@ -42,4 +42,6 @@ try{execFileSync(process.execPath,[new URL("./benchmarks/styling-formulas.test.m
 catch(e){fail("Styling formulas regression: "+String(e.stderr||e.message));}
 try{execFileSync(process.execPath,[new URL("./benchmarks/relation-cache.test.mjs",import.meta.url).pathname],{stdio:"pipe"});}
 catch(e){fail("Incremental relation cache regression: "+String(e.stderr||e.message));}
+try{execFileSync(process.execPath,[new URL("./benchmarks/relation-rank-once.test.mjs",import.meta.url).pathname],{stdio:"pipe"});}
+catch(e){fail("Contextual rank-once regression: "+String(e.stderr||e.message));}
 console.log("Atelier release gate OK (app y backend)");
