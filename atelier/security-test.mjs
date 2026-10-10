@@ -404,6 +404,19 @@ console.log("PASS: Styling engine (20/100/500 prendas): capas según tiempo, var
   console.log("PASS: Clothes-first: clothing pairs with clothing, accessories with whole look bases");
 }
 
+// Un complemento solo completa una base con la que comparte ocasión: zapatillas de diario no van con un vestido de fiesta
+{
+  const r=new Function("document","sessionStorage","crypto",src+`
+  const G=(id,category,type,color,extra={})=>({id,name:type+" "+color,category,type,color,style:"casual",formality:"casual",season:"all",pattern:"plain",occasions:["daily"],updatedAt:"x",...extra});
+  appState.profile={id:"noelia"};
+  appState.data=normalizeData({garments:[G("gown","Vestidos","Vestido largo de lentejuelas","Dorado",{style:"party",formality:"party",occasions:["party","formal","event"]}),G("d","Vestidos","Vestido camisero","Beige"),G("s","Zapatos","Zapatillas","Negro")]});
+  ensureRelations();const by=id=>myGarments().find(g=>g.id===id);
+  return basesFor(by("s")).map(b=>b.map(g=>g.id).join("+"));`)(document,sessionStorage,{randomUUID:()=>"t"});
+  assert.ok(!r.includes("gown"),"Unas zapatillas de diario no completan un vestido de lentejuelas ("+r+")");
+  assert.ok(r.includes("d"),"Sí un vestido de diario");
+  console.log("PASS: Accessories only complete bases they share an occasion with");
+}
+
 // Orden en pantalla (Noelia, 10/10/2026): entre looks de calidad parecida, primero los más completos
 {
   const sample=JSON.parse(fs.readFileSync(new URL("./benchmarks/sample-garments.json",import.meta.url),"utf8"));
