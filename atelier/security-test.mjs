@@ -887,3 +887,30 @@ console.log("PASS: S6 long-offline devices don't resurrect deletions");
   assert.equal(res.body.items[1].sleeve,"sin mangas");assert.equal(res.body.items[1].pattern,"floral");assert.equal(res.body.items[0].pattern,undefined);assert.equal(res.body.items[1].formality,undefined);
   console.log("PASS: Outfit photo items carry formality, sleeve and length (validated)");
 }
+
+/* #176: version cache must not leak options between dates/weather/profiles.
+   Execute the real versionsOf function in isolation to catch key collisions. */
+{
+ const start=src.indexOf("function versionsOf("),end=src.indexOf("function pickedLook(",start);
+ assert.ok(start>=0&&end>start,"versionsOf exists in the styling engine");
+ const actual=src.slice(start,end);
+ const probe=new Function("fn",`
+  const versionCache=new Map(),relCache={sig:"equal-length-a"};
+  let calls=0;const versionPick=new Map();
+  const lookSig=ids=>ids.join("|");
+  const engineContext=()=>({date:"2026-07-15",occasion:"daily",temp:24});
+  const lookVersions=(_gs,ctx)=>{calls++;return [{label:"Si refresca",ids:[String(ctx.temp),String(ctx.occasion)],garments:[]}]};
+  eval(fn+"\\n;globalThis.__versionsOf=versionsOf");
+  const main=[{id:"dress",category:"Vestidos"}],a=globalThis.__versionsOf("plan:day",main,{date:"2026-07-15",occasion:"daily",temp:24});
+  const b=globalThis.__versionsOf("plan:day",main,{date:"2026-07-15",occasion:"daily",temp:12});
+  relCache.sig="equal-length-b";
+  const c=globalThis.__versionsOf("plan:day",main,{date:"2026-07-15",occasion:"party",temp:12});
+  delete globalThis.__versionsOf;
+  return {calls,a:a[0]?.ids,b:b[0]?.ids,c:c[0]?.ids};
+ `);
+ const got=probe(actual);
+ assert.deepEqual(got.b,["12","daily"],"Version cache must invalidate when forecast temperature changes");
+ assert.deepEqual(got.c,["12","party"],"Version cache must invalidate when context and equal-length garment signature change");
+ assert.equal(got.calls,3,"One cached computation per genuinely different styling context");
+ console.log("PASS: Versions cache isolates weather, occasion, and equal-length signatures");
+}
