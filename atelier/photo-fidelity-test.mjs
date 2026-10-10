@@ -7,6 +7,7 @@ export async function auditPhotoFidelity(page){
  try{
   for(const width of [320,375,390,430]){
    await page.setViewportSize({width,height:844});
+   for(const direct of [false,true]){
    for(let count=1;count<=7;count++){
     const setup=await page.evaluate(async({width,count})=>{
      const host=document.createElement("div");
@@ -34,7 +35,7 @@ export async function auditPhotoFidelity(page){
      const pieces=fixtures.slice(0,count).map(([category,name,bg,ink],i)=>({
       id:"render-"+i,name,category,image:photo(bg,ink),bgWhite:bg==="#ffffff",bg,ink
      }));
-     host.innerHTML='<main class="content"><div class="grid"><div class="look-tile"><article class="card"><div aria-hidden="true">'+outfitBoard(pieces)+'</div><div class="card-body">Look de auditoría</div></article></div></div></main>';
+     host.innerHTML='<main class="content"><div class="grid"><div class="look-tile"><article class="card">'+(direct?outfitBoard(pieces):'<div aria-hidden="true">'+outfitBoard(pieces)+'</div>')+'<div class="card-body">Look de auditoría</div></article></div></div></main>';
      const byName=new Map(pieces.map(g=>[g.name,g]));
      const imgs=[...host.querySelectorAll(".look-mixed-item img")],failures=[],samplePoints=[],expected=[];
      if(window.innerWidth!==width)failures.push("Viewport mismatch: "+window.innerWidth);
@@ -60,7 +61,7 @@ export async function auditPhotoFidelity(page){
       expected.push([rgb(g.ink),rgb(edge),rgb(edge),rgb(edge),rgb(edge)]);
      }
      return {failures,samplePoints,expected};
-    },{width,count});
+    },{width,count,direct});
     assert.deepEqual(setup.failures,[],"Photo geometry at "+width+"px, "+count+" garments");
     for(let i=0;i<setup.expected.length;i++){
      const png=await page.locator("#photoRenderAudit .look-mixed-item img").nth(i).screenshot();
@@ -80,6 +81,7 @@ export async function auditPhotoFidelity(page){
      }
     }
     await page.locator("#photoRenderAudit").evaluate(el=>el.remove());
+   }
    }
   }
  }finally{
