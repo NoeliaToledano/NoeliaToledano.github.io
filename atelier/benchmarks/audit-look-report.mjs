@@ -16,8 +16,10 @@ export function auditReport(input) {
     const ids = Array.isArray(look.ids) ? look.ids : garments.map(g=>g.id).filter(Boolean);
     const cats = garments.map(g=>g.category).filter(Boolean);
     const flags = [];
+    if (!Array.isArray(look.garments) || !look.garments.length) flags.push("category_data_unavailable");
+    const categoriesAvailable = garments.length > 0 && garments.every(g => typeof g?.category === "string" && g.category.length > 0);
     const core = cats.filter(x=>x==="Arriba"||x==="Abajo"||x==="Vestidos");
-    if (cats.length) {
+    if (categoriesAvailable) {
       if (!(cats.includes("Vestidos") || (cats.includes("Arriba")&&cats.includes("Abajo")))) flags.push("missing_core");
       if (cats.includes("Vestidos") && (cats.includes("Arriba")||cats.includes("Abajo"))) flags.push("competing_core");
       const extras = cats.filter(x=>x==="Bolsos"||x==="Accesorios");
@@ -29,7 +31,7 @@ export function auditReport(input) {
     if (Array.isArray(look.warnings) && look.warnings.length) flags.push("has_engine_warning");
     const occasion=look.occasion??look.occ??"unspecified";
     const temp=look.temperature??look.temp??null;
-    rows.push({index,id:look.id??null,wardrobe:look.wn??look.size??null,occasion,temperature:temp,garmentCount:ids.length||garments.length,coreCount:core.length,optionalCount:cats.filter(x=>x==="Bolsos"||x==="Accesorios").length,flags:[...new Set(flags)]});
+    rows.push({index,id:look.id??null,wardrobe:look.wn??look.size??null,occasion,temperature:temp,garmentCount:ids.length||garments.length,coreCount:categoriesAvailable?core.length:null,optionalCount:categoriesAvailable?cats.filter(x=>x==="Bolsos"||x==="Accesorios").length:null,flags:[...new Set(flags)]});
   }
   const byOccasion={};
   for (const row of rows) {
