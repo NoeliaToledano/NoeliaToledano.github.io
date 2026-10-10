@@ -71,6 +71,44 @@ try{
   return failures;
  });
  assert.deepEqual(collageAudit,[],"Regresión de composición fotográfica de looks");
+
+ // Premium photo fidelity: heterogeneous backgrounds must remain unfiltered,
+ // fully visible, and undistorted in Chrome, including narrow phone layouts.
+ const photoFidelity=await page.evaluate(async()=>{
+  const failures=[],host=document.createElement("div");
+  host.style.cssText="position:fixed;left:0;top:0;width:320px;visibility:hidden;pointer-events:none";
+  document.body.append(host);
+  const makeImage=(background,garment)=>{
+   const c=document.createElement("canvas");c.width=90;c.height=150;
+   const ctx=c.getContext("2d");ctx.fillStyle=background;ctx.fillRect(0,0,90,150);
+   ctx.fillStyle=garment;ctx.fillRect(25,15,40,120);
+   return c.toDataURL("image/png");
+  };
+  const pieces=[
+   {id:"photo-white",name:"Vestido blanco",category:"Vestidos",image:makeImage("#ffffff","#e8d9c1"),bgWhite:true},
+   {id:"photo-gray",name:"Abrigo azul",category:"Capas",image:makeImage("#999999","#21345b"),bgWhite:false},
+   {id:"photo-room",name:"Zapatos negros",category:"Zapatos",image:makeImage("#c5a27d","#151515"),bgWhite:false}
+  ];
+  try{
+   host.innerHTML=outfitBoard(pieces);
+   const board=host.querySelector(".look-mixed-board");
+   const imgs=[...host.querySelectorAll(".look-mixed-item img")];
+   if(!board||imgs.length!==pieces.length)failures.push("Missing photo tiles");
+   for(const img of imgs){
+    img.loading="eager";await img.decode().catch(()=>{});
+    const style=getComputedStyle(img);
+    if(img.naturalWidth!==90||img.naturalHeight!==150)failures.push("Photo failed to decode");
+    if(style.objectFit!=="contain"||style.filter!=="none"||style.mixBlendMode!=="normal")
+     failures.push("Photo style may crop or recolor: "+img.alt);
+    const parent=img.parentElement.getBoundingClientRect(),rect=img.getBoundingClientRect();
+    if(rect.left<parent.left-1||rect.top<parent.top-1||rect.right>parent.right+1||rect.bottom>parent.bottom+1)
+     failures.push("Photo escaped its tile: "+img.alt);
+   }
+  }finally{host.remove()}
+  return failures;
+ });
+ assert.deepEqual(photoFidelity,[],"Mixed-background photographs must remain faithful and uncropped");
+
  // In dense looks, small accessories get a quieter presentation than clothing.
  const accessoryHierarchy=await page.evaluate(()=>{
   const canvas=document.createElement("canvas");canvas.width=40;canvas.height=80;
