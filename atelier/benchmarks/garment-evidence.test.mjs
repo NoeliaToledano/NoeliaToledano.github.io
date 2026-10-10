@@ -45,3 +45,13 @@ test("no personal or body attributes are required",()=>{
  assert.equal(e.garmentId,"unisex");
  assert.equal(Object.hasOwn(e,"gender"),false);
 });
+
+test("unknown fabric sentinel is not known textile",()=>{
+ const e=garmentEvidence({fabric:"unknown",pattern:"plain"});
+ assert.equal(e.textile.known,false);
+ assert.equal(evidenceNeedsReview(e),true);
+});
+test("advanced pattern retains its source",()=>{
+ const e=garmentEvidence({materialAttributes:{patterns:["floral"],patternsSource:"user"}});
+ assert.equal(e.pattern.source,"user");
+});
