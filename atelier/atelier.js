@@ -2212,17 +2212,17 @@ const capFirst=s=>s.charAt(0).toUpperCase()+s.slice(1);
 /* «Planificar los días libres» (revisión nocturna): un núcleo distinto cada día, sin repetir prendas principales en la semana
    y variando calzado y bolso (las prendas de los días cercanos se evitan). Sin IA. */
 function weekFillPlan(days){
- const today=dayISO(),plans=[],skipN=new Set(myPlans().filter(p=>days.includes(p.date)).map(p=>nucleusKey(planGarments(p)))),used=new Set();
+ const today=dayISO(),plans=[],week=myPlans().filter(p=>days.includes(p.date)),skipN=new Set(week.map(p=>nucleusKey(planGarments(p)))),used=new Set(week.flatMap(p=>p.garmentIds||[])); /* lo ya planificado cuenta (revisión de Codex, #175) */
  for(const d of days){if(d<today||planFor(d))continue;
-  const l=rankOutfits({date:d,max:1,avoid:new Set([...used,...dailyAvoid(d)]),skipNuclei:[...skipN]})[0]||rankOutfits({date:d,max:1,avoid:used})[0];if(!l)continue;
+  const l=rankOutfits({date:d,max:1,avoid:new Set([...used,...dailyAvoid(d)]),skipNuclei:[...skipN]})[0];if(!l)break; /* sin núcleos distintos, mejor dejar el día libre que repetir (revisión de Codex, #175) */
   skipN.add(nucleusKey(l.garments));l.ids.forEach(id=>used.add(id));plans.push({date:d,ids:l.ids})}
  return plans;
 }
 async function fillWeek(days){
- const plans=weekFillPlan(days);if(!plans.length)return toast("No hay días libres que planificar");
+ const plans=weekFillPlan(days),free=days.filter(d=>d>=dayISO()&&!planFor(d)).length;if(!plans.length)return toast(free?"No encuentro combinaciones distintas para esos días":"No hay días libres que planificar");
  const now=new Date().toISOString();
  await mutate(()=>{for(const {date,ids} of plans){const id="plan:"+date;appState.data.plans=myPlans().filter(p=>{if(p.date!==date)return true;if(p.id!==id)tomb(p.id);return false});
-  myPlans().push({id,date,garmentIds:[...ids],name:"Propuesta de Atelier",lookId:null,worn:false,updatedAt:now})}},plural(plans.length,"día planificado","días planificados")+". Puedes cambiar cualquiera.");
+  myPlans().push({id,date,garmentIds:[...ids],name:"Propuesta de Atelier",lookId:null,worn:false,updatedAt:now})}},plural(plans.length,"día planificado","días planificados")+(plans.length<free?"; para el resto no hay más combinaciones distintas.":". Puedes cambiar cualquiera."));
 }
 async function setPlan(date,garmentIds,{name,lookId}={}){
  const now=new Date().toISOString();
