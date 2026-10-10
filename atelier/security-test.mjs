@@ -346,6 +346,17 @@ console.log("PASS: Styling engine (20/100/500 prendas): capas según tiempo, var
   console.log("PASS: Favourite version intent learnt per profile");
 }
 
+// Fichas por completar: formalidad, ocasiones, datos de abrigo y contradicción estilo/formalidad
+{
+  const r=new Function("document","sessionStorage","crypto",src+`
+  return [sheetGaps({category:"Arriba",color:"Blanco",style:"casual"}),sheetGaps({category:"Arriba",color:"Blanco",style:"smart",formality:"casual",occasions:["daily"],sleeve:"larga",thickness:"medio",warmth:"medio"}),
+   sheetGaps({category:"Zapatos",color:"Negro",style:"casual",formality:"casual",occasions:["daily"]})];`)(document,sessionStorage,{randomUUID:()=>"t"});
+  assert.ok(r[0].includes("formalidad")&&r[0].includes("ocasiones")&&r[0].some(x=>/manga/i.test(x)),"Sin datos: falta formalidad, ocasiones y manga ("+r[0]+")");
+  assert.deepEqual(r[1],["estilo y formalidad no cuadran"]);
+  assert.deepEqual(r[2],[],"Calzado con formalidad y ocasiones: completo");
+  console.log("PASS: Incomplete garment sheets are detected");
+}
+
 // Estilos flexibles (#52): deportivas + vaqueros + americana sí; mallas + sudadera en informal; nada de gimnasio en boda ni con vestido de fiesta
 const styleProbe=new Function("document","sessionStorage","crypto",src+`
 const G=(id,category,color,style,extra={})=>({id,name:id,category,color,style,season:"all",pattern:"plain",createdAt:"2026-10-01",updatedAt:"x",...extra});
