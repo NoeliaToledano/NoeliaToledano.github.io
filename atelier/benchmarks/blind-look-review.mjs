@@ -7,8 +7,9 @@
  * Reviewers see pairs through their existing local image boards, not photos here.
  */
 import fs from "node:fs";
-const [before,after,out,catalogPath]=process.argv.slice(2);
-if(!before||!after||!out||!catalogPath)throw Error("Usage: node blind-look-review.mjs baseline.json candidate.json output.json photo-catalog.json");
+const [before,after,out,catalogPath,keyPath]=process.argv.slice(2);
+if(!before||!after||!out||!catalogPath||!keyPath)throw Error("Usage: node blind-look-review.mjs baseline.json candidate.json review.json photo-catalog.json PRIVATE-answers.json");
+if([before,after,out,catalogPath].some(p=>p===keyPath)||keyPath===(out.toLowerCase().endsWith(".json")?out.slice(0,-5):out)+".html")throw Error("Private answer key must be stored separately from the review pack and board");
 const read=p=>{const v=JSON.parse(fs.readFileSync(p,"utf8"));return Array.isArray(v)?v:v.looks;};
 const arr=read(before),brr=read(after);
 if(!Array.isArray(arr)||!Array.isArray(brr))throw Error("Expected reports with looks");
@@ -16,13 +17,15 @@ const key=r=>[r.wn||r.size||"wardrobe",r.occ||r.occasion,r.temp??r.temperature,r
 const ids=r=>Array.isArray(r.ids)?r.ids:Array.isArray(r.garments)?r.garments.map(x=>x.id):[];
 const a=new Map(arr.map(r=>[key(r),r])),b=new Map(brr.map(r=>[key(r),r]));
 const hash=s=>{let h=2166136261;for(const c of s){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}return h>>>0};
-const pairs=[];
+const pairs=[],answerKey=[];
 for(const k of [...a.keys()].sort()){
  if(!b.has(k))continue;
  const left=a.get(k),right=b.get(k),ai=ids(left),bi=ids(right);
  if(!ai.length||!bi.length||ai.join("|")===bi.join("|"))continue;
  const reverse=hash(k)%2===1;
- pairs.push({id:"review-"+String(pairs.length+1).padStart(4,"0"),scenario:k,
+ const id="review-"+String(pairs.length+1).padStart(4,"0");
+ answerKey.push({id,candidate:reverse?"A":"B",baseline:reverse?"B":"A"});
+ pairs.push({id,scenario:k,
   A:{garmentIds:reverse?bi:ai},B:{garmentIds:reverse?ai:bi},
   judgement:null,reason:"",context: k.split("|").slice(1,-1).join(" · ")});
 }
@@ -48,4 +51,5 @@ const html='<html lang="es"><head><meta charset="utf-8"><title>Evaluación ciega
 pairs.map(p=>'<section><h2>'+esc(p.id)+' · '+esc(p.context)+'</h2><div class="pair"><div><h3>A</h3><div class="items">'+board(p.A)+'</div></div><div><h3>B</h3><div class="items">'+board(p.B)+'</div></div></div></section>').join("")+'</body></html>';
 fs.writeFileSync((out.toLowerCase().endsWith(".json")?out.slice(0,-5):out)+".html",html);
 fs.writeFileSync(out,JSON.stringify({instructions:"Revisión ciega: ver composición completa e imágenes de prendas de A y B. Elegir A, B, both, neither o insufficient; separar estética, función y gusto; ningún score automático visible.",options:["A","B","both","neither","insufficient"],pairs},null,2));
-console.log("Prepared "+pairs.length+" blind comparisons with neutral HTML board. No human judgment was performed.");
+fs.writeFileSync(keyPath,JSON.stringify({kind:"PRIVATE_ATELIER_AB_KEY",pairs:answerKey},null,2),{flag:"wx",mode:0o600});
+console.log("Prepared "+pairs.length+" blind comparisons and a separate PRIVATE answer key. No human judgment was performed.");
