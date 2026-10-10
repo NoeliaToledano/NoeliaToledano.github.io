@@ -2153,6 +2153,7 @@ function completeOutfitGreedy(base,pool,ctx,used=new Map(),firstPick=null){
   if(cat==="Bolsos"&&ctx.occasion!=="sport")c=c.filter(x=>!outdoorPack(x)); // mochila de montaña solo en deporte (cata n.º 4: «sobra» en looks de ciudad)
   if(cat==="Bolsos"&&["party","event","formal"].includes(ctx.occasion)){const lv=x=>Array.isArray(x.occasions)&&x.occasions.includes(ctx.occasion)?3:formalLevel(x),top=Math.max(0,...c.map(lv));if(top>=2)c=c.filter(x=>lv(x)>=top)} // fiesta: el bolso más arreglado que haya (de fiesta antes que de diario)
   if(cat==="Zapatos"&&beach)c=c.filter(x=>/sandal|chancl|alpargat|zueco/i.test([x.type,x.name,x.subtype].filter(Boolean).join(" ")));
+  if(cat==="Zapatos"){const ok=c.filter(x=>l.every(p=>(relationOf(x,p,ctx)?.s??1)>=REL_OK));if(ok.length)c=ok} // calzado que combina con todo el look si lo hay, después de los filtros funcionales como la playa (revisión de Codex, #210; tacones de fiesta con camisa vaquera, no)
   // P3/P4 (#99): un gorro o sombrero solo con motivo (frío o sol de verano en diario/playa); otros complementos, si suman
   if(cat==="Accesorios")c=c.filter(x=>!HEADWEAR.test([x.type,x.subtype,x.name].filter(Boolean).join(" "))||headwearMakesSense(x,ctx));
   const optional=cat==="Bolsos"||cat==="Accesorios"||cat==="Capas"&&!rule.need;
@@ -2206,6 +2207,9 @@ function rankOutfits(o={}){
   if(req&&outdoorPack(req)&&bases.some(b=>!hasSkirtOrDress(b)))bases=bases.filter(b=>!hasSkirtOrDress(b)); // mochila de montaña: con pantalón
  }
  bases=bases.filter(b=>b.length&&!b.some(g=>heavyKnitInHeat(g,ctx.temp)||!thermalOk(g,ctx.temp)||coldExposed(g,ctx.temp,ctx.occasion)&&g.id!==o.required)&&b.every((x,i)=>b.every((y,j)=>i===j||!related(x,y)||stylesOk(x,y))));
+ /* Núcleo que combina de verdad (Noelia: «los looks tienen que llevar cosas que combinen 100 %»): cada pareja de la base con relación ≥ 0,6,
+    con el gusto del perfil. Antes una pareja floja (camisa vaquera + pantalón de cuadros, 0,45) podía salir primera si el resto del look puntuaba bien */
+ {const strong=bases.filter(b=>b.every((x,i)=>b.every((y,j)=>j<=i||(relationOf(x,y,ctx)?.s??1)>=REL_OK)));if(strong.length)bases=strong}
  if(bases.some(b=>!b.some(g=>uncertainColdTop(g,ctx.temp))))bases=bases.filter(b=>!b.some(g=>uncertainColdTop(g,ctx.temp)&&g.id!==o.required)); // sin dato de manga y con frío: solo si no hay otra cosa
  // Bolso o complemento estampado elegido: bases lisas si las hay (revisión de Codex, #117)
  if(req&&isPatterned(req)&&!BIG.includes(req.category)){const plain=bases.filter(b=>!b.some(p=>p!==req&&isPatterned(p)));if(plain.length)bases=plain}
@@ -2289,17 +2293,27 @@ function renderExplore(root){
  $$("[data-explore-wear]",root).forEach(b=>b.addEventListener("click",()=>{const gs=shown[Number(b.dataset.exploreWear)];if(gs)promptWear(gs.map(g=>g.id),null)}));
  $$("[data-explore-almost]",root).forEach(b=>b.addEventListener("click",()=>{const gs=shown[Number(b.dataset.exploreAlmost)];if(gs)openAlmost(gs.map(g=>g.id),occ)}));
 }
+/* Elegir la prenda con fotos, por categoría (UX, 10/10/2026): con 100+ prendas, una lista desplegable no sirve */
+const PICK_CATS=["Arriba","Abajo","Vestidos","Capas","Zapatos","Bolsos","Accesorios","Casa","Baño"];
+function aroundPickerHtml(gs,sel){
+ const img=g=>validImage(g.image)?photoUrl(g):pieceSketch(g);
+ if(sel)return '<div class="pick-selected"><img src="'+img(sel)+'" alt=""><div><span class="muted">Combinar</span><strong>'+fx(sel.name)+'</strong></div><button type="button" class="chip-button" id="aroundChange">Cambiar</button></div>';
+ const cats=PICK_CATS.filter(c=>gs.some(g=>g.category===c)),cat=cats.includes(ui.aroundCat)?ui.aroundCat:cats[0],items=gs.filter(g=>g.category===cat);
+ return '<p class="field-label">¿Qué prenda quieres ponerte?</p><div class="explore-occs" role="group" aria-label="Tipo de prenda">'+cats.map(c=>'<button type="button" class="chip-button'+(c===cat?' on':'')+'" aria-pressed="'+(c===cat)+'" data-around-cat="'+c+'">'+fx(c)+'</button>').join("")+'</div>'+
+  '<div class="pick-grid">'+items.map(g=>'<button type="button" class="pick-item" data-around-pick="'+fx(g.id)+'"><img src="'+img(g)+'" alt="" loading="lazy"><span>'+fx(g.name)+'</span></button>').join("")+'</div>'}
 function renderAround(root){
  const gs=myGarments().slice().sort((a,b)=>String(a.name).localeCompare(String(b.name),"es")),sel=gs.find(g=>g.id===ui.aroundId);
  const occs=sel?["daily","work","party","event","formal","sport","beach"].filter(o=>occasionFits(sel,o)):[],aocc=occs.includes(ui.aroundOcc)?ui.aroundOcc:null,mains=sel?looksAround(sel,8,aocc):[];
  const vctx=engineContext({occasion:aocc}),vkey=i=>"around:"+(sel?.id||"")+":"+(aocc||"all")+":"+i,looks=mains.map((l,i)=>pickedLook(vkey(i),l,vctx)); /* versiones: la elegida es la que se ve, se guarda y se registra */
  let body='<div class="feature-card" id="aroundCard"><div class="section-head"><h2>Combina una prenda</h2><span class="muted">Sin IA</span></div>'+
-  extrasTogglesHtml()+'<label class="field"><span>¿Qué prenda quieres ponerte?</span><select id="aroundSelect">'+optionList([["","Elige una prenda"],...gs.map(g=>[g.id,g.name+(g.category?" · "+g.category:"")])],ui.aroundId)+'</select></label>'+
+  extrasTogglesHtml()+aroundPickerHtml(gs,sel)+
   (occs.length>0?'<div class="explore-occs" role="group" aria-label="Ocasión">'+[[null,"Cualquier ocasión"],...occs.map(o=>[o,occasions[o]||o])].map(([k,t])=>'<button type="button" class="chip-button'+(k===aocc?' on':'')+'" aria-pressed="'+(k===aocc)+'" data-around-occ="'+(k||"")+'">'+fx(t)+'</button>').join("")+'</div>':'');
  if(sel)body+=looks.length?'<p class="muted">'+plural(looks.length,"combinación","combinaciones")+' con «'+fx(sel.name)+'», de mejor a peor combinación.</p><div class="grid">'+looks.map((l,i)=>'<div class="look-tile"><article class="card">'+outfitBoard(l)+'<div class="card-body"><div class="look-items">'+l.map(x=>'<span class="look-chip'+(x.id===sel.id?' new':'')+'">'+fx(x.name)+'</span>').join("")+'</div>'+(l.reasons?.length?'<ul class="look-reasons">'+l.reasons.map(r=>'<li>'+fx(r)+'</li>').join("")+'</ul>':'')+'</div></article>'+versionsRow(vkey(i),mains[i],vctx)+'<div class="tile-tools"><button class="chip-button" data-around-save="'+i+'">Guardar look</button><button class="chip-button" data-around-wear="'+i+'">✓ Llevado</button><button class="chip-button" data-around-edit="'+i+'">✎ Editar</button></div></div>').join("")+'</div>'
   :'<p class="muted">No encuentro combinaciones para esta prenda'+(aocc?' para «'+fx((occasions[aocc]||aocc).toLowerCase())+'». Prueba otra ocasión o':' con tu armario actual.')+' Mira «Recomendaciones» en Compras para ver qué le falta.</p>';
  stylistShell(root,"Tu estilista","Elige una prenda y te digo con qué ponértela.",body+'</div>');
- $("#aroundSelect")?.addEventListener("change",e=>{ui.aroundId=e.target.value;render()});
+ $$("[data-around-pick]",root).forEach(b=>b.addEventListener("click",()=>{ui.aroundId=b.dataset.aroundPick;ui.aroundOcc=null;render();$("#aroundCard")?.scrollIntoView({block:"start"})}));
+ $$("[data-around-cat]",root).forEach(b=>b.addEventListener("click",()=>{ui.aroundCat=b.dataset.aroundCat;render()}));
+ $("#aroundChange")?.addEventListener("click",()=>{ui.aroundCat=sel?.category||ui.aroundCat;ui.aroundId="";render()});
  $$("[data-around-occ]",root).forEach(b=>b.addEventListener("click",()=>{ui.aroundOcc=b.dataset.aroundOcc||null;render()}));
  bindExtrasToggles(root);bindVersions(root);
  $$("[data-around-save]",root).forEach(b=>b.addEventListener("click",async()=>{const l=looks[Number(b.dataset.aroundSave)];if(!l)return;
