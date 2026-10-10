@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 /** Generate independently reviewable, deterministic A/B comparison assignments.
- * Usage: node blind-look-review.mjs old-report.json new-report.json review-pack.json
+ * Usage: node blind-look-review.mjs baseline.json candidate.json review-pack.json catalog.json PRIVATE-answers.json
+ * Keep the private answer key outside any folder shared with reviewers; never commit personal photo catalogs or answer keys.
+ * After independent judgments: node blind-look-tally.mjs completed-review.json PRIVATE-answers.json
  * Reports from real-photos/eval.mjs (array of rows with wn/occ/temp/i/ids) or
  * evaluate-outfits.mjs ({looks:[{size,temperature,occasion,garments}]}).
  * Outputs NO assertions of visual quality and NO hidden score in review entries.
