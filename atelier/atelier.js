@@ -2759,6 +2759,42 @@ const CATALOG_DRESSY={"Camiseta blanca básica":["Camiseta blanca de punto fino"
 const STORES=[["Primark","primark.com",1],["Lefties","lefties.com",1],["H&M","hm.com",2],["Uniqlo","uniqlo.com",2],["Zara","zara.com",3],["Mango","mango.com",3],["Massimo Dutti","massimodutti.com",4],["El Corte Inglés","elcorteingles.es",4]];
 const storesFor=c=>{const dressy=c.formality==="smartcasual"||c.formality==="party"||c.style!=="casual";return STORES.filter(x=>dressy?x[2]>=2:x[2]<=3).slice(0,dressy?5:5)};
 const storeLinks=c=>'<div class="store-links" aria-label="Buscar en tiendas, de más barata a más cara">'+storesFor(c).map(([n,d,t])=>'<a class="chip-button" href="https://www.google.com/search?q='+encodeURIComponent(c.name+" mujer site:"+d)+'" target="_blank" rel="noopener noreferrer">'+fx(n)+' <span class="muted">'+"€".repeat(t)+'</span></a>').join("")+'</div>';
+/* Ficha dibujada de una prenda que aún no tienes (Noelia, 10/10/2026): silueta según el tipo, en su color; sin IA ni red (CSP img-src data:) */
+const SKETCH_HEX={blanco:"#f7f5f1",negro:"#26231f",beige:"#d9c4a6",gris:"#9b9893",camel:"#b4825a","azul marino":"#28324d",vaquero:"#5f7ea6",crudo:"#ede5d5",nude:"#e2c2a9",azul:"#4f6fa8"};
+const SKETCH_PATH={
+ tee:"M30 18L42 14Q50 21 58 14L70 18L85 33L75 41L68 36V86H32V36L25 41L15 33Z",
+ long:"M30 16L42 12Q50 19 58 12L70 16L86 78L76 80L68 42V88H32V42L24 80L14 78Z",
+ tank:"M38 12H42Q50 27 58 12H62Q62 28 68 34V88H32V34Q38 28 38 12Z",
+ coat:"M30 8L42 5L50 30L58 5L70 8L87 82L77 84L69 40V96H31V40L23 84L13 82Z",
+ jacket:"M30 14L42 10L50 34L58 10L70 14L86 76L76 78L68 40V82H32V40L24 78L14 76Z",
+ pants:"M30 8H70L75 94H56L50 34L44 94H25Z",
+ skirt:"M34 14H66L79 86H21Z",
+ dress:"M40 6H44Q50 15 56 6H60Q60 22 64 30L81 92H19L36 30Q40 22 40 6Z",
+ sneaker:"M12 62V75H89Q89 64 77 60L57 52L45 42L30 44Q22 56 12 62Z",
+ boot:"M30 18H52V58L84 66Q89 70 87 79H30Z",
+ heel:"M12 66Q38 44 60 52L86 60L87 68L60 66L24 72L22 86H17Z",
+ sandal:"M12 70H88V77H12ZM34 70Q40 54 52 54Q62 54 66 70",
+ bag:"M20 42H80L86 88H14ZM36 42Q36 18 50 18Q64 18 64 42",
+ belt:"M6 44H94V56H6ZM60 40H74V60H60Z"};
+function sketchKind(c){const t=norm(c.name||c.type||"");
+ if(c.category==="Zapatos")return /bot/.test(t)?"boot":/salon|tacon/.test(t)?"heel":/sandal/.test(t)?"sandal":"sneaker";
+ if(c.category==="Bolsos")return "bag";if(c.category==="Accesorios")return "belt";
+ if(c.category==="Vestidos")return "dress";
+ if(c.category==="Abajo")return /falda/.test(t)?"skirt":"pants";
+ if(c.category==="Capas")return /abrigo|gabardina/.test(t)?"coat":"jacket";
+ return /tirante|top/.test(t)?"tank":/camiseta/.test(t)?"tee":"long"}
+function pieceSketch(c){const col=norm(c.color||""),hex=SKETCH_HEX[col]||SKETCH_HEX[Object.keys(SKETCH_HEX).find(k=>col.startsWith(k))]||"#c9c3ba",light=/^#(f|e|d)/i.test(hex);
+ const kind=sketchKind(c),line=["bag","sandal"].includes(kind),stripes=c.pattern==="stripes";
+ const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="'+({sneaker:"8 38 84 40",boot:"26 14 64 68",heel:"8 40 82 48",sandal:"8 50 84 30",belt:"4 36 92 28"}[kind]||"0 0 100 100")+'">'+(stripes?'<defs><pattern id="s" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="'+hex+'"/><rect width="8" height="3" fill="#28324d"/></pattern></defs>':'')+
+  '<path d="'+SKETCH_PATH[kind]+'" fill="'+(line&&kind==="sandal"?hex:stripes?"url(#s)":hex)+'" stroke="'+(light?"#8f877c":"rgba(0,0,0,.35)")+'" stroke-width="1.6" stroke-linejoin="round"'+(line?' fill-rule="evenodd"':'')+'/></svg>';
+ return "data:image/svg+xml,"+encodeURIComponent(svg)}
+/* «Así quedaría con tu armario»: tus prendas con su foto y la nueva dibujada, en el mismo collage que los looks */
+function suggestionBoard(l){const order={Capas:0,Arriba:1,Vestidos:2,Abajo:3,Zapatos:4,Bolsos:5,Accesorios:6},items=l.filter(g=>!g.id||validImage(g.image)).sort((a,b)=>(order[a.category]??7)-(order[b.category]??7)).slice(0,7);
+ const hero=items.find(g=>!g.id&&(order[g.category]??7)<=3)||items[0],arr=hero?[hero,...items.filter(g=>g!==hero)]:[];
+ if(arr.length<2)return "";
+ return '<div class="look-mixed-board suggestion-board" data-count="'+arr.length+'" role="group" aria-label="Así quedaría con tu armario">'+arr.map(g=>'<div class="look-mixed-item'+(g.id?'':' is-new')+'"><img src="'+(g.id?photoUrl(g):pieceSketch(g))+'" alt="'+fx(g.name)+(g.id?'':' (nueva)')+'" loading="lazy">'+(g.id?'':'<span class="new-badge">Nueva</span>')+'</div>').join("")+'</div>'}
+/* Productos reales con foto y precio, de muchas tiendas: se abren en Google Shopping (gratis, sin llamadas desde la app) */
+const shopLink=(c,text="Ver productos con foto y precio")=>'<a class="primary shop-link" href="https://www.google.com/search?tbm=shop&q='+encodeURIComponent(c.name+" mujer")+'" target="_blank" rel="noopener noreferrer">'+fx(text)+' ↗</a>';
 function simulate(c,gs,bases){
  let looks=[];
  if(c.category==="Arriba")looks=gs.filter(g=>g.category==="Abajo"&&goes(c,g)).map(b=>[c,b]);
@@ -2801,13 +2837,13 @@ function suggestionCard(s,i){
  else if(c.category==="Capas"&&s.looks)why.push("Puedes llevarla encima de "+s.looks+" de tus looks.");
  else if(s.looks&&isClothes(c))why.push("Encaja con "+s.looks+" de tus looks.");
  if(s.rescued.length)why.push("Le da salida a "+s.rescued.slice(0,2).map(g=>"«"+g.name+"»").join(" y ")+(s.rescued.length>2?" y "+(s.rescued.length-2)+" más":"")+", que ahora casi no combinas.");
- const piece=g=>'<span class="look-chip'+(g.id?'':' new')+'">'+fx(g.name)+'</span>';
- return '<div class="suggestion"><div class="suggestion-head"><div><strong>'+fx(c.name)+'</strong><p class="muted">'+fx(c.category+" · "+c.color+" · "+(styleNames[c.style]||"")+(c.season!=="all"?" · "+seasons[c.season]:""))+'</p></div>'+
+ const piece=g=>'<span class="look-chip'+(g.id?'':' new')+'">'+fx(g.name)+'</span>',board=s.examples[0]?suggestionBoard(s.examples[0]):"";
+ return '<div class="suggestion"><div class="suggestion-head"><img class="suggestion-sketch" src="'+pieceSketch(c)+'" alt=""><div><strong>'+fx(c.name)+'</strong><p class="muted">'+fx(c.category+" · "+c.color+" · "+(styleNames[c.style]||"")+(c.season!=="all"?" · "+seasons[c.season]:""))+'</p></div>'+
   (core&&s.looks?'<span class="looks-badge">+'+s.looks+' looks</span>':c.category==="Zapatos"&&s.complete?'<span class="looks-badge">completa '+s.complete+'</span>':'')+'</div>'+
   '<p class="suggestion-why">'+fx(why.join(" "))+'</p>'+thumbs(s.compatible,8)+
-  (s.examples.length?'<div class="suggestion-examples">'+s.examples.map(l=>'<div class="example-line"><span class="muted">Por ejemplo:</span>'+l.map(piece).join("")+'</div>').join("")+'</div>':'')+
-  '<p class="muted store-title">Búscala en tiendas, de más barata a más cara:</p>'+storeLinks(c)+
-  (s.alt?'<div class="suggestion-alt"><p><strong>¿Más arreglada?</strong> '+fx(s.alt.c.name)+' ('+fx(s.alt.c.hint)+'): '+fx(plural(s.alt.looks,"look","looks"))+' con tu armario.</p>'+storeLinks(s.alt.c)+'</div>':'')+
+  (s.examples.length?'<div class="suggestion-examples">'+(board?'<p class="muted">Así quedaría con tu armario:</p>'+board:'')+s.examples.slice(board?1:0).map(l=>'<div class="example-line"><span class="muted">'+(board?'Otra idea:':'Por ejemplo:')+'</span>'+l.map(piece).join("")+'</div>').join("")+'</div>':'')+
+  '<div class="shop-row">'+shopLink(c)+'</div><p class="muted store-title">O búscala en una tienda, de más barata a más cara:</p>'+storeLinks(c)+
+  (s.alt?'<div class="suggestion-alt"><p><strong>¿Más arreglada?</strong> '+fx(s.alt.c.name)+' ('+fx(s.alt.c.hint)+'): '+fx(plural(s.alt.looks,"look","looks"))+' con tu armario.</p><div class="shop-row">'+shopLink(s.alt.c,"Ver productos")+'</div>'+storeLinks(s.alt.c)+'</div>':'')+
   '<div class="suggestion-actions"><button class="chip-button" data-suggest-wish="'+i+'">♡ A la wishlist</button></div></div>';
 }
 let suggestionCache={key:"",list:[]};

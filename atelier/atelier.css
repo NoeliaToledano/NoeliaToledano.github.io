@@ -502,3 +502,13 @@ p.notice-card{display:block}
  :where(.chip-button,.profile-pill,.look-version,.edit-option,.almost-piece){transition:none!important}
  html:focus-within{scroll-behavior:auto}
 }
+/* Recomendaciones visuales: ficha dibujada de la prenda nueva, collage con tu armario y productos en Google Shopping */
+.suggestion-head{align-items:center}
+.suggestion-sketch{width:52px;height:52px;flex:none;background:#fff;border:1px solid var(--line);border-radius:12px;padding:4px;box-sizing:border-box}
+.suggestion-head>div{flex:1;min-width:0}
+.suggestion-board{max-width:280px;border:1px solid var(--line);border-radius:14px;margin:4px 0 6px}
+.look-mixed-item.is-new{position:relative;border:1.5px dashed #b3aba0}
+.look-mixed-item.is-new img{padding:12%}
+.new-badge{position:absolute;top:6px;left:6px;background:#1d1b19;color:#fff;font-size:10px;font-weight:600;letter-spacing:.04em;padding:2px 7px;border-radius:99px}
+.shop-row{margin:10px 0 4px}
+.shop-link{display:inline-flex;align-items:center;gap:6px;text-decoration:none;padding:9px 14px;border-radius:12px;font-size:14px}
