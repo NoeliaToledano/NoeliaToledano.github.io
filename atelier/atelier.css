@@ -473,3 +473,4 @@ p.notice-card{display:block}
 .look-version.on{border-color:var(--ink);box-shadow:0 0 0 2px var(--ink)}
 .look-version-thumbs{display:flex;gap:4px;height:40px}
 .look-version-thumbs img{width:40px;height:40px;object-fit:contain;border-radius:6px}
+.version-preview{display:grid;gap:8px;padding:8px 0}.plan-option-group{display:grid;gap:4px}
