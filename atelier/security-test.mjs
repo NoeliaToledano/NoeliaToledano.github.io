@@ -301,6 +301,51 @@ console.log("PASS: Styling engine (20/100/500 prendas): capas según tiempo, var
   console.log("PASS: Look versions: same nucleus, different intent (casual, dressier, if it gets cool), no filler");
 }
 
+// «Planificar los días libres» y previsión de la semana: un núcleo distinto cada día, solo días de hoy en adelante
+{
+  const probe=new Function("document","sessionStorage","crypto",src+`
+  const G=(id,category,type,color,extra={})=>({id,name:type+" "+color,category,type,color,style:"casual",season:"all",pattern:"plain",updatedAt:"x",...extra});
+  appState.profile={id:"noelia"};
+  appState.data=normalizeData({garments:[G("t1","Arriba","Camiseta","Blanco",{sleeve:"corta"}),G("t2","Arriba","Blusa","Negro",{sleeve:"larga"}),G("t3","Arriba","Jersey","Gris",{sleeve:"larga"}),
+   G("b1","Abajo","Vaqueros","Azul"),G("b2","Abajo","Pantalón","Negro"),G("b3","Abajo","Falda","Beige"),G("v1","Vestidos","Vestido midi","Verde",{sleeve:"corta"}),
+   G("z1","Zapatos","Deportivas","Blanco"),G("z2","Zapatos","Botines","Negro"),G("c1","Capas","Cazadora","Negro",{warmth:"medio"})]});
+  const today=dayISO(),days=[-1,0,1,2,3,4,5].map(n=>addDays(today,n));
+  appState.data.preferences.weatherWeek={[days[2]]:9};
+  myPlans().push({id:"plan:"+days[3],date:days[3],garmentIds:["t1","b1","z1"],name:"Mío",updatedAt:"x"});
+  const plans=weekFillPlan(days),nuc=plans.map(p=>nucleusKey(p.ids.map(id=>myGarments().find(g=>g.id===id))));
+  const tempD=tempFor(days[2]),coldD=plans.find(p=>p.date===days[2])?.ids.includes("c1"),distinctD=new Set(nuc).size,nD=plans.length,pastD=plans.some(p=>p.date<today);
+  const reuse=plans.slice(0,3).some(p=>p.ids.some(id=>["t1","b1"].includes(id)));
+  appState.data=normalizeData({garments:[G("t","Arriba","Camiseta","Blanco"),G("b","Abajo","Vaqueros","Azul"),G("z","Zapatos","Deportivas","Blanco")]});appState.data.preferences.weatherWeek={};
+  const one=weekFillPlan(days).length;
+  return {n:nD,past:pastD,distinct:distinctD,temp:tempD,coldDay:coldD,reuse,one};`);
+  const r=probe(document,sessionStorage,{randomUUID:()=>"t"});
+  assert.ok(r.n>=4&&!r.past,"Planifica de hoy en adelante ("+r.n+" días)");
+  assert.equal(r.reuse,false,"Lo ya planificado en la semana se evita mientras haya alternativas");
+  assert.equal(r.one,1,"Con un solo núcleo posible, un día y los demás libres (sin repetir)");
+  assert.equal(r.distinct,r.n,"Un núcleo distinto cada día");
+  assert.equal(r.temp,9,"Mi semana usa la previsión del día");
+  assert.ok(r.coldDay,"El día frío de la previsión lleva capa");
+  console.log("PASS: Fill free week days: distinct cores, from today on, using the forecast");
+}
+
+// Aprender la versión preferida: si casi siempre te pones la «más informal», se propone ya elegida
+{
+  const probe=new Function("document","sessionStorage","crypto",src+`
+  const G=(id,category,type,color,extra={})=>({id,name:type+" "+color,category,type,color,style:"casual",season:"all",pattern:"plain",updatedAt:"x",...extra});
+  appState.profile={id:"noelia"};
+  appState.data=normalizeData({garments:[G("v","Vestidos","Vestido midi","Negro",{style:"smart",formality:"smartcasual",sleeve:"corta"}),G("t","Zapatos","Tacones","Negro",{style:"smart",formality:"smartcasual"}),G("d","Zapatos","Deportivas","Blanco",{formality:"casual"})]});
+  Object.assign(appState.data.preferences,{occasion:"daily",temperature:24,autoWeather:false});
+  const before=ensureDailyLook(true),b={ids:[...before.ids],main:[...before.main]};
+  appState.data.preferences.versionTaste={"Más informal":3,"Principal":1};appState.data.preferences.dailyLook=null;
+  const after=ensureDailyLook(true);
+  return {fav:favoriteIntent(),before:b,after:{ids:after.ids,main:after.main,byTaste:after.byTaste},label:chosenVersionLabel(after),few:(appState.data.preferences.versionTaste={"Más informal":2},favoriteIntent())};`);
+  const r=probe(document,sessionStorage,{randomUUID:()=>"t"});
+  assert.equal(r.fav,"Más informal");
+  assert.ok(r.after.ids.includes("d")&&r.after.byTaste==="Más informal"&&r.label==="Más informal","Con tu gusto, el look de hoy ya viene en su versión más informal ("+JSON.stringify(r.after)+")");
+  assert.equal(r.few,null,"Con menos de 3 elecciones no se decide nada");
+  console.log("PASS: Favourite version intent learnt per profile");
+}
+
 // Estilos flexibles (#52): deportivas + vaqueros + americana sí; mallas + sudadera en informal; nada de gimnasio en boda ni con vestido de fiesta
 const styleProbe=new Function("document","sessionStorage","crypto",src+`
 const G=(id,category,color,style,extra={})=>({id,name:id,category,color,style,season:"all",pattern:"plain",createdAt:"2026-10-01",updatedAt:"x",...extra});
