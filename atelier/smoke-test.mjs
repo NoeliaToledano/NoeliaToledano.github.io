@@ -52,10 +52,15 @@ try{
   const wrapBack=document.activeElement===last;
   last.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape",bubbles:true,cancelable:true}));
   const returned=document.activeElement===launcher&&!document.querySelector("#uxFocusAudit");
+  launcher.focus();
+  showSheet("uxFocusAudit",\'<h2 id="uxFocusAuditTitle">Primer paso</h2><button>Continuar</button>\');
+  showSheet("uxFocusAudit",\'<h2 id="uxFocusAuditTitle">Segundo paso</h2><button data-close-sheet>Cerrar</button>\');
+  document.querySelector("#uxFocusAudit [data-close-sheet]").click();
+  const rerenderReturned=document.activeElement===launcher;
   launcher.remove();
-  return {wrapForward,wrapBack,returned};
+  return {wrapForward,wrapBack,returned,rerenderReturned};
  });
- assert.deepEqual(dialogFocus,{wrapForward:true,wrapBack:true,returned:true},"Dialog keyboard focus must wrap and return");
+ assert.deepEqual(dialogFocus,{wrapForward:true,wrapBack:true,returned:true,rerenderReturned:true},"Dialog keyboard focus must wrap and return");
 
  // Regresión de collages de 1–7 prendas en un navegador móvil:
  // las fotos deben decodificar, no recortarse y conservar la jerarquía.
