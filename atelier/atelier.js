@@ -2361,7 +2361,7 @@ function dailyLookHtml(){
  if(t)return '<section class="feature-card daily-look"><div class="section-head"><h2>Tu look de hoy</h2><span class="muted">Planificado</span></div>'+weather+planCardHtml(t)+'</section>';
  const d=ensureDailyLook(),gs=(d.ids||[]).map(id=>myGarments().find(g=>g.id===id)).filter(Boolean),why=gs.length?scoreOutfit(gs,engineContext()):null;
  if(gs.length<1){const occ=appState.data.preferences.occasion,other=occ&&rankOutfits({max:1,occasion:null}).length;
-  return '<section class="feature-card daily-look"><div class="section-head"><h2>Tu look de hoy</h2></div>'+weather+(other?'<p class="muted">No tienes prendas para «'+fx(occasions[occ]||occ)+'». Cambia la ocasión en «Más opciones» o marca en la ficha de tus prendas para qué ocasiones sirven.</p>':lookComplete(myGarments())?'<p class="muted">Con '+fx(currentTemperature())+' °C no encuentro prendas adecuadas en tu armario. Revisa la temporada y cuánto abriga cada prenda en su ficha, o cambia la temperatura en «Más opciones».</p>':'<p class="muted">Añade al menos una parte de arriba y una de abajo (o un vestido) y aquí tendrás cada día un look listo.</p><button type="button" class="primary" id="dailyAdd">+ Añadir prendas</button>')+'</section>'}
+  return '<section class="feature-card daily-look"><div class="section-head"><h2>Tu look de hoy</h2></div>'+weather+(other?'<p class="muted">No tienes prendas para «'+fx(occasions[occ]||occ)+'». Cambia la ocasión en «Más opciones» o marca en la ficha de tus prendas para qué ocasiones sirven.</p>':lookComplete(myGarments())&&rankOutfits({max:1,occasion:null,temp:20}).length?'<p class="muted">Con '+fx(currentTemperature())+' °C no encuentro prendas adecuadas en tu armario. Revisa la temporada y cuánto abriga cada prenda en su ficha, o cambia la temperatura en «Más opciones».</p>':lookComplete(myGarments())?'<p class="muted">Tus prendas de arriba y de abajo todavía no combinan entre sí (por ejemplo, ropa de deporte con ropa de fiesta). Revisa sus etiquetas o añade alguna prenda básica.</p><button type="button" class="primary" id="dailyAdd">+ Añadir prendas</button>':'<p class="muted">Añade al menos una parte de arriba y una de abajo (o un vestido) y aquí tendrás cada día un look listo.</p><button type="button" class="primary" id="dailyAdd">+ Añadir prendas</button>')+'</section>'}
  const mainGs=(d.main?.length?d.main:d.ids).map(id=>myGarments().find(g=>g.id===id)).filter(Boolean),versions=mainGs.length?lookVersions(mainGs,engineContext()):[];
  const opts=versions.length?[{label:"Principal",ids:mainGs.map(g=>g.id),garments:mainGs},...versions]:[],cur=lookSig(d.ids||[]);
  const versionsHtml=opts.length?'<div class="look-versions" role="group" aria-label="Versiones de este look">'+opts.map((v,i)=>{const on=lookSig(v.ids)===cur,diff=v.garments.filter(g=>!mainGs.includes(g)&&g.category!=="Bolsos"&&g.category!=="Accesorios");
@@ -2657,7 +2657,7 @@ function simulate(c,gs,bases){
  else looks=bases.filter(p=>p.every(x=>pairs(c,x))).map(p=>[...p,c]);
  const complete=c.category==="Zapatos"?looks.filter(l=>!gs.some(g=>g.category==="Zapatos"&&l.slice(0,-1).every(p=>pairs(g,p)))).length:0;
  const examples=looks.slice(0,40).map(l=>{if(["Arriba","Abajo"].includes(c.category)){const rest=l.filter(x=>x!==c),s=gs.find(g=>g.category==="Zapatos"&&pairs(g,c)&&rest.every(p=>pairs(g,p)));return s?[...l,s]:l}return l});
- const q=l=>{let t=0,n=0;for(let i=0;i<l.length;i++)for(let j=i+1;j<l.length;j++){const r=relationOf(l[i],l[j]);if(r){t+=r.s;n++}}return n?t/n:.6};
+ const q=l=>{let t=0,n=0,min=1;for(let i=0;i<l.length;i++)for(let j=i+1;j<l.length;j++){const r=relationOf(l[i],l[j]);if(r){t+=r.s;n++;min=Math.min(min,r.s)}}return min<REL_OK?0:n?t/n:.6}; /* eslabón débil: una pareja floja descarta el ejemplo (revisión de Codex, #174) */
  examples.sort((a,b)=>b.length-a.length||q(b)-q(a));
  return {count:looks.length,complete,examples:examples.filter(l=>q(l)>=REL_OK).slice(0,12)}; /* se eligen 2 al final, variados entre tarjetas */
 }
@@ -2703,7 +2703,7 @@ function suggestionsHtml(){
  const gs=myGarments();
  let html='<div class="feature-card" id="suggestions"><h2>Te recomiendo comprar</h2>';
  if(gs.length<5)return html+'<p class="muted">Añade al menos 5 prendas a tu armario y te diré qué piezas te darían más looks nuevos.</p></div>';
- const key=JSON.stringify([gs.map(g=>[g.id,g.category,g.color,g.style,g.season,g.pattern]),appState.data.wishlist.map(w=>w.name)]);
+ ensureRelations();const key=relCache.sig+"|"+JSON.stringify(appState.data.wishlist.map(w=>w.name)); /* la firma de relaciones ya recoge la ficha de cada prenda y lo marcado con «Casi» (revisión de Codex, #174) */
  if(suggestionCache.key!==key)suggestionCache={key,list:shoppingSuggestions()};
  const list=suggestionCache.list;
  return html+'<p class="muted">Prendas básicas que más partido sacarían a lo que ya tienes. Descarto las que se parecen a algo de tu armario.</p>'+
