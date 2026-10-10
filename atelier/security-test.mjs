@@ -357,6 +357,23 @@ console.log("PASS: Styling engine (20/100/500 prendas): capas según tiempo, var
   console.log("PASS: Incomplete garment sheets are detected");
 }
 
+// «Cambiar prenda» con el cerebro de estilista: tiempo, «Casi» y parejas que combinan
+{
+  const r=new Function("document","sessionStorage","crypto",src+`
+  const G=(id,category,type,color,extra={})=>({id,name:type+" "+color,category,type,color,style:"casual",season:"all",pattern:"plain",updatedAt:"x",...extra});
+  appState.profile={id:"noelia"};
+  appState.data=normalizeData({garments:[G("t1","Arriba","Jersey","Gris",{sleeve:"larga",thickness:"grueso"}),G("t2","Arriba","Top","Blanco",{sleeve:"sin mangas",thickness:"ligero"}),G("t3","Arriba","Camisa","Azul",{sleeve:"larga"}),G("t4","Arriba","Blusa","Rosa",{sleeve:"larga"}),
+   G("b","Abajo","Pantalón","Negro"),G("z","Zapatos","Botines","Negro"),G("c","Capas","Abrigo","Camel",{warmth:"alto"})]});
+  Object.assign(appState.data.preferences,{temperature:8,autoWeather:false});
+  appState.data.feedback["g:t4"]="no";
+  const l={id:"L",garmentIds:["t1","b","z","c"],occasion:"daily"};
+  return swapOptions(l,"t1").map(o=>o.g.id);`)(document,sessionStorage,{randomUUID:()=>"t"});
+  assert.ok(!r.includes("t2"),"A 8 °C, «Cambiar prenda» no ofrece un top sin mangas ("+r+")");
+  assert.ok(!r.includes("t4"),"No ofrece una prenda marcada «no me gusta»");
+  assert.ok(r.includes("t3"),"Sí la camisa de manga larga");
+  console.log("PASS: Swap options respect weather, «Casi» and relations");
+}
+
 // Estilos flexibles (#52): deportivas + vaqueros + americana sí; mallas + sudadera en informal; nada de gimnasio en boda ni con vestido de fiesta
 const styleProbe=new Function("document","sessionStorage","crypto",src+`
 const G=(id,category,color,style,extra={})=>({id,name:id,category,color,style,season:"all",pattern:"plain",createdAt:"2026-10-01",updatedAt:"x",...extra});
