@@ -146,3 +146,22 @@ Conservar como conjunto de **desarrollo**, no usar sus respuestas para validar e
 - Vogue España, *50 sombras de azul*, ejemplos de estampados y denim: https://www.vogue.es/moda/tendencias/galerias/combinar-denim-colores-vaqueros/13605
 
 Las publicaciones de moda son ejemplos editoriales, no estudios cuantitativos que demuestren un algoritmo. Las variables y casos de prueba de este documento son **propuestas para investigación y validación**, no fórmulas certificadas.
+
+## 9. Aclaración crucial: compatibilidad de estampados NO implica que las prendas combinen
+
+**Regla de diseño solicitada por el usuario:** ni la familia de los estampados, ni su escala, ni la coincidencia de colores son evidencia suficiente para aprobar un look. Incluso una pareja clásica (rayas y flores, dos denim, cuadros y animal) puede quedar fatal con esas **prendas concretas**. No premiar por defecto ninguna de las mezclas de la tabla §3. Son solo hipótesis para explorar, no resultados positivos.
+
+La decisión ha de pasar por una valoración **multidimensional, contextual y del conjunto completo**:
+
+1. **Prenda individual y función**: categoría, calidad/confianza de metadatos, ajuste y caída, largo, volumen, tejido, rigidez, grosor, desgaste, transparencia, comodidad y movilidad; no inferir ajuste real al cuerpo de una foto de producto.
+2. **Relación entre prendas**: escala, densidad, intensidad, motivos, paleta, contraste, brillo/texturas, volumen y proporción relativa; el mismo estampado cambia radicalmente si está en un pantalón ancho o en un bolso pequeño.
+3. **Composición global**: jerarquía visual, continuidad de líneas, reparto de volúmenes, puntos focales, coherencia de materiales y acabados, calzado/capa, número y colocación de focos. Un conjunto puede tener pares aceptables pero resultar desordenado en total.
+4. **Uso real y contexto**: clima, estación efectiva, interior/exterior, lugar, código de vestimenta, actividad, caminar/estar de pie, funcionalidad y ocasión; diferenciar preferencias de restricciones necesarias.
+5. **Personalización**: intención del look, estilo deseado, gusto del perfil, retroalimentación explícita y tolerancia a combinaciones atrevidas, **sin generalizar por género**. Las preferencias no convierten algo incómodo en adecuado para el clima.
+6. **Incertidumbre**: cuando faltan datos importantes, no inventar compatibilidad ni dar una nota alta de falsa precisión; poder abstenerse o pedir completar ficha.
+
+**Proceso:** generar candidatos diversos → filtrar incompatibilidades funcionales reales → valorar todas las relaciones relevantes y la composición global → comparar con alternativas más simples → añadir una pieza únicamente si mejora el resultado o cumple una necesidad → mostrar propuestas con motivos verificables; abstenerse si ninguna satisface mínimos.
+
+**Casos negativos obligatorios en evaluación**: (a) rayas y flores que comparten color pero tienen siluetas/materiales incongruentes; (b) denim con bordado floral localizado y top floral que compiten por posición del foco; (c) dos tonos de denim aparentemente coordinados pero con rigidez, desgaste y formalidad que producen un conjunto impropio para el evento; (d) animal print y cuadros con escalas complementarias pero zapatos que rompen la intención; (e) mezcla cromática y de estampados atractiva, pero térmicamente inadecuada; (f) una versión con bolso que empeora el look sin aportar nada. Cada caso debe poder terminar en **no recomendar** sin penalizar para siempre esa familia de estampados.
+
+**Prueba contrafactual:** mantener iguales las familias de estampados y cambiar solo el corte, acabado, calzado o contexto. El motor debe ser capaz de pasar de «recomendable» a «no recomendable» por causas rastreables; de otro modo estará clasificando estampados, no ejerciendo criterio estilístico.
