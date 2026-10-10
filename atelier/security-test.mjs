@@ -283,12 +283,12 @@ console.log("PASS: Styling engine (20/100/500 prendas): capas según tiempo, var
   out.labels=vs.map(v=>v.label);out.informalHasSneakers=vs.find(v=>v.label==="Más informal")?.ids.includes("d");
   versionPick.set("t:0",1);out.picked=lookSig(pickedLook("t:0",main,ctx).map(g=>g.id))===lookSig(vs[0].ids);versionPick.set("t:0",9);out.fallback=pickedLook("t:0",main,ctx)===main;
   out.allValid=vs.every(v=>v.ids.includes("v")&&!lookIssues(v.garments,ctx).length&&v.score>=s0-6&&(v.ids.includes("d")!==main.some(g=>g.id==="d")||v.ids.includes("c")));
-  appState.data=normalizeData({garments:[G("v2","Vestidos","Vestido midi","Negro",{style:"smart",formality:"smartcasual",sleeve:"corta"}),G("t2","Zapatos","Tacones","Negro",{style:"smart",formality:"smartcasual"}),G("p2","Accesorios","Pendientes","Dorado"),G("p3","Accesorios","Collar","Plateado")]});
   // «Otro look» salta al siguiente núcleo aunque haya varios zapatos, y elegir otra versión reactiva «Me lo pongo» (revisiones de ChatGPT y Codex, #171)
   appState.data=normalizeData({garments:[G("A","Vestidos","Vestido midi","Negro",{style:"smart",formality:"smartcasual",sleeve:"corta"}),G("B","Vestidos","Vestido midi","Azul",{style:"smart",formality:"smartcasual",sleeve:"corta"}),
    G("z1","Zapatos","Tacones","Negro",{formality:"smartcasual"}),G("z2","Zapatos","Bailarinas","Negro",{formality:"smartcasual"}),G("z3","Zapatos","Deportivas","Blanco",{formality:"casual"})]});
   Object.assign(appState.data.preferences,{occasion:"daily",temperature:24,autoWeather:false});
   const n1=nucleusKey(ensureDailyLook(true).ids.map(by)),n2=nucleusKey(ensureDailyLook(true).ids.map(by));out.nextCore=n1!==n2;
+  appState.data=normalizeData({garments:[G("v2","Vestidos","Vestido midi","Negro",{style:"smart",formality:"smartcasual",sleeve:"corta"}),G("t2","Zapatos","Tacones","Negro",{style:"smart",formality:"smartcasual"}),G("p2","Accesorios","Pendientes","Dorado"),G("p3","Accesorios","Collar","Plateado")]});
   out.none=lookVersions([by("v2"),by("t2"),by("p2")],engineContext({occasion:"daily",temp:26,date:"2026-07-15"})).length;
   return out;`);
   const r=probe(document,sessionStorage,{randomUUID:()=>"t"});
