@@ -55,3 +55,10 @@ test("advanced pattern retains its source",()=>{
  const e=garmentEvidence({materialAttributes:{patterns:["floral"],patternsSource:"user"}});
  assert.equal(e.pattern.source,"user");
 });
+
+test("unknown pattern sentinel is missing evidence",()=>{
+ const e=garmentEvidence({fabric:"cotton",pattern:"unknown"});
+ assert.equal(e.pattern.known,false);
+ assert.equal(e.pattern.motifs.length,0);
+ assert.equal(evidenceNeedsReview(e),true);
+});
