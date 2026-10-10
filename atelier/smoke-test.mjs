@@ -392,6 +392,18 @@ try{
  await page.locator('[data-view="today"]').click();
  assert.equal(await page.locator("[data-extra-pref]").count(),0,"Los looks se completan automáticamente");
  await page.locator('[data-view="wardrobe"]').click();
+ // «Completar con IA»: rellena solo lo que falta en fichas con foto y no repite la misma prenda
+ const fill=await page.evaluate(async()=>{
+  const cv=document.createElement("canvas");cv.width=40;cv.height=60;const c=cv.getContext("2d");c.fillStyle="#345";c.fillRect(0,0,40,60);
+  const now=new Date().toISOString();appState.data.garments.push({id:"fill-1",name:"Prenda por completar",category:"Arriba",color:"Azul",style:"casual",season:"all",pattern:"plain",image:cv.toDataURL("image/jpeg"),createdAt:now,updatedAt:now});
+  const others=myGarments().filter(g=>g.id!=="fill-1"&&!g.aiFilledAt);others.forEach(g=>g.aiFilledAt="test"); /* solo esta prenda: no llenar la caché de análisis de las demás */
+  const before=fillCandidates().some(g=>g.id==="fill-1");await completeSheetsWithAI();others.forEach(g=>delete g.aiFilledAt);const g=myGarments().find(x=>x.id==="fill-1");
+  return {before,fabric:g.fabric,sleeve:g.sleeve,pattern:g.pattern,occ:g.occasions,filled:!!g.aiFilledAt,again:fillCandidates().some(x=>x.id==="fill-1")};
+ });
+ assert.ok(fill.before&&fill.filled&&!fill.again,"Completar con IA analiza una vez cada prenda "+JSON.stringify(fill));
+ assert.equal(fill.fabric,"cotton");assert.equal(fill.sleeve,"larga");assert.ok(fill.occ?.includes("work"),"Ocasiones de la IA");
+ assert.equal(fill.pattern,"plain","No pisa lo que ya estaba escrito");
+ await page.evaluate(async()=>{appState.data.garments=myGarments().filter(g=>g.id!=="fill-1");tomb("fill-1");await saveState()});
  await page.evaluate(()=>openGarment(myGarments().find(g=>validImage(g.image))?.id));
  forceUnauthorized=true;
  await page.locator("#analyzeBtn").click();
