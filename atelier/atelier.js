@@ -965,6 +965,7 @@ function readMetadata(){
  return o;
 }
 const META_KEYS=new Set([...META_FIELDS.map(d=>d[0]),"occasions","confidence"]);
+const QUOTA_SHEET_MSG="Ya has usado los análisis de hoy. Pon categoría y color y guárdala: mañana la completas desde Armario con «Completar con IA».";
 function setAnalyzeStatus(t){const s=$("#autoAnalyzeStatus");if(s)s.textContent=t}
 const GARMENT_TYPES={
  Arriba:["Camiseta","Camisa","Blusa","Top","Crop top","Jersey","Sudadera","Polo","Body","Camiseta técnica","Otro"],
@@ -1151,7 +1152,7 @@ async function analyzeGarment(){
    setAnalyzeStatus("Ficha completada. Revisa sobre todo la formalidad y las ocasiones: son lo que más cambia tus looks. Luego pulsa Confirmar y guardar.");
   }
   toast("Análisis completado");
- }catch(e){console.error("ANALYZE",e);setAnalyzeStatus("No se pudo analizar. Puedes rellenar los datos a mano o reintentarlo.");if(e.message!=="AI_QUOTA")toast("No se pudo analizar la prenda")}
+ }catch(e){console.error("ANALYZE",e);setAnalyzeStatus(e.message==="AI_QUOTA"?QUOTA_SHEET_MSG:"No se pudo analizar. Puedes rellenar los datos a mano o reintentarlo.");if(e.message!=="AI_QUOTA")toast("No se pudo analizar la prenda")}
  finally{btn.disabled=false;btn.textContent="✨ Analizar foto con IA"}
 }
 function promptWear(ids,lookId){
@@ -3059,7 +3060,7 @@ function bind(){
   let original;try{original=await readImage(f)}catch(err){return toast(err.message==="IMAGE_TOO_LARGE"?"La imagen es demasiado grande":"No se pudo leer la foto")}
   const ph=sheetPhoto={original,edited:null,mode:"original",changed:true};renderPhotoControls();
   if($("#autoWhite")?.checked)await makeSheetWhite();
-  if(sheetPhoto===ph&&$("#autoAnalyze")?.checked)analyzeGarment()};
+  if(sheetPhoto===ph&&$("#autoAnalyze")?.checked){if(aiUsage().analyze>=AI_LIMITS.analyze)setAnalyzeStatus(QUOTA_SHEET_MSG);else analyzeGarment()}}; /* sin análisis hoy: no insistir en cada foto de la subida */
  $("#garmentImage").addEventListener("change",onPhoto);$("#garmentCamera").addEventListener("change",onPhoto);
  // Botones «Hacer foto» y «Galería»: abren el selector correspondiente (en la ficha y en «¿Lo compro?»)
  document.addEventListener("click",e=>{const b=e.target.closest?.("[data-photo-pick]");if(b)$("#"+b.dataset.photoPick)?.click()});
