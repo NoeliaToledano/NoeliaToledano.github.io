@@ -62,3 +62,15 @@ test("unknown pattern sentinel is missing evidence",()=>{
  assert.equal(e.pattern.motifs.length,0);
  assert.equal(evidenceNeedsReview(e),true);
 });
+
+test("denim wash from normal garment metadata is kept distinct from print",()=>{
+ const e=garmentEvidence({id:"jeans",fabric:"denim",pattern:"plain",denimWash:"acid"});
+ assert.equal(e.pattern.plain,true);
+ assert.equal(e.wash.value,"acid");
+ assert.equal(e.wash.known,true);
+});
+test("denim wash remains unknown when absent",()=>{
+ const e=garmentEvidence({fabric:"denim",pattern:"floral"});
+ assert.equal(e.wash.known,false);
+ assert.deepEqual(e.pattern.motifs,["floral"]);
+});
