@@ -1,5 +1,6 @@
 import { chromium, devices } from "playwright";
 import assert from "node:assert/strict";
+import { auditPhotoFidelity } from "./photo-fidelity-test.mjs";
 const browser=await chromium.launch({headless:true,channel:"chrome"});
 const context=await browser.newContext({...devices["iPhone 13"],browserName:undefined});
 const page=await context.newPage();
@@ -98,59 +99,7 @@ try{
  assert.deepEqual(collageAudit,[],"Regresión de composición fotográfica de looks");
 
  // Fidelity audit using actual rendered pixels at real mobile viewport widths.
- const previousPhotoViewport=page.viewportSize();
- try{
-  for(const width of [320,390,430]){
-   await page.setViewportSize({width,height:844});
-   const failures=await page.evaluate(async(width)=>{
-    const host=document.createElement("div");
-    host.id="photoRenderAudit";
-    host.style.cssText="position:fixed;left:0;top:0;width:"+Math.min(width-12,340)+"px;z-index:2147483647;background:#fff;pointer-events:none";
-    document.body.append(host);
-    const make=(bg,ink)=>{
-     const c=document.createElement("canvas");c.width=90;c.height=150;
-     const ctx=c.getContext("2d");
-     ctx.fillStyle=bg;ctx.fillRect(0,0,90,150);
-     ctx.fillStyle=ink;ctx.fillRect(25,15,40,120);
-     return c.toDataURL("image/png");
-    };
-    const pieces=[
-     {id:"audit-dress",name:"Vestido",category:"Vestidos",image:make("#fff","#e8d9c1"),bgWhite:true},
-     {id:"audit-coat",name:"Abrigo",category:"Capas",image:make("#999","#21345b")},
-     {id:"audit-shoes",name:"Zapatos",category:"Zapatos",image:make("#c5a27d","#151515")}
-    ];
-    host.innerHTML=outfitBoard(pieces);
-    const imgs=[...host.querySelectorAll(".look-mixed-item img")];
-    const errors=[];
-    if(window.innerWidth!==width)errors.push("Viewport not active: "+window.innerWidth+" instead of "+width);
-    if(imgs.length!==3)errors.push("Expected three photographic tiles");
-    for(const img of imgs){
-     img.loading="eager";await img.decode().catch(()=>{});
-     if(img.naturalWidth!==90||img.naturalHeight!==150)errors.push("Photo not decoded: "+img.alt);
-     const style=getComputedStyle(img),tile=img.closest(".look-mixed-item").getBoundingClientRect(),rect=img.getBoundingClientRect();
-     if(style.objectFit!=="contain")errors.push("Cropped photo: "+img.alt);
-     if(rect.left<tile.left-1||rect.right>tile.right+1||rect.top<tile.top-1||rect.bottom>tile.bottom+1)errors.push("Overflow: "+img.alt);
-    }
-    return errors;
-   },width);
-   assert.deepEqual(failures,[],"Photographic layout at "+width+"px");
-   const colors=[[232,217,193],[33,52,91],[21,21,21]];
-   for(let i=0;i<colors.length;i++){
-    const png=await page.locator("#photoRenderAudit .look-mixed-item img").nth(i).screenshot();
-    const rgb=await page.evaluate(async encoded=>{
-     const im=new Image();im.src="data:image/png;base64,"+encoded;await im.decode();
-     const cv=document.createElement("canvas");cv.width=im.naturalWidth;cv.height=im.naturalHeight;
-     const ctx=cv.getContext("2d");ctx.drawImage(im,0,0);
-     return [...ctx.getImageData(Math.floor(cv.width/2),Math.floor(cv.height/2),1,1).data].slice(0,3);
-    },png.toString("base64"));
-    assert.ok(rgb.every((v,k)=>Math.abs(v-colors[i][k])<=22),"Rendered garment color changed at "+width+"px, tile "+i+": "+rgb);
-   }
-   await page.locator("#photoRenderAudit").evaluate(el=>el.remove());
-  }
- }finally{
-  await page.locator("#photoRenderAudit").evaluate(el=>el.remove()).catch(()=>{});
-  if(previousPhotoViewport)await page.setViewportSize(previousPhotoViewport);
- }
+ await auditPhotoFidelity(page);
 
  // In dense looks, small accessories get a quieter presentation than clothing.
  const accessoryHierarchy=await page.evaluate(()=>{
