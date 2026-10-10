@@ -2417,7 +2417,8 @@ function renderWeek(root){
   (ws!==weekStartOf(today)?'<button type="button" class="chip-button" id="weekToday">Volver a esta semana</button>':'')+
   (days.some(d=>d>=today&&!planFor(d))?'<button type="button" class="primary wide" id="weekFill">✦ Planificar los días libres</button>':'')+
   '<div class="week-list">'+days.map(d=>{const p=planFor(d);return '<section class="day-card'+(d===today?' is-today':'')+'" aria-label="'+fx(capFirst(weekdayName(d))+" "+fmtDay(d))+'"><div class="day-head"><strong>'+fx(capFirst(weekdayName(d)))+'</strong><span class="muted">'+fx(fmtDay(d))+(d===today?' · hoy':'')+'</span></div>'+
-   (p?planCardHtml(p):'<button type="button" class="secondary wide" data-plan-pick="'+d+'">+ Elegir look</button>')+'</section>'}).join("")+'</div>');
+   (p?planCardHtml(p):d<today?(()=>{const worn=logs().filter(l=>l.date===d),nm=id=>myGarments().find(g=>g.id===id)?.name; /* días pasados: lo que llevaste, o apuntarlo (no se planifica el pasado) */
+    return worn.length?worn.map(l=>'<p class="muted day-worn">Llevaste: '+fx((l.garmentIds||[]).map(nm).filter(Boolean).join(" · ")||"un look")+'</p>').join(""):'<button type="button" class="chip-button" data-plan-pick="'+d+'">+ Apuntar lo que llevé</button>'})():'<button type="button" class="secondary wide" data-plan-pick="'+d+'">+ Elegir look</button>')+'</section>'}).join("")+'</div>');
  $("#weekPrev").addEventListener("click",()=>{ui.weekStart=addDays(ws,-7);render()});
  $("#weekNext").addEventListener("click",()=>{ui.weekStart=addDays(ws,7);render()});
  $("#weekToday")?.addEventListener("click",()=>{ui.weekStart=weekStartOf(today);render()});
