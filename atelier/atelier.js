@@ -1111,7 +1111,7 @@ function openLookEditor(ids,opts={}){
    if(ok){close();opts.onSaved?.(ids)}});
  };bind();
 }
-function closeGarment(fromSave=false){fromSave=fromSave===true;$("#garmentSheet").classList.add("hidden");if(!fromSave&&bulkTotal>1){const left=bulkQueue.length+1;toast(plural(left,"foto se ha quedado","fotos se han quedado")+" sin añadir")} /* la que estaba abierta también (revisión de Codex, #177) */if(!fromSave){bulkQueue=[];bulkTotal=0}}
+function closeGarment(fromSave=false){fromSave=fromSave===true;$("#garmentSheet").classList.add("hidden");if(!fromSave&&bulkTotal>1){const left=bulkQueue.length+1;toast(plural(left,"foto se ha quedado","fotos se han quedado")+" sin añadir")} /* la que estaba abierta también (revisión de Codex, #177) */if(!fromSave){bulkQueue=[];bulkTotal=0;sheetPhoto=null}} /* cerrar anula el guardado automático pendiente (revisión de Codex, #207) */
 async function saveGarment(e){
  e.preventDefault();
  const ph=sheetPhoto;
@@ -1148,7 +1148,7 @@ async function analyzeGarment(){
   const out=await api("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image})});
   if(sheetPhoto!==ph)return; // No aplicar un análisis antiguo a una foto nueva.
   const raw=out.garment||out.result||out;
-  if(raw?.type==="underwear"||raw?.category==="Interior"){setAnalyzeStatus("La ropa interior no se añade a Atelier.");toast("Ropa interior no admitida");return}
+  if(raw?.type==="underwear"||raw?.category==="Interior"){setAnalyzeStatus("La ropa interior no se añade a Atelier.");toast("Ropa interior no admitida");return "rejected"}
   const d=mapAnalysis(raw);lastAnalysis=cleanAnalysis(d);
   // Solo se rellena lo que la IA reconoce: no se borra lo que ya estaba escrito
   if(d.name||!$("#garmentName").value.trim())$("#garmentName").value=d.name||"Prenda sin identificar";if(d.category){$("#garmentCategory").value=d.category;syncGarmentCategory(true)}const typeOptions=GARMENT_TYPES[d.category]||[];const detected=[d.garmentType,d.subtype].find(t=>typeof t==="string"&&typeOptions.some(o=>o.toLocaleLowerCase("es")===t.trim().toLocaleLowerCase("es")));if(detected)$("#garmentType").value=typeOptions.find(t=>t.toLocaleLowerCase("es")===detected.trim().toLocaleLowerCase("es"));if(d.color)$("#garmentColor").value=d.color;
@@ -3082,16 +3082,19 @@ function bind(){
   await loadSheetFile(f)};
  loadSheetFile=async f=>{
   let original;try{original=await readImage(f)}catch(err){return toast(err.message==="IMAGE_TOO_LARGE"?"La imagen es demasiado grande":"No se pudo leer la foto")}
-  const ph=sheetPhoto={original,edited:null,mode:"original",changed:true},bulk=bulkTotal>1&&!$("#garmentId").value;renderPhotoControls();
+  const ph=sheetPhoto={original,edited:null,mode:"original",changed:true},bulk=bulkTotal>1&&!$("#garmentId").value,prof=appState.profile?.id;renderPhotoControls();
+  const live=()=>sheetPhoto===ph&&appState.profile?.id===prof&&!$("#garmentSheet").classList.contains("hidden"); /* sigue abierta, misma foto y mismo perfil */
   if($("#autoWhite")?.checked)await makeSheetWhite();
   if(sheetPhoto!==ph)return;
   const auto=$("#autoAnalyze")?.checked,canAI=auto&&aiUsage().analyze<AI_LIMITS.analyze;
   if(auto&&!canAI)setAnalyzeStatus(QUOTA_SHEET_MSG); /* sin análisis hoy: no insistir en cada foto de la subida */
-  if(canAI){if(bulk)await analyzeGarment();else analyzeGarment()}
+  let verdict=null;if(canAI){if(bulk)verdict=await analyzeGarment();else analyzeGarment()}
   /* Subida de varias fotos (Noelia, 10/10/2026: «el usuario tiene que hacer lo mínimo posible»): cada prenda se guarda sola tras
      mejorarla y analizarla; si no hubo análisis, con el color estimado en el móvil, y «Completar con IA» la termina después */
-  if(bulk&&sheetPhoto===ph){if(!$("#garmentColor").value.trim()){const c=await guessColor(sheetImage());if(sheetPhoto===ph&&c)$("#garmentColor").value=c}
-   if(sheetPhoto===ph)$("#garmentForm").requestSubmit()}};
+  if(bulk&&live()){
+   if(verdict==="rejected"){const next=bulkQueue.shift();if(next){openGarment();updateBulkTitle();return loadSheetFile(next)}closeGarment(true);bulkTotal=0;return render()} /* ropa interior: no se guarda, se pasa a la siguiente (revisión de Codex, #207) */
+   if(!$("#garmentColor").value.trim()){const c=await guessColor(sheetImage());if(live()&&c)$("#garmentColor").value=c}
+   if(live())$("#garmentForm").requestSubmit()}};
  $("#garmentImage").addEventListener("change",onPhoto);$("#garmentCamera").addEventListener("change",onPhoto);
  // Botones «Hacer foto» y «Galería»: abren el selector correspondiente (en la ficha y en «¿Lo compro?»)
  document.addEventListener("click",e=>{const b=e.target.closest?.("[data-photo-pick]");if(b)$("#"+b.dataset.photoPick)?.click()});
