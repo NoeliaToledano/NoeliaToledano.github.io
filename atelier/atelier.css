@@ -488,3 +488,7 @@ p.notice-card{display:block}
 .edit-option{display:grid;gap:4px;justify-items:center;min-width:92px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:8px;font-size:12px;cursor:pointer;color:var(--ink)}
 .edit-option img{width:56px;height:56px;object-fit:contain}
 .edit-pick .swap-options{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+/* Tiendas por franja de precio y versión arreglada de cada básico */
+.store-links{display:flex;flex-wrap:wrap;gap:6px}.store-links .muted{font-size:11px}.store-title{font-size:12px;margin:8px 0 4px}
+.suggestion-alt{border-top:1px solid var(--line);margin-top:10px;padding-top:8px;display:grid;gap:6px}.suggestion-alt p{margin:0;font-size:14px}
+.store-links a.chip-button{text-decoration:none}

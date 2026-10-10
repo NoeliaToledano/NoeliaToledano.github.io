@@ -1015,11 +1015,16 @@ function renderGarmentPairs(g){
  const occs=REL_OCCS.filter(o=>occasionFits(g,o)),occ=occs.includes(pairsView.occ)?pairsView.occ:null,rel=relationsFor(g,REL_OK,occ);
  const missing=EVIDENCE_FIELDS(g).filter(f=>!g[f]&&f!=="color").map(f=>META_NAME[f]||f);
  const styleClash=g.style&&g.formality in SHEET_STYLE&&SHEET_STYLE[g.formality]!==g.style&&!(g.formality==="formal"&&g.style==="party"); /* etiquetas que se contradicen: el estilista usa la formalidad */
- const groups=new Map();for(const x of rel){if(!groups.has(x.r.register))groups.set(x.r.register,[]);groups.get(x.r.register).push(x)}
+ const clothes=isClothes(g),wear=["Casa","Baño"].includes(g.category); /* pijama o bañador: look completo por sí mismo, no complemento (revisión de Codex, #185) */
+ if(!clothes&&!wear){const ok=new Set(rel.map(x=>x.g.id)),bs=lookBases().filter(b=>b.every(x=>ok.has(x.id))).sort((a,b)=>a.length-b.length); /* zapatos, bolsos y complementos: con looks enteros (arriba + abajo, o vestido) */
+  box.innerHTML='<h3>Completa estos looks</h3>'+(occs.length?'<div class="pair-occs" role="group" aria-label="Ocasión">'+[[null,"Todas"],...occs.map(o=>[o,occasions[o]||o])].map(([o,t])=>'<button type="button" class="chip-button'+(o===occ?' active':'')+'" aria-pressed="'+(o===occ)+'" data-pair-occ="'+(o||"")+'">'+fx(t)+'</button>').join("")+'</div>':'')+'<p class="muted pair-note">'+(occ?'Para «'+fx((occasions[occ]||occ).toLowerCase())+'»':'En general')+': '+(bs.length?plural(bs.length,"base de look","bases de look")+' de tu armario con las que va bien.':'todavía no hay ninguna base de look (arriba + abajo, o vestido) con la que vaya bien.')+'</p>'+bs.slice(0,8).map(b=>'<div class="pair-group">'+thumbs(b,3)+'</div>').join("")+(bs.length>8?'<p class="muted">Y '+(bs.length-8)+' más.</p>':'')+(missing.length?'<p class="muted pair-note">Para afinar, completa en la ficha: '+fx(missing.join(", "))+'.</p>':'');
+ }else{
+ const groups=new Map();for(const x of wear?rel:rel.filter(x=>isClothes(x.g))){if(!groups.has(x.r.register))groups.set(x.r.register,[]);groups.get(x.r.register).push(x)}
  const catRank=x=>BIG.includes(x.category)?0:x.category==="Zapatos"?1:2; /* primero ropa, luego calzado y complementos */
  const order=["informal","arreglado","de fiesta","deportivo"],occText=xs=>{if(occ)return "";const c=new Map();for(const x of xs)for(const o of x.r.contexts)c.set(o,(c.get(o)||0)+1);return [...c].sort((a,b)=>b[1]-a[1]).slice(0,3).map(([o])=>(occasions[o]||o).toLowerCase()).join(", ")};
- box.innerHTML='<h3>Combina con</h3>'+(occs.length?'<div class="pair-occs" role="group" aria-label="Ocasión">'+[[null,"Todas"],...occs.map(o=>[o,occasions[o]||o])].map(([o,t])=>'<button type="button" class="chip-button'+(o===occ?' active':'')+'" aria-pressed="'+(o===occ)+'" data-pair-occ="'+(o||"")+'">'+fx(t)+'</button>').join("")+'</div>':'')+'<p class="muted pair-note">'+(occ?'Para «'+fx((occasions[occ]||occ).toLowerCase())+'»':'En general')+', sin contar el tiempo de hoy: eso lo tiene en cuenta el estilista al proponer looks.</p>'+(rel.length?[...groups].sort((a,b)=>order.indexOf(a[0])-order.indexOf(b[0])).map(([reg,xs])=>'<div class="pair-group"><p class="muted"><strong>'+fx(reg[0].toUpperCase()+reg.slice(1))+'</strong> · '+xs.length+(xs.length===1?' prenda':' prendas')+(occText(xs)?' · '+fx(occText(xs)):'')+'</p>'+thumbs(xs.slice().sort((a,b)=>catRank(a.g)-catRank(b.g)||b.r.s-a.r.s).map(x=>x.g),10)+'</div>').join("")
-  :'<p class="muted">Todavía no hay prendas en tu armario que combinen bien con esta.</p>')+(missing.length?'<p class="muted pair-note">Para afinar, completa en la ficha: '+fx(missing.join(", "))+'.</p>':'')+(styleClash?'<p class="pair-note pair-warn">Revisa las etiquetas: el estilo es «'+fx(styleNames[g.style]||g.style)+'» pero la formalidad es «'+fx(metaLabel("formality",g.formality))+'». El estilista se guía por la formalidad.</p>':'');
+ box.innerHTML='<h3>Combina con</h3>'+(occs.length?'<div class="pair-occs" role="group" aria-label="Ocasión">'+[[null,"Todas"],...occs.map(o=>[o,occasions[o]||o])].map(([o,t])=>'<button type="button" class="chip-button'+(o===occ?' active':'')+'" aria-pressed="'+(o===occ)+'" data-pair-occ="'+(o||"")+'">'+fx(t)+'</button>').join("")+'</div>':'')+'<p class="muted pair-note">'+(occ?'Para «'+fx((occasions[occ]||occ).toLowerCase())+'»':'En general')+', sin contar el tiempo de hoy: eso lo tiene en cuenta el estilista al proponer looks.</p>'+(groups.size?[...groups].sort((a,b)=>order.indexOf(a[0])-order.indexOf(b[0])).map(([reg,xs])=>'<div class="pair-group"><p class="muted"><strong>'+fx(reg[0].toUpperCase()+reg.slice(1))+'</strong> · '+xs.length+(xs.length===1?' prenda':' prendas')+(occText(xs)?' · '+fx(occText(xs)):'')+'</p>'+thumbs(xs.slice().sort((a,b)=>catRank(a.g)-catRank(b.g)||b.r.s-a.r.s).map(x=>x.g),10)+'</div>').join("")
+  :'<p class="muted">Todavía no hay ropa en tu armario que combine bien con esta.</p>')+(missing.length?'<p class="muted pair-note">Para afinar, completa en la ficha: '+fx(missing.join(", "))+'.</p>':'');}
+ box.insertAdjacentHTML("beforeend",(styleClash?'<p class="pair-note pair-warn">Revisa las etiquetas: el estilo es «'+fx(styleNames[g.style]||g.style)+'» pero la formalidad es «'+fx(metaLabel("formality",g.formality))+'». El estilista se guía por la formalidad.</p>':''));
  $$("[data-thumb]",box).forEach(b=>b.addEventListener("click",()=>openGarment(b.dataset.thumb)));
  $$("[data-pair-occ]",box).forEach(b=>b.addEventListener("click",()=>{pairsView.occ=b.dataset.pairOcc||null;renderGarmentPairs(g)}));
  /* Lo que has marcado con «Casi» sobre esta prenda, para poder deshacerlo */
@@ -1214,6 +1219,17 @@ const STYLE_OK=Object.fromEntries(Object.entries(STYLE_AFF).map(([k,m])=>[k,Obje
 /* Combinan de verdad: reglas básicas (pairs) y relación de estilista ≥ 0,6 con el gusto del perfil. Lo usan «¿Lo compro?», Recomendaciones y Maletas (revisión general) */
 let goesMemo={sig:null,ctx:null};const goesCtx=()=>{if(goesMemo.sig!==relCache.sig)goesMemo={sig:relCache.sig,ctx:engineContext({occasion:null})};return goesMemo.ctx}; /* con el gusto del perfil (revisión de Codex, #181) */
 const goes=(a,b,ctx=goesCtx())=>pairs(a,b)&&(relationOf(a,b,ctx)?.s??1)>=REL_OK;
+/* Ropa primero (Noelia, 10/10/2026): la ropa se relaciona con ropa; calzado, bolsos y complementos se miden contra bases de look completas
+   (arriba + abajo, o un vestido), nunca contra una prenda suelta: unos pendientes van con un look, no con una camiseta */
+const CLOTHES=["Arriba","Abajo","Vestidos","Capas"],isClothes=g=>CLOTHES.includes(g?.category);
+let lbCache={k:"",v:[]};
+function lookBases(gs=myGarments()){ensureRelations();const k=relCache.sig+"|"+gs.map(g=>g.id).join(",");if(lbCache.k===k)return lbCache.v; /* se calcula una vez por armario y fichas (revisión de Codex, #185) */
+ const tops=gs.filter(g=>g.category==="Arriba"),bottoms=gs.filter(g=>g.category==="Abajo"),out=gs.filter(g=>g.category==="Vestidos").map(d=>[d]),combos=[];
+ for(const t of tops)for(const b of bottoms)if(goes(t,b))combos.push([t,b]);
+ const room=Math.max(0,400-out.length),step=combos.length>room?combos.length/room:1; /* como mucho 400, como outfitBases */
+ for(let i=0;i<combos.length&&out.length<400;i+=step)out.push(combos[Math.floor(i)]);
+ lbCache={k,v:out};return out}
+const basesFor=(c,bs=lookBases())=>bs.filter(b=>b.every(x=>goes(c,x))); /* zapatos, bolsos y complementos se miden contra looks enteros, no prenda a prenda */
 function pairs(a,b){
  if(a.id&&a.id===b.id)return false;
  if(a.category&&b.category&&!(PAIRS[a.category]||[]).includes(b.category))return false;
@@ -2180,8 +2196,13 @@ function rankOutfits(o={}){
   for(const g of gs)if(!BIG.includes(g.category)||g.category==="Capas")used.set(g.id,(used.get(g.id)||0)+1);
   const r={gs,score:sc.score,reasons:sc.reasons,warnings:[...warn,...sc.warnings]};seen.add(sig(r));out.push(r);
  }
+ /* Orden en pantalla (Noelia, 10/10/2026): todos combinan; primero los más completos, siempre que estén cerca del mejor en calidad */
+ const top=Math.max(...out.map(r=>r.score)),near=r=>r.score>=top-12?0:1;
+ out.sort((a,b)=>near(a)-near(b)||completeness(b.gs)-completeness(a.gs)||b.score-a.score);
  return out.map(r=>({garments:r.gs,ids:r.gs.map(g=>g.id),score:r.score,reasons:r.reasons,warnings:r.warnings}));
 }
+/* Lo completo que está un look: la base cuenta como una (arriba + abajo o vestido) y suma calzado, capa, bolso y complementos; desempata el número de piezas */
+const completeness=gs=>1+["Zapatos","Capas","Bolsos","Accesorios"].filter(c=>gs.some(g=>g.category===c)).length+gs.length/100;
 /* Combinar una prenda: looks calculados en el móvil, sin IA */
 function looksAround(g,max=8,occasion=null){
  // «¿con qué me pongo esta prenda?», para cualquier ocasión o una concreta (Noelia, 10/10/2026). Cada look lleva sus motivos (l.reasons)
@@ -2605,13 +2626,14 @@ function renderTrip(root,t){
 let buyCheck=null;
 function evaluateCandidate(c){
  ensureRelations();
- const gs=myGarments(),compatible=gs.filter(g=>goes(c,g)),core=compatible.filter(g=>!c.category||(CORE[c.category]||[]).includes(g.category));
+ const gs=myGarments(),clothes=!c.category||isClothes(c),bases=clothes?[]:basesFor(c,lookBases(gs));
+ const compatible=clothes?gs.filter(g=>isClothes(g)&&goes(c,g)):[...new Set(bases.flat())],core=clothes?compatible.filter(g=>!c.category||(CORE[c.category]||[]).includes(g.category)):bases;
  const duplicates=gs.filter(g=>isDuplicate(c,g)),rescued=gs.filter(g=>goes(c,g)&&gs.filter(o=>goes(g,o)).length<2);
  const reasons=[];let verdict,tone;
  if(duplicates.length>=2){verdict="No lo necesitas";tone="bad";reasons.push("Ya tienes "+duplicates.length+" prendas muy parecidas.")}
- else if(core.length>=3&&!duplicates.length){verdict="Cómpralo";tone="good";reasons.push("Combina con "+plural(compatible.length,"prenda","prendas")+" de tu armario.")}
+ else if(core.length>=3&&!duplicates.length){verdict="Cómpralo";tone="good";reasons.push(clothes?"Combina con "+plural(compatible.length,"prenda","prendas")+" de ropa de tu armario.":"Completa "+plural(bases.length,"look","looks")+" de tu armario (arriba + abajo, o vestido).")}
  else if(core.length>=3){verdict="Piénsalo";tone="mid";reasons.push("Encaja bien, pero se parece a «"+duplicates[0].name+"».")}
- else{verdict="Piénsalo";tone="mid";reasons.push(core.length?"Solo combina con "+plural(core.length,"prenda clave","prendas clave")+" de tu armario.":"Ahora mismo no tienes con qué combinarla"+(c.category&&CORE[c.category]?" (te faltaría: "+CORE[c.category].join(" o ").toLocaleLowerCase("es")+")":"")+".")}
+ else{verdict="Piénsalo";tone="mid";reasons.push(!clothes?(bases.length?"Solo completa "+plural(bases.length,"look","looks")+" de tu armario.":"Ahora mismo no completa ningún look de tu armario (arriba + abajo, o vestido)."):core.length?"Solo combina con "+plural(core.length,"prenda clave","prendas clave")+" de tu armario.":"Ahora mismo no tienes con qué combinarla"+(c.category&&CORE[c.category]?" (te faltaría: "+CORE[c.category].join(" o ").toLocaleLowerCase("es")+")":"")+".")}
  if(rescued.length)reasons.push("Daría salida a "+plural(rescued.length,"prenda","prendas")+" que ahora casi no combinas.");
  const p=appState.data.preferences,pending=appState.data.wishlist.filter(w=>!w.bought).reduce((s,w)=>s+(Number(w.price)||0),0);
  if(Number(c.price)>0&&Number(p.budget)>=0&&pending+Number(c.price)>Number(p.budget))reasons.push("Con tu wishlist pendiente superaría tu presupuesto de "+euro(p.budget)+".");
@@ -2728,7 +2750,15 @@ const CATALOG=[
  ["Salones nude","Zapatos","Nude","party","all"],
  ["Bolso negro de hombro","Bolsos","Negro","smart","all"],["Bolso camel","Bolsos","Camel","casual","all"],
  ["Cinturón negro de piel","Accesorios","Negro","smart","all"]
-].map(([name,category,color,style,season,pattern])=>({name,category,color,style,season,pattern:pattern||"plain"}));
+].map(([name,category,color,style,season,pattern])=>({name,category,color,style,season,pattern:pattern||"plain",formality:{casual:"casual",smart:"smartcasual",party:"party",sport:"sport"}[style]}));
+/* Versión arreglada de cada básico (Noelia, 10/10/2026): no es lo mismo una camiseta blanca básica que una elegante */
+const CATALOG_DRESSY={"Camiseta blanca básica":["Camiseta blanca de punto fino","punto fino o cuello barco, con caída"],"Camiseta negra básica":["Camiseta negra de punto fino","punto fino o satinada, con caída"],
+ "Camisa vaquera":["Camisa de seda azul","seda o satén, lisa"],"Vaquero recto azul":["Vaquero oscuro de corte recto","lavado oscuro, sin rotos"],"Zapatillas blancas":["Zapatillas blancas de piel","piel lisa, suela fina"],
+ "Cárdigan crudo":["Cárdigan de punto fino crudo","punto fino, botones joya"],"Chaqueta vaquera":["Chaqueta de tweed","tweed o bouclé"],"Jersey de punto gris":["Jersey gris de cachemir","cachemir o merino"]};
+/* Tiendas por franja de precio: el enlace busca la prenda en su web (no se leen precios: solo la franja habitual de cada tienda) */
+const STORES=[["Primark","primark.com",1],["Lefties","lefties.com",1],["H&M","hm.com",2],["Uniqlo","uniqlo.com",2],["Zara","zara.com",3],["Mango","mango.com",3],["Massimo Dutti","massimodutti.com",4],["El Corte Inglés","elcorteingles.es",4]];
+const storesFor=c=>{const dressy=c.formality==="smartcasual"||c.formality==="party"||c.style!=="casual";return STORES.filter(x=>dressy?x[2]>=2:x[2]<=3).slice(0,dressy?5:5)};
+const storeLinks=c=>'<div class="store-links" aria-label="Buscar en tiendas, de más barata a más cara">'+storesFor(c).map(([n,d,t])=>'<a class="chip-button" href="https://www.google.com/search?q='+encodeURIComponent(c.name+" mujer site:"+d)+'" target="_blank" rel="noopener noreferrer">'+fx(n)+' <span class="muted">'+"€".repeat(t)+'</span></a>').join("")+'</div>';
 function simulate(c,gs,bases){
  let looks=[];
  if(c.category==="Arriba")looks=gs.filter(g=>g.category==="Abajo"&&goes(c,g)).map(b=>[c,b]);
@@ -2743,15 +2773,16 @@ function simulate(c,gs,bases){
 }
 function shoppingSuggestions(){
  ensureRelations();const gs=myGarments(),bases=outfitBases(gs),season=thisSeason(),wished=new Set(appState.data.wishlist.map(w=>norm(w.name)));
- const lonely=new Set(gs.filter(g=>gs.filter(o=>goes(g,o)).length<2).map(g=>g.id)),partner={Arriba:["Abajo"],Abajo:["Arriba"]},out=[];
+ const lb=lookBases(gs),lonely=new Set(gs.filter(g=>gs.filter(o=>goes(g,o)).length<2).map(g=>g.id)),partner={Arriba:["Abajo"],Abajo:["Arriba"]},out=[];
  for(const c of CATALOG){
   if(wished.has(norm(c.name))||gs.some(g=>isDuplicate(c,g)))continue;
-  const compatible=gs.filter(g=>goes(c,g));if(!compatible.length)continue;
+  const clothes=isClothes(c),nb=clothes?0:basesFor(c,lb).length,compatible=clothes?gs.filter(g=>isClothes(g)&&goes(c,g)):[...new Set(basesFor(c,lb).flat())];if(!compatible.length)continue; /* ropa con ropa; el resto, con looks completos */
   const sim=simulate(c,gs,bases),rescued=compatible.filter(g=>lonely.has(g.id)&&(partner[c.category]||[]).includes(g.category));
   if(sim.count<2&&!rescued.length)continue;
   const seasonBoost=c.season==="all"?1:c.season===season?1.2:.5;
   const value=["Arriba","Abajo","Vestidos"].includes(c.category)?sim.count*2:c.category==="Zapatos"?sim.complete*2+sim.count*.3:c.category==="Capas"?sim.count*.6:sim.count*.25;
-  out.push({c,compatible,rescued,looks:sim.count,complete:sim.complete,examples:sim.examples,score:(value+rescued.length*3+compatible.length*.3)*seasonBoost});
+  const alt=CATALOG_DRESSY[c.name],ac=alt?{...c,name:alt[0],hint:alt[1],style:"smart",formality:"smartcasual"}:null,asim=ac?simulate(ac,gs,bases):null;
+  out.push({c,alt:ac&&asim?.count?{c:ac,looks:asim.count}:null,compatible,bases:nb,rescued,looks:sim.count,complete:sim.complete,examples:sim.examples,score:(value+rescued.length*3+compatible.length*.3)*seasonBoost});
  }
  out.sort((a,b)=>b.score-a.score);
  const perCat={},picked=[];
@@ -2764,19 +2795,20 @@ function shoppingSuggestions(){
  return picked;
 }
 function suggestionCard(s,i){
- const c=s.c,why=["Combina con "+plural(s.compatible.length,"prenda","prendas")+" de tu armario."],core=["Arriba","Abajo","Vestidos"].includes(c.category);
+ const c=s.c,why=[isClothes(c)?"Combina con "+plural(s.compatible.length,"prenda","prendas")+" de ropa de tu armario.":"Completa "+plural(s.bases,"look","looks")+" de tu armario (arriba + abajo, o vestido)."],core=["Arriba","Abajo","Vestidos"].includes(c.category);
  if(core&&s.looks)why.push("Te da "+plural(s.looks,"look nuevo","looks nuevos")+".");
  else if(c.category==="Zapatos"&&s.complete)why.push("Completa "+plural(s.complete,"look","looks")+" que ahora no tienen calzado a juego.");
  else if(c.category==="Capas"&&s.looks)why.push("Puedes llevarla encima de "+s.looks+" de tus looks.");
- else if(s.looks)why.push("Encaja con "+s.looks+" de tus looks.");
+ else if(s.looks&&isClothes(c))why.push("Encaja con "+s.looks+" de tus looks.");
  if(s.rescued.length)why.push("Le da salida a "+s.rescued.slice(0,2).map(g=>"«"+g.name+"»").join(" y ")+(s.rescued.length>2?" y "+(s.rescued.length-2)+" más":"")+", que ahora casi no combinas.");
  const piece=g=>'<span class="look-chip'+(g.id?'':' new')+'">'+fx(g.name)+'</span>';
  return '<div class="suggestion"><div class="suggestion-head"><div><strong>'+fx(c.name)+'</strong><p class="muted">'+fx(c.category+" · "+c.color+" · "+(styleNames[c.style]||"")+(c.season!=="all"?" · "+seasons[c.season]:""))+'</p></div>'+
   (core&&s.looks?'<span class="looks-badge">+'+s.looks+' looks</span>':c.category==="Zapatos"&&s.complete?'<span class="looks-badge">completa '+s.complete+'</span>':'')+'</div>'+
   '<p class="suggestion-why">'+fx(why.join(" "))+'</p>'+thumbs(s.compatible,8)+
   (s.examples.length?'<div class="suggestion-examples">'+s.examples.map(l=>'<div class="example-line"><span class="muted">Por ejemplo:</span>'+l.map(piece).join("")+'</div>').join("")+'</div>':'')+
-  '<div class="suggestion-actions"><button class="chip-button" data-suggest-wish="'+i+'">♡ A la wishlist</button>'+
-  '<a class="chip-button" href="https://www.google.com/search?tbm=shop&q='+encodeURIComponent(c.name+" mujer")+'" target="_blank" rel="noopener noreferrer">Buscar en tiendas ↗</a></div></div>';
+  '<p class="muted store-title">Búscala en tiendas, de más barata a más cara:</p>'+storeLinks(c)+
+  (s.alt?'<div class="suggestion-alt"><p><strong>¿Más arreglada?</strong> '+fx(s.alt.c.name)+' ('+fx(s.alt.c.hint)+'): '+fx(plural(s.alt.looks,"look","looks"))+' con tu armario.</p>'+storeLinks(s.alt.c)+'</div>':'')+
+  '<div class="suggestion-actions"><button class="chip-button" data-suggest-wish="'+i+'">♡ A la wishlist</button></div></div>';
 }
 let suggestionCache={key:"",list:[]};
 function suggestionsHtml(){
