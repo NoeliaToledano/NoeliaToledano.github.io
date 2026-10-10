@@ -557,3 +557,4 @@ p.notice-card{display:block}
 .look-mixed-board:is([data-count="6"],[data-count="7"])>.look-mixed-item[data-piece-kind="bag"] img{padding:9%}
 .empty .explore-occs{flex-wrap:wrap;justify-content:center;overflow:visible}
 .welcome-empty p{max-width:34ch;margin-inline:auto}
+.daily-occs{margin:2px 0 10px}
