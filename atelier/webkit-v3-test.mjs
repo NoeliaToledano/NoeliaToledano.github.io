@@ -34,6 +34,7 @@ await page.addInitScript(()=>{
 });
 const png=Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/pVYAAAAASUVORK5CYII=","base64");
 async function addGarment(name,category="Arriba"){
+ await page.locator(".wardrobe-add-menu > summary").click();
  await page.locator("#addGarment").click();
  await page.locator("#autoAnalyze").uncheck();
  await page.locator("#garmentName").fill(name);

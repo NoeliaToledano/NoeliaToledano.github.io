@@ -308,6 +308,7 @@ try{
  const bg=await page.locator("body").evaluate(el=>getComputedStyle(el).backgroundColor);
  assert.notEqual(bg,"rgba(0, 0, 0, 0)","CSS not applied");
  await page.locator('[data-view="wardrobe"]').click();
+ await page.locator(".wardrobe-add-menu > summary").click();
  await page.locator("#addGarment").click();
  console.log("GARMENT_DIAGNOSTIC",{classes:await page.locator("#garmentSheet").getAttribute("class"),visible:await page.locator("#garmentName").isVisible(),errors});
  await page.locator("#autoAnalyze").evaluate(el=>{el.checked=false;el.dispatchEvent(new Event("change",{bubbles:true}))});
@@ -328,6 +329,10 @@ try{
  await wardrobeSummary.locator("#wardrobeHistory").waitFor({state:"visible"});
  await page.reload({waitUntil:"networkidle"});
  await page.locator('[data-view="today"]').click();
+ // Hoy stays uncluttered without hiding valid occasions or weather refresh.
+ assert.equal(await page.locator(".today-unified-options").count(),0);
+ for(const occasion of ["daily","work","sport","beach","home","event","party","formal"])assert.equal(await page.locator(`#dailyOccasion option[value="${occasion}"]`).count(),1);
+ assert.equal(await page.locator("#dailyWeather").count(),1);
  await page.locator('[data-open-week]').first().click();
  assert.equal(await page.evaluate(()=>appState.view),"stylist");
  assert.equal(await page.evaluate(()=>ui.stylistTab),"week");
@@ -359,6 +364,7 @@ try{
  await actions.locator("summary").click();
  assert.equal(await actions.locator('[data-look-edit]').isVisible(),true,"Edit remains available after opening more actions");
  await page.locator('[data-view="wardrobe"]').click();
+ await page.locator(".wardrobe-add-menu > summary").click();
  await page.locator("#addGarment").click();
  await page.locator("#autoAnalyze").check();
 
@@ -421,14 +427,8 @@ try{
  // En Hoy, lo planificado para hoy ocupa «Tu look de hoy»
  await page.locator('[data-view="today"]').click();
  await page.locator(".daily-look .badge-ok").waitFor();
- // Weather refresh must not collapse the panel or lose the user's location in Hoy.
- await page.locator(".today-unified-options > summary").click();
- await page.waitForFunction(()=>ui.todayOptionsOpen===true);
- await page.evaluate(()=>render());
- assert.equal(await page.locator(".today-unified-options").evaluate(el=>el.open),true,
-  "More options stays expanded after a weather-triggered render");
- assert.equal(await page.locator("#stopWeather").count(),0,
-  "The unnecessary reset-to-25-degrees button is removed");
+ // Hoy no presenta el panel redundante de opciones.
+ assert.equal(await page.locator(".today-unified-options").count(),0);
  await page.locator('[data-view="shopping"]').click();
  await page.locator('[data-shop-tab="wish"]').click();
  await page.locator('[name="wishName"]').fill("Abrigo de prueba");
