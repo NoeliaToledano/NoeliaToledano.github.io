@@ -1653,9 +1653,9 @@ function swapOptions(l,oldId,max=6){
  // Motor común: misma categoría, compatible con el resto y puntuado como look completo (fecha del plan si la hay)
  const rest=gs.filter(g=>g.id!==oldId),fb=appState.data.feedback||{},saved=new Map(myLooks().map(x=>[lookSig(x.garmentIds||[]),x]));
  const ctx=engineContext({occasion:l.occasion in occasions?l.occasion:null,date:validDay(l.date)?l.date:undefined}); // con la ocasión del look (revisión de Codex, #133)
- ensureRelations();const notes=pieceNotes(),weakest=g=>Math.min(1,...rest.map(r=>relationOf(g,r,ctx)?.s??1));
+ ensureRelations();const before=new Set(lookIssues(gs,ctx).filter(x=>!x.startsWith((old.name||old.type||old.category)+":"))),notes=pieceNotes(),weakest=g=>Math.min(1,...rest.map(r=>relationOf(g,r,ctx)?.s??1));
  /* cerebro de estilista también aquí (revisión general): la nueva prenda combina con todas, cumple tiempo y ocasión y respeta lo marcado con «Casi» */
- const ok=g=>rest.every(r=>(!related(g,r)||stylesOk(g,r))&&(pairColor(g,r).s>=.45||!BIG.includes(g.category)||!BIG.includes(r.category)))&&!notes.disliked.has(g.id)&&!ctx.offOcc.has(g.id)&&!lookIssues([...rest,g],ctx).some(x=>x.startsWith((g.name||g.type||g.category)+":"));
+ const ok=g=>rest.every(r=>(!related(g,r)||stylesOk(g,r))&&(pairColor(g,r).s>=.45||!BIG.includes(g.category)||!BIG.includes(r.category)))&&!notes.disliked.has(g.id)&&!ctx.offOcc.has(g.id)&&lookIssues([...rest,g],ctx).every(x=>before.has(x)); /* ningún problema nuevo, tampoco de todo el look (revisión de Codex, #180) */
  const pool=myGarments().filter(g=>g.id!==oldId&&g.category===old.category&&!rest.some(r=>r.id===g.id)&&ok(g)),good=pool.filter(g=>weakest(g)>=REL_OK);
  return (good.length>=2?good:pool.filter(g=>weakest(g)>=REL_WEAK)).map(g=>{
   const look=[...rest,g],ids=look.map(x=>x.id),ex=saved.get(lookSig(ids)),r=scoreOutfit(look,ctx),why=[...r.reasons];
@@ -2472,8 +2472,10 @@ const SEASON_LABEL={warm:"Calor",mid:"Entretiempo",cold:"Frío"};
 const fitsSeason=(g,season)=>seasonFits(g,season);
 const tripItems=t=>(t.garmentIds||[]).map(id=>myGarments().find(g=>g.id===id)).filter(Boolean);
 /* Looks posibles con lo que va en la maleta: arriba + abajo, o vestido; con calzado y capa si encajan */
-function packLooks(items){
- ensureRelations();const looks=[],rel=(a,b)=>(relationOf(a,b)?.s??1)>=REL_OK; /* maleta: solo parejas que combinan de verdad (revisión general) */
+/* maleta: solo parejas que combinan de verdad, con el gusto del perfil (revisiones general y de Codex, #180) */
+const packCtx=()=>engineContext({occasion:null}),packRel=(a,b,ctx)=>(relationOf(a,b,ctx)?.s??1)>=REL_OK;
+function packLooks(items,ctx=packCtx()){
+ ensureRelations();const looks=[],rel=(a,b)=>packRel(a,b,ctx);
  for(const t of items.filter(g=>g.category==="Arriba"))for(const b of items.filter(g=>g.category==="Abajo"))if(pairs(t,b)&&rel(t,b))looks.push([t,b]);
  for(const d of items.filter(g=>g.category==="Vestidos"))looks.push([d]);
  return looks.map(l=>{const out=[...l];for(const cat of ["Zapatos","Capas"]){const x=items.find(g=>g.category===cat&&out.every(p=>pairs(g,p)&&rel(g,p)));if(x)out.push(x)}return out});
@@ -2481,7 +2483,7 @@ function packLooks(items){
 function suggestPacking(t){
  const season=seasonFor(t.start),days=tripDays(t),all=myGarments().filter(g=>fitsSeason(g,season));
  const core=all.filter(g=>["Arriba","Abajo","Vestidos"].includes(g.category)),chosen=[],max=Math.min(12,days+4);
- const looksOf=list=>packLooks(list).length;
+ const pctx=packCtx(),looksOf=list=>packLooks(list,pctx).length;
  // Versatilidad: con cuántas prendas complementarias combina (desempata cuando aún no suma looks)
  const partner={Arriba:"Abajo",Abajo:"Arriba"},versatility=g=>core.filter(o=>o.category===partner[g.category]&&pairs(g,o)).length;
  while(looksOf(chosen)<days&&chosen.length<max){
@@ -2494,8 +2496,9 @@ function suggestPacking(t){
   if(!best)break;chosen.push(best);
  }
  // Complementos: el calzado que más looks cubre (y otro si quedan muchos sin calzado), capa si hace frío, un bolso
- const looks=packLooks(chosen).map(l=>l.filter(x=>["Arriba","Abajo","Vestidos"].includes(x.category)));
- const coverBest=(cat,need)=>{const opts=all.filter(g=>g.category===cat&&!chosen.includes(g));let best=null,n=0;for(const g of opts){const c=need.filter(l=>l.every(p=>pairs(g,p))).length;if(c>n){best=g;n=c}}return best?{g:best,covers:need.filter(l=>l.every(p=>pairs(best,p)))}:null};
+ const looks=packLooks(chosen,pctx).map(l=>l.filter(x=>["Arriba","Abajo","Vestidos"].includes(x.category)));
+ const fitsAll=(g,l)=>l.every(p=>pairs(g,p)&&packRel(g,p,pctx)); /* mismo criterio que los looks de ejemplo (revisión de Codex, #180) */
+ const coverBest=(cat,need)=>{const opts=all.filter(g=>g.category===cat&&!chosen.includes(g));let best=null,n=0;for(const g of opts){const c=need.filter(l=>fitsAll(g,l)).length;if(c>n){best=g;n=c}}return best?{g:best,covers:need.filter(l=>fitsAll(best,l))}:null};
  let pending=looks;
  for(let i=0;i<2&&pending.length;i++){const s=coverBest("Zapatos",pending);if(!s)break;if(i===1&&s.covers.length<pending.length/2&&pending.length<looks.length/2)break;chosen.push(s.g);pending=pending.filter(l=>!s.covers.includes(l))}
  if(season!=="warm"){const c=coverBest("Capas",looks);if(c)chosen.push(c.g)}  // frío o entretiempo, según las fechas del viaje
