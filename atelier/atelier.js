@@ -2515,9 +2515,8 @@ function weatherLabel(){
 }
 function dailyLookHtml(){
  const t=planFor(dayISO()),p=appState.data.preferences;
- const weather='<p class="daily-weather muted">'+fx(weatherLabel())+(p.autoWeather?'':' · <button type="button" class="link-button" id="dailyWeather">📍 Usar el tiempo de mi zona</button>')+'</p>';
- const DAILY_OCCS=["daily","work","party","event","sport"],dOccs=[...new Set([...DAILY_OCCS,p.occasion||"daily"])].filter(o=>o===(p.occasion||"daily")||myGarments().some(g=>["Arriba","Abajo","Vestidos"].includes(g.category)&&occasionFits(g,o)));
- const occRow=dOccs.length>1?'<div class="explore-occs daily-occs" role="group" aria-label="¿Para qué te vistes hoy?">'+dOccs.map(o=>'<button type="button" class="chip-button'+(o===(p.occasion||"daily")?' on':'')+'" aria-pressed="'+(o===(p.occasion||"daily"))+'" data-daily-occ="'+o+'">'+fx(occasions[o]||o)+'</button>').join("")+'</div>':''; /* la ocasión, a mano (antes escondida en «Más opciones») */
+ const weather='<p class="daily-weather muted">'+fx(weatherLabel())+' · <button type="button" class="link-button" id="dailyWeather">'+(p.autoWeather?'↻ Actualizar ubicación':'📍 Usar el tiempo de mi zona')+'</button></p>';
+ const occRow='<label class="daily-occasion-field"><span>Ocasión</span><select id="dailyOccasion" aria-label="Ocasión del look de hoy">'+optionList(Object.entries(occasions),p.occasion||"daily")+'</select></label>';
  if(t)return '<section class="feature-card daily-look"><div class="section-head"><h2>Tu look de hoy</h2><span class="muted">Planificado</span></div>'+weather+planCardHtml(t)+'</section>';
  const d=ensureDailyLook(),gs=(d.ids||[]).map(id=>myGarments().find(g=>g.id===id)).filter(Boolean),why=gs.length?scoreOutfit(gs,engineContext()):null;
  if(gs.length<1){const occ=appState.data.preferences.occasion,other=occ&&rankOutfits({max:1,occasion:null}).length;
@@ -2555,7 +2554,7 @@ function bindDailyLook(root){
  const p=appState.data.preferences,today=dayISO();
  if(dailyDirty){dailyDirty=false;saveState().catch(()=>{})}
  $("#dailyAdd",root)?.addEventListener("click",()=>setView("wardrobe"));
- $$("[data-daily-occ]",root).forEach(b=>b.addEventListener("click",()=>{const o=b.dataset.dailyOcc;if(o===(p.occasion||"daily"))return;const d=p.dailyLook;if(d)d.date=null;setPref("occasion",o,true)})); /* elegir ocasión rehace el look de hoy */
+ $("#dailyOccasion",root)?.addEventListener("change",e=>{const o=e.target.value;if(!(o in occasions)||o===(p.occasion||"daily"))return;const d=p.dailyLook;if(d)d.date=null;setPref("occasion",o,true)}); /* elegir ocasión rehace el look de hoy */
  $("#dailyExplore",root)?.addEventListener("click",()=>{ui.stylistTab="explore";setView("stylist")});
  $("#dailyNext",root)?.addEventListener("click",async()=>{ensureDailyLook(true);await saveState();render()});
  $$("[data-version]",root).forEach(b=>b.addEventListener("click",async()=>{const d=p.dailyLook;if(!d?.ids?.length)return;
@@ -2572,7 +2571,7 @@ function bindDailyLook(root){
  $("#dailySwap",root)?.addEventListener("click",async()=>{const d=p.dailyLook;if(!d?.ids?.length)return;d.touched=true;
   if(await setPlan(today,d.ids,{name:"Look de hoy"})){const t=planFor(today);if(t)openSwap(t.id,"plan")}});
  $("#dailyWeather",root)?.addEventListener("click",async e=>{e.target.disabled=true;e.target.textContent="Consultando…";
-  try{await fetchTodayTemperature(true);render()}catch(err){console.warn("WEATHER",err);toast(err?.code===1?"Sin permiso de ubicación: uso "+currentTemperature()+" °C":"No se pudo consultar el tiempo");e.target.disabled=false;e.target.textContent="📍 Usar el tiempo de mi zona"}});
+  try{await fetchTodayTemperature(true);render()}catch(err){console.warn("WEATHER",err);toast(err?.code===1?"Sin permiso de ubicación: uso "+currentTemperature()+" °C":"No se pudo consultar el tiempo");e.target.disabled=false;e.target.textContent=p.autoWeather?"↻ Actualizar ubicación":"📍 Usar el tiempo de mi zona"}});
 }
 /* En «Hoy»: lo planificado para hoy y mañana */
 function plannedTodayHtml(){
