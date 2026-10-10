@@ -477,3 +477,4 @@ p.notice-card{display:block}
 /* Revisión general (10/10/2026): los campos de fecha no se salen de su tarjeta en el móvil; versiones compactas en las tarjetas de dos columnas */
 .field{min-width:0}.field input,.field select{min-width:0;max-width:100%}input[type="date"]{min-width:0;width:100%}
 .look-tile .look-version{min-width:74px;padding:6px;font-size:11px;gap:2px}.look-tile .look-version-thumbs{height:30px}.look-tile .look-version-thumbs img{width:30px;height:30px}
+.formality-main{grid-column:1/-1}.formality-main select{width:100%}
