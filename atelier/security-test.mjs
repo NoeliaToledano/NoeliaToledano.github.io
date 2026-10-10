@@ -467,7 +467,7 @@ console.log("PASS: Styling engine (20/100/500 prendas): capas según tiempo, var
   return {sk:CATALOG.map(c=>[c.name,sketchKind(c),decodeURIComponent(pieceSketch(c).replace("data:image/svg+xml,",""))]),link:shopLink(CATALOG[0])};`)(document,sessionStorage,{randomUUID:()=>"t"});
   for(const [n,k,svg] of r.sk){assert.ok(/^<svg[^>]+viewBox="[\d .]+"/.test(svg)&&/<path d="M/.test(svg)&&!/undefined/.test(svg),"Ficha dibujada válida para "+n);assert.ok(!/fill="#c9c3ba"/.test(svg),"Color conocido para "+n)}
   assert.equal(r.sk.find(x=>x[0]==="Falda midi negra")[1],"skirt");assert.equal(r.sk.find(x=>x[0]==="Botines negros")[1],"boot");assert.equal(r.sk.find(x=>x[0]==="Top negro de tirantes")[1],"tank");
-  assert.match(r.link,/https:\/\/www\.google\.com\/search\?tbm=shop&q=Camiseta%20blanca%20b%C3%A1sica/);assert.match(r.link,/rel="noopener noreferrer"/);
+  assert.match(r.link,/https:\/\/www\.google\.com\/search\?tbm=shop&q=Camiseta%20blanca%20b%C3%A1sica/);assert.doesNotMatch(r.link,/%20mujer(?:&|$)/i);assert.match(r.link,/rel="noopener noreferrer"/);
   console.log("PASS: Shopping suggestions get a drawn sketch per catalog piece and a real-products link");
 }
 
