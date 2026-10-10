@@ -48,4 +48,6 @@ for(const test of ["benchmarks/garment-evidence.test.mjs","benchmarks/audit-look
  try{execFileSync(process.execPath,["--test",new URL("./"+test,import.meta.url).pathname],{stdio:"pipe"});}
  catch(e){fail(test+": stylist audit regression\n"+String(e.stderr||e.message));}
 }
+try{execFileSync(process.execPath,["--test",new URL("./benchmarks/pattern-mixing-engine.test.mjs",import.meta.url).pathname],{stdio:"pipe"});}
+catch(e){fail("Pattern-mixing engine regression: "+String(e.stderr||e.message));}
 console.log("Atelier release gate OK (app y backend)");
