@@ -687,7 +687,8 @@ async function api(path,options={}){
   setTimeout(()=>toast(kind==="analyze"?"Has llegado al límite de "+AI_LIMITS.analyze+" análisis de hoy. Mañana podrás seguir.":"Has llegado al límite de "+AI_LIMITS.looks+" sugerencias de hoy. Mañana podrás seguir."),80);
   throw new Error("AI_QUOTA");
  }
- const out=await rawApi(path,{...options,body:JSON.stringify(body)});
+ let out;try{out=await rawApi(path,{...options,body:JSON.stringify(body)})}
+ catch(e){if(e.message==="AI_QUOTA"){usage[kind]=AI_LIMITS[kind];saveState({fromSync:true})}throw e} /* límite agotado en el servidor (p. ej., desde otro móvil): este también deja de intentarlo hoy (revisión de Codex, #199) */
  usage[kind]++;saveState({fromSync:true});
  if(kind==="analyze"){analyzeCache.set(cacheKey,structuredClone(out));if(analyzeCache.size>30)analyzeCache.delete(analyzeCache.keys().next().value);return out}
  if(Array.isArray(out?.looks))out.looks=out.looks.map(l=>({...l,ids:(Array.isArray(l.ids)?l.ids:[]).map(String).filter(id=>toLong.has(id)).map(id=>toLong.get(id))}));
@@ -965,6 +966,7 @@ function readMetadata(){
  return o;
 }
 const META_KEYS=new Set([...META_FIELDS.map(d=>d[0]),"occasions","confidence"]);
+const QUOTA_SHEET_MSG="Ya has usado los análisis de hoy. Pon categoría y color y guárdala: mañana la completas desde Armario con «Completar con IA».";
 function setAnalyzeStatus(t){const s=$("#autoAnalyzeStatus");if(s)s.textContent=t}
 const GARMENT_TYPES={
  Arriba:["Camiseta","Camisa","Blusa","Top","Crop top","Jersey","Sudadera","Polo","Body","Camiseta técnica","Otro"],
@@ -1151,7 +1153,7 @@ async function analyzeGarment(){
    setAnalyzeStatus("Ficha completada. Revisa sobre todo la formalidad y las ocasiones: son lo que más cambia tus looks. Luego pulsa Confirmar y guardar.");
   }
   toast("Análisis completado");
- }catch(e){console.error("ANALYZE",e);setAnalyzeStatus("No se pudo analizar. Puedes rellenar los datos a mano o reintentarlo.");if(e.message!=="AI_QUOTA")toast("No se pudo analizar la prenda")}
+ }catch(e){console.error("ANALYZE",e);setAnalyzeStatus(e.message==="AI_QUOTA"?QUOTA_SHEET_MSG:"No se pudo analizar. Puedes rellenar los datos a mano o reintentarlo.");if(e.message!=="AI_QUOTA")toast("No se pudo analizar la prenda")}
  finally{btn.disabled=false;btn.textContent="✨ Analizar foto con IA"}
 }
 function promptWear(ids,lookId){
@@ -2697,7 +2699,7 @@ function buyCheckHtml(){
   (!c.analyzed?'<div class="notice-card"><p>'+(c.category?'Revisa los datos: el color lo he estimado en tu móvil.':'Elige la categoría para que el veredicto sea fiable. El color lo he estimado en tu móvil.')+'</p>'+
    '<button type="button" class="secondary wide" id="buyAnalyze"'+(c.analyzing?' disabled':'')+'>'+(c.analyzing?'Reconociendo…':'✦ Reconocer con IA')+'</button><p class="helper">Rellena categoría, estilo y detalles. Usa 1 de tus '+AI_LIMITS.analyze+' análisis de hoy.</p></div>':'')+
   '<div class="verdict '+r.tone+'"><strong>'+fx(r.verdict)+'</strong>'+r.reasons.map(x=>'<p>'+fx(x)+'</p>').join("")+'</div>'+
-  '<h3 class="mini-title">Combina con ('+r.compatible.length+')</h3>'+(r.compatible.length?thumbs(r.compatible):'<p class="muted">Ninguna prenda de tu armario.</p>')+
+  '<h3 class="mini-title">'+(c.category&&!isClothes(c)?'Completa '+plural(r.core.length,"look","looks")+' con estas prendas':'Combina con ('+r.compatible.length+')')+'</h3>'+(r.compatible.length?thumbs(r.compatible):'<p class="muted">Ninguna prenda de tu armario.</p>')+
   (r.duplicates.length?'<h3 class="mini-title">Se parece a ('+r.duplicates.length+')</h3>'+thumbs(r.duplicates):'')+
   '<button class="secondary wide" id="buyLooks"'+(r.compatible.length?'':' disabled')+'>✦ Ver looks con esta prenda</button>'+
   (c.looks?c.looks.length?'<div class="grid buy-looks">'+c.looks.map(l=>{const gs=l.ids.map(id=>id==="__nueva__"?{name:c.name||"Prenda nueva",image:c.image,category:c.category,bgWhite:!!c.bgWhite}:myGarments().find(g=>g.id===id)).filter(Boolean);return '<article class="card">'+outfitBoard(gs)+'<div class="card-body"><div class="card-title">'+fx(l.why)+'</div><div class="look-items">'+gs.map(g=>'<span class="look-chip">'+fx(g.name)+'</span>').join("")+'</div></div></article>'}).join("")+'</div>':'<p class="muted">Con tu armario actual no salen looks que combinen bien con esta prenda.</p>':'')+
@@ -3059,7 +3061,7 @@ function bind(){
   let original;try{original=await readImage(f)}catch(err){return toast(err.message==="IMAGE_TOO_LARGE"?"La imagen es demasiado grande":"No se pudo leer la foto")}
   const ph=sheetPhoto={original,edited:null,mode:"original",changed:true};renderPhotoControls();
   if($("#autoWhite")?.checked)await makeSheetWhite();
-  if(sheetPhoto===ph&&$("#autoAnalyze")?.checked)analyzeGarment()};
+  if(sheetPhoto===ph&&$("#autoAnalyze")?.checked){if(aiUsage().analyze>=AI_LIMITS.analyze)setAnalyzeStatus(QUOTA_SHEET_MSG);else analyzeGarment()}}; /* sin análisis hoy: no insistir en cada foto de la subida */
  $("#garmentImage").addEventListener("change",onPhoto);$("#garmentCamera").addEventListener("change",onPhoto);
  // Botones «Hacer foto» y «Galería»: abren el selector correspondiente (en la ficha y en «¿Lo compro?»)
  document.addEventListener("click",e=>{const b=e.target.closest?.("[data-photo-pick]");if(b)$("#"+b.dataset.photoPick)?.click()});
