@@ -53,8 +53,8 @@ try{
   last.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape",bubbles:true,cancelable:true}));
   const returned=document.activeElement===launcher&&!document.querySelector("#uxFocusAudit");
   launcher.focus();
-  showSheet("uxFocusAudit",\'<h2 id="uxFocusAuditTitle">Primer paso</h2><button>Continuar</button>\');
-  showSheet("uxFocusAudit",\'<h2 id="uxFocusAuditTitle">Segundo paso</h2><button data-close-sheet>Cerrar</button>\');
+  showSheet("uxFocusAudit",'<h2 id="uxFocusAuditTitle">Primer paso</h2><button>Continuar</button>');
+  showSheet("uxFocusAudit",'<h2 id="uxFocusAuditTitle">Segundo paso</h2><button data-close-sheet>Cerrar</button>');
   document.querySelector("#uxFocusAudit [data-close-sheet]").click();
   const rerenderReturned=document.activeElement===launcher;
   launcher.remove();
