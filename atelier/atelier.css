@@ -555,3 +555,5 @@ p.notice-card{display:block}
 /* Dense collages: treat small accessories as supporting details. */
 .look-mixed-board:is([data-count="6"],[data-count="7"])>.look-mixed-item[data-piece-kind="accessory"] img{padding:18%}
 .look-mixed-board:is([data-count="6"],[data-count="7"])>.look-mixed-item[data-piece-kind="bag"] img{padding:9%}
+.empty .explore-occs{flex-wrap:wrap;justify-content:center;overflow:visible}
+.welcome-empty p{max-width:34ch;margin-inline:auto}
