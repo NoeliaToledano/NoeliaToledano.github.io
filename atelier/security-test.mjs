@@ -417,6 +417,16 @@ console.log("PASS: Styling engine (20/100/500 prendas): capas según tiempo, var
   console.log("PASS: Looks list puts the most complete ones first among comparable quality");
 }
 
+// Recomendaciones visuales: cada prenda del catálogo tiene su ficha dibujada (SVG en data:, permitido por la CSP) y un enlace a productos reales
+{
+  const r=new Function("document","sessionStorage","crypto",src+`
+  return {sk:CATALOG.map(c=>[c.name,sketchKind(c),decodeURIComponent(pieceSketch(c).replace("data:image/svg+xml,",""))]),link:shopLink(CATALOG[0])};`)(document,sessionStorage,{randomUUID:()=>"t"});
+  for(const [n,k,svg] of r.sk){assert.ok(/^<svg[^>]+viewBox="[\d .]+"/.test(svg)&&/<path d="M/.test(svg)&&!/undefined/.test(svg),"Ficha dibujada válida para "+n);assert.ok(!/fill="#c9c3ba"/.test(svg),"Color conocido para "+n)}
+  assert.equal(r.sk.find(x=>x[0]==="Falda midi negra")[1],"skirt");assert.equal(r.sk.find(x=>x[0]==="Botines negros")[1],"boot");assert.equal(r.sk.find(x=>x[0]==="Top negro de tirantes")[1],"tank");
+  assert.match(r.link,/https:\/\/www\.google\.com\/search\?tbm=shop&q=Camiseta%20blanca%20b%C3%A1sica%20mujer/);assert.match(r.link,/rel="noopener noreferrer"/);
+  console.log("PASS: Shopping suggestions get a drawn sketch per catalog piece and a real-products link");
+}
+
 // Looks editados: lo que la persona pone suma y lo que quita resta; el motor acaba proponiendo su versión
 {
   const r=new Function("document","sessionStorage","crypto",src+`
