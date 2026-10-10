@@ -1177,6 +1177,9 @@ function styleAffinity(a,b){
  return v;
 }
 const STYLE_OK=Object.fromEntries(Object.entries(STYLE_AFF).map(([k,m])=>[k,Object.keys(m).filter(x=>m[x]>=.3)]));
+/* Combinan de verdad: reglas básicas (pairs) y relación de estilista ≥ 0,6 con el gusto del perfil. Lo usan «¿Lo compro?», Recomendaciones y Maletas (revisión general) */
+let goesMemo={sig:null,ctx:null};const goesCtx=()=>{if(goesMemo.sig!==relCache.sig)goesMemo={sig:relCache.sig,ctx:engineContext({occasion:null})};return goesMemo.ctx}; /* con el gusto del perfil (revisión de Codex, #181) */
+const goes=(a,b,ctx=goesCtx())=>pairs(a,b)&&(relationOf(a,b,ctx)?.s??1)>=REL_OK;
 function pairs(a,b){
  if(a.id&&a.id===b.id)return false;
  if(a.category&&b.category&&!(PAIRS[a.category]||[]).includes(b.category))return false;
@@ -2481,11 +2484,12 @@ function packLooks(items,ctx=packCtx()){
  return looks.map(l=>{const out=[...l];for(const cat of ["Zapatos","Capas"]){const x=items.find(g=>g.category===cat&&out.every(p=>pairs(g,p)&&rel(g,p)));if(x)out.push(x)}return out});
 }
 function suggestPacking(t){
+ ensureRelations();
  const season=seasonFor(t.start),days=tripDays(t),all=myGarments().filter(g=>fitsSeason(g,season));
  const core=all.filter(g=>["Arriba","Abajo","Vestidos"].includes(g.category)),chosen=[],max=Math.min(12,days+4);
  const pctx=packCtx(),looksOf=list=>packLooks(list,pctx).length;
  // Versatilidad: con cuántas prendas complementarias combina (desempata cuando aún no suma looks)
- const partner={Arriba:"Abajo",Abajo:"Arriba"},versatility=g=>core.filter(o=>o.category===partner[g.category]&&pairs(g,o)).length;
+ const partner={Arriba:"Abajo",Abajo:"Arriba"},versatility=g=>core.filter(o=>o.category===partner[g.category]&&goes(g,o)).length;
  while(looksOf(chosen)<days&&chosen.length<max){
   const now=looksOf(chosen);let best=null,bestScore=-1;
   for(const g of core){
@@ -2565,8 +2569,9 @@ function renderTrip(root,t){
 /* ===================== 8. Compras ===================== */
 let buyCheck=null;
 function evaluateCandidate(c){
- const gs=myGarments(),compatible=gs.filter(g=>pairs(c,g)),core=compatible.filter(g=>!c.category||(CORE[c.category]||[]).includes(g.category));
- const duplicates=gs.filter(g=>isDuplicate(c,g)),rescued=gs.filter(g=>pairs(c,g)&&gs.filter(o=>pairs(g,o)).length<2);
+ ensureRelations();
+ const gs=myGarments(),compatible=gs.filter(g=>goes(c,g)),core=compatible.filter(g=>!c.category||(CORE[c.category]||[]).includes(g.category));
+ const duplicates=gs.filter(g=>isDuplicate(c,g)),rescued=gs.filter(g=>goes(c,g)&&gs.filter(o=>goes(g,o)).length<2);
  const reasons=[];let verdict,tone;
  if(duplicates.length>=2){verdict="No lo necesitas";tone="bad";reasons.push("Ya tienes "+duplicates.length+" prendas muy parecidas.")}
  else if(core.length>=3&&!duplicates.length){verdict="Cómpralo";tone="good";reasons.push("Combina con "+plural(compatible.length,"prenda","prendas")+" de tu armario.")}
@@ -2697,22 +2702,22 @@ const CATALOG=[
 ].map(([name,category,color,style,season,pattern])=>({name,category,color,style,season,pattern:pattern||"plain"}));
 function simulate(c,gs,bases){
  let looks=[];
- if(c.category==="Arriba")looks=gs.filter(g=>g.category==="Abajo"&&pairs(c,g)).map(b=>[c,b]);
- else if(c.category==="Abajo")looks=gs.filter(g=>g.category==="Arriba"&&pairs(c,g)).map(t=>[t,c]);
- else if(c.category==="Vestidos")looks=gs.filter(g=>["Zapatos","Capas"].includes(g.category)&&pairs(c,g)).map(e=>[c,e]);
- else looks=bases.filter(p=>p.every(x=>pairs(c,x))).map(p=>[...p,c]);
- const complete=c.category==="Zapatos"?looks.filter(l=>!gs.some(g=>g.category==="Zapatos"&&l.slice(0,-1).every(p=>pairs(g,p)))).length:0;
- const examples=looks.slice(0,40).map(l=>{if(["Arriba","Abajo"].includes(c.category)){const rest=l.filter(x=>x!==c),s=gs.find(g=>g.category==="Zapatos"&&pairs(g,c)&&rest.every(p=>pairs(g,p)));return s?[...l,s]:l}return l});
+ if(c.category==="Arriba")looks=gs.filter(g=>g.category==="Abajo"&&goes(c,g)).map(b=>[c,b]);
+ else if(c.category==="Abajo")looks=gs.filter(g=>g.category==="Arriba"&&goes(c,g)).map(t=>[t,c]);
+ else if(c.category==="Vestidos")looks=gs.filter(g=>["Zapatos","Capas"].includes(g.category)&&goes(c,g)).map(e=>[c,e]);
+ else looks=bases.filter(p=>p.every(x=>goes(c,x))).map(p=>[...p,c]);
+ const complete=c.category==="Zapatos"?looks.filter(l=>!gs.some(g=>g.category==="Zapatos"&&l.slice(0,-1).every(p=>goes(g,p)))).length:0;
+ const examples=looks.slice(0,40).map(l=>{if(["Arriba","Abajo"].includes(c.category)){const rest=l.filter(x=>x!==c),s=gs.find(g=>g.category==="Zapatos"&&goes(g,c)&&rest.every(p=>goes(g,p)));return s?[...l,s]:l}return l});
  const q=l=>{let t=0,n=0,min=1;for(let i=0;i<l.length;i++)for(let j=i+1;j<l.length;j++){const r=relationOf(l[i],l[j]);if(r){t+=r.s;n++;min=Math.min(min,r.s)}}return min<REL_OK?0:n?t/n:.6}; /* eslabón débil: una pareja floja descarta el ejemplo (revisión de Codex, #174) */
  examples.sort((a,b)=>b.length-a.length||q(b)-q(a));
  return {count:looks.length,complete,examples:examples.filter(l=>q(l)>=REL_OK).slice(0,12)}; /* se eligen 2 al final, variados entre tarjetas */
 }
 function shoppingSuggestions(){
  ensureRelations();const gs=myGarments(),bases=outfitBases(gs),season=thisSeason(),wished=new Set(appState.data.wishlist.map(w=>norm(w.name)));
- const lonely=new Set(gs.filter(g=>gs.filter(o=>pairs(g,o)).length<2).map(g=>g.id)),partner={Arriba:["Abajo"],Abajo:["Arriba"]},out=[];
+ const lonely=new Set(gs.filter(g=>gs.filter(o=>goes(g,o)).length<2).map(g=>g.id)),partner={Arriba:["Abajo"],Abajo:["Arriba"]},out=[];
  for(const c of CATALOG){
   if(wished.has(norm(c.name))||gs.some(g=>isDuplicate(c,g)))continue;
-  const compatible=gs.filter(g=>pairs(c,g));if(!compatible.length)continue;
+  const compatible=gs.filter(g=>goes(c,g));if(!compatible.length)continue;
   const sim=simulate(c,gs,bases),rescued=compatible.filter(g=>lonely.has(g.id)&&(partner[c.category]||[]).includes(g.category));
   if(sim.count<2&&!rescued.length)continue;
   const seasonBoost=c.season==="all"?1:c.season===season?1.2:.5;

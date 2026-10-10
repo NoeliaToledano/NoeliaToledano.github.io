@@ -374,6 +374,20 @@ console.log("PASS: Styling engine (20/100/500 prendas): capas según tiempo, var
   console.log("PASS: Swap options respect weather, «Casi» and relations");
 }
 
+// goes() usa el gusto del perfil: si te gustan los estampados, dos estampados cuentan como combinación
+{
+  const r=new Function("document","sessionStorage","crypto",src+`
+  const G=(id,category,type,color,extra={})=>({id,name:type+" "+color,category,type,color,style:"casual",season:"all",pattern:"plain",updatedAt:"x",...extra});
+  appState.profile={id:"noelia"};
+  appState.data=normalizeData({garments:[G("t","Arriba","Blusa","Rojo",{pattern:"floral"}),G("b","Abajo","Falda","Azul",{pattern:"stripes"}),G("t2","Arriba","Camisa","Verde",{pattern:"checks"}),G("b2","Abajo","Pantalón","Negro",{pattern:"dots"})]});
+  ensureRelations();const by=id=>myGarments().find(g=>g.id===id),before=goes(by("t"),by("b"));
+  appState.data.looks=[{id:"L1",garmentIds:["t2","b2"],updatedAt:"x"},{id:"L2",garmentIds:["t","b2"],updatedAt:"x"},{id:"L3",garmentIds:["t2","b"],updatedAt:"x"}];appState.data.feedback={L1:"up",L2:"up",L3:"up"};
+  ensureRelations();const c=goesCtx();return {before,hasCtx:c.likes instanceof Set&&c.occasion===null,same:goes(by("t"),by("b"))===(pairs(by("t"),by("b"))&&(relationOf(by("t"),by("b"),c)?.s??1)>=REL_OK),fresh:c!==(appState.data.feedback.L1="down",ensureRelations(),goesCtx())};`)(document,sessionStorage,{randomUUID:()=>"t"});
+  assert.equal(r.before,false,"Sin gusto aprendido, dos estampados no cuentan");
+  assert.ok(r.hasCtx&&r.same&&r.fresh,"goes() usa el contexto del perfil y se rehace cuando cambian los votos");
+  console.log("PASS: goes() uses the profile context");
+}
+
 // Estilos flexibles (#52): deportivas + vaqueros + americana sí; mallas + sudadera en informal; nada de gimnasio en boda ni con vestido de fiesta
 const styleProbe=new Function("document","sessionStorage","crypto",src+`
 const G=(id,category,color,style,extra={})=>({id,name:id,category,color,style,season:"all",pattern:"plain",createdAt:"2026-10-01",updatedAt:"x",...extra});
