@@ -441,8 +441,8 @@ console.log("PASS: Styling engine (20/100/500 prendas): capas según tiempo, var
   appState.profile={id:"noelia"};appState.data=normalizeData({garments:gs});Object.assign(appState.data.preferences,{temperature:17,autoWeather:false});ensureRelations();
   const a=myGarments().find(g=>/chambray/.test(g.name)),wk=l=>l.some((x,i)=>l.slice(i+1).some(y=>(relationOf(x,y)?.s??1)<REL_OK));
   const around=rankOutfits({required:a.id,max:8}).map(l=>l.garments);let all=[];for(const occasion of [null,"daily","work","party"])all=all.concat(rankOutfits({occasion,max:6}).map(l=>l.garments));
-  return {check:around.some(l=>l.some(g=>/chlo. checked/.test(g.name))),weakAround:around.filter(wk).length,weakAll:all.filter(wk).length,n:all.length};`)(document,sessionStorage,{randomUUID:()=>"t"},gs);
-  assert.equal(r.check,false,"La camisa vaquera no se propone con el pantalón de cuadros (Noelia)");
+  return {check:around.some(l=>l.some(g=>/chlo. checked/.test(g.name))),pairStrong:(relationOf(a,myGarments().find(g=>/chlo. checked/.test(g.name)))?.s??0)>=REL_OK,weakAround:around.filter(wk).length,weakAll:all.filter(wk).length,n:all.length};`)(document,sessionStorage,{randomUUID:()=>"t"},gs);
+  assert.ok(!r.check||r.pairStrong,"Camisa vaquera y cuadros: solo si la relación contextual es suficiente, sin veto por familia");
   assert.equal(r.weakAround,0,"Ningún look de «Combinar» con una pareja floja");
   assert.ok(r.weakAll<=1,"Casi ningún look con una pareja floja ("+r.weakAll+" de "+r.n+")");
   console.log("PASS: Looks combine 100%: strong nucleus and shoes (real chambray + checks case)");
