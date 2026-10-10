@@ -1722,7 +1722,7 @@ const DRESS_TARGET={elegante:{party:1,smart:.9,casual:.4,sport:0},arreglada:{sma
 const DRESS_LABEL={elegante:"Elegante",arreglada:"Arreglada",informal:"Informal",deporte:"Deporte",comoda:"Cómoda"};
 const SEASON3=m=>m>=5&&m<=8?"warm":m===11||m<=1?"cold":"mid";          // jun–sep cálida, dic–feb fría, resto media
 const SEASON_TEMP={warm:27,mid:19,cold:11};                              // para fechas sin tiempo real
-function tempFor(date){return !date||date===dayISO()?currentTemperature():SEASON_TEMP[SEASON3(Number(date.slice(5,7))-1)]}
+function tempFor(date){if(!date||date===dayISO())return currentTemperature();const w=appState.data?.preferences?.weatherWeek?.[date];return Number.isFinite(w)?w:SEASON_TEMP[SEASON3(Number(date.slice(5,7))-1)]} /* previsión de la semana si la hay (Open-Meteo), si no la media de la temporada */
 const seasonFits=(g,s)=>!g.season||g.season==="all"||s==="mid"||g.season===s;
 /* Perfil de prenda (petición de Noelia, 09/10): el motor decide con las características de la ficha (formalidad,
    manga, grosor, tejido, largo, ocasiones), que rellena el análisis y puede corregir la usuaria. El nombre solo se usa
@@ -2183,11 +2183,12 @@ function renderAround(root){
 async function fetchTodayTemperature(ask){
  const p=appState.data.preferences;let pos=p.weatherPlace;
  if(!pos||ask)pos=await new Promise((res,rej)=>{if(!navigator.geolocation)return rej(new Error("NO_GEO"));navigator.geolocation.getCurrentPosition(x=>res({lat:Math.round(x.coords.latitude*100)/100,lon:Math.round(x.coords.longitude*100)/100}),e=>rej(e),{timeout:10000,maximumAge:3600000})});
- const r=await fetch("https://api.open-meteo.com/v1/forecast?latitude="+pos.lat+"&longitude="+pos.lon+"&daily=temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1");
+ const r=await fetch("https://api.open-meteo.com/v1/forecast?latitude="+pos.lat+"&longitude="+pos.lon+"&daily=temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=7"); /* 7 días: Mi semana usa la previsión de cada día */
  if(!r.ok)throw new Error("WEATHER_"+r.status);
  const d=await r.json(),max=d?.daily?.temperature_2m_max?.[0],min=d?.daily?.temperature_2m_min?.[0];
  if(typeof max!=="number"||typeof min!=="number")throw new Error("WEATHER_DATA");
- Object.assign(p,{weatherPlace:pos,temperature:Math.round((max+min)/2),weatherMin:Math.round(min),weatherMax:Math.round(max),weatherDay:dayISO(),autoWeather:true});
+ const week={},T=d?.daily?.time||[];T.forEach((day,i)=>{const a=d.daily.temperature_2m_max?.[i],b=d.daily.temperature_2m_min?.[i];if(typeof a==="number"&&typeof b==="number"&&validDay(day))week[day]=Math.round((a+b)/2)});
+ Object.assign(p,{weatherWeek:week,weatherPlace:pos,temperature:Math.round((max+min)/2),weatherMin:Math.round(min),weatherMax:Math.round(max),weatherDay:dayISO(),autoWeather:true});
  await saveState({fromSync:true});return {mean:p.temperature,max:Math.round(max),min:Math.round(min)};
 }
 let weatherInFlight=false;
@@ -2208,6 +2209,21 @@ function weekStartOf(day){const d=new Date((validDay(day)?day:dayISO())+"T12:00:
 function addDays(day,n){const d=new Date(day+"T12:00:00");d.setDate(d.getDate()+n);return dayISO(d)}
 const weekdayName=d=>new Intl.DateTimeFormat("es-ES",{weekday:"long"}).format(new Date(d+"T12:00:00"));
 const capFirst=s=>s.charAt(0).toUpperCase()+s.slice(1);
+/* «Planificar los días libres» (revisión nocturna): un núcleo distinto cada día, sin repetir prendas principales en la semana
+   y variando calzado y bolso (las prendas de los días cercanos se evitan). Sin IA. */
+function weekFillPlan(days){
+ const today=dayISO(),plans=[],skipN=new Set(myPlans().filter(p=>days.includes(p.date)).map(p=>nucleusKey(planGarments(p)))),used=new Set();
+ for(const d of days){if(d<today||planFor(d))continue;
+  const l=rankOutfits({date:d,max:1,avoid:new Set([...used,...dailyAvoid(d)]),skipNuclei:[...skipN]})[0]||rankOutfits({date:d,max:1,avoid:used})[0];if(!l)continue;
+  skipN.add(nucleusKey(l.garments));l.ids.forEach(id=>used.add(id));plans.push({date:d,ids:l.ids})}
+ return plans;
+}
+async function fillWeek(days){
+ const plans=weekFillPlan(days);if(!plans.length)return toast("No hay días libres que planificar");
+ const now=new Date().toISOString();
+ await mutate(()=>{for(const {date,ids} of plans){const id="plan:"+date;appState.data.plans=myPlans().filter(p=>{if(p.date!==date)return true;if(p.id!==id)tomb(p.id);return false});
+  myPlans().push({id,date,garmentIds:[...ids],name:"Propuesta de Atelier",lookId:null,worn:false,updatedAt:now})}},plural(plans.length,"día planificado","días planificados")+". Puedes cambiar cualquiera.");
+}
 async function setPlan(date,garmentIds,{name,lookId}={}){
  const now=new Date().toISOString();
  // Id fijo por día: si dos móviles planifican el mismo día sin conexión, queda uno solo (el más reciente)
@@ -2315,11 +2331,13 @@ function renderWeek(root){
  stylistShell(root,"Mi semana","Planifica qué te pondrás cada día. Lo planificado no cuenta como usado hasta que pulses «Me lo he puesto».",
   '<div class="week-nav"><button type="button" class="secondary" id="weekPrev" aria-label="Semana anterior">‹</button><strong>'+fx(range)+'</strong><button type="button" class="secondary" id="weekNext" aria-label="Semana siguiente">›</button></div>'+
   (ws!==weekStartOf(today)?'<button type="button" class="chip-button" id="weekToday">Volver a esta semana</button>':'')+
+  (days.some(d=>d>=today&&!planFor(d))?'<button type="button" class="primary wide" id="weekFill">✦ Planificar los días libres</button>':'')+
   '<div class="week-list">'+days.map(d=>{const p=planFor(d);return '<section class="day-card'+(d===today?' is-today':'')+'" aria-label="'+fx(capFirst(weekdayName(d))+" "+fmtDay(d))+'"><div class="day-head"><strong>'+fx(capFirst(weekdayName(d)))+'</strong><span class="muted">'+fx(fmtDay(d))+(d===today?' · hoy':'')+'</span></div>'+
    (p?planCardHtml(p):'<button type="button" class="secondary wide" data-plan-pick="'+d+'">+ Elegir look</button>')+'</section>'}).join("")+'</div>');
  $("#weekPrev").addEventListener("click",()=>{ui.weekStart=addDays(ws,-7);render()});
  $("#weekNext").addEventListener("click",()=>{ui.weekStart=addDays(ws,7);render()});
  $("#weekToday")?.addEventListener("click",()=>{ui.weekStart=weekStartOf(today);render()});
+ $("#weekFill")?.addEventListener("click",()=>fillWeek(days));
  bindPlanActions(root);
 }
 /* Tu look de hoy: una propuesta completa nada más entrar, según el tiempo de tu zona (o 25 °C), sin IA.
@@ -2336,6 +2354,9 @@ function computeDaily(date,skip=[],skipN=[]){
  return dayProposals(date,1,new Set([...dailyAvoid(date),...seenIds]),skip,skipN)[0]||dayProposals(date,1,dailyAvoid(date),skip,skipN)[0]||null;
 }
 let dailyDirty=false;
+/* Lo que eliges al ponerte un look (principal o una versión) se cuenta por perfil; si una intención domina, se propone directamente */
+function favoriteIntent(){const t=appState.data.preferences.versionTaste||{},n=Object.values(t).reduce((a,b)=>a+(Number(b)||0),0);if(n<3)return null;const [k,v]=Object.entries(t).sort((a,b)=>b[1]-a[1])[0];return v/n>=.6&&k!=="Principal"?k:null}
+function chosenVersionLabel(d){const mainGs=(d.main?.length?d.main:d.ids||[]).map(id=>myGarments().find(g=>g.id===id)).filter(Boolean);if(lookSig(d.ids||[])===lookSig(mainGs.map(g=>g.id)))return "Principal";return lookVersions(mainGs,engineContext()).find(v=>lookSig(v.ids)===lookSig(d.ids||[]))?.label||null}
 function ensureDailyLook(force=false){
  const p=appState.data.preferences,today=dayISO(),temp=currentTemperature();let d=p.dailyLook;
  const wsig=myGarments().length+"|"+myGarments().reduce((m,g)=>String(g.updatedAt||"")>m?String(g.updatedAt||""):m,"")+"|"+(p.dressStyle||"")+"|"+workDress(); // cambiar el código de vestir rehace el look del día (revisión de Codex, #139)
@@ -2348,6 +2369,7 @@ function ensureDailyLook(force=false){
  let l=computeDaily(today,skip,skipN),wrapped=false;
  if(!l&&skip.length){wrapped=true;l=computeDaily(today,[],[]);if(l)toast("Ya has visto todas las propuestas de hoy: vuelvo a empezar")}
  d=p.dailyLook={date:today,ids:l?l.map(g=>g.id):[],main:l?l.map(g=>g.id):[] /* look principal: sus versiones se calculan sobre él */,temp,wsig,skip:wrapped?[]:skip,skipN:wrapped?[]:skipN,touched:force||d?.date===today&&!!d?.touched,worn:false};
+ const fav=favoriteIntent(),fv=fav&&l?lookVersions(l,engineContext()).find(v=>v.label===fav):null;if(fv){d.ids=[...fv.ids];d.byTaste=fav} /* tu versión de siempre, ya elegida */
  return d;
 }
 function weatherLabel(){
@@ -2366,8 +2388,9 @@ function dailyLookHtml(){
  const opts=versions.length?[{label:"Principal",ids:mainGs.map(g=>g.id),garments:mainGs},...versions]:[],cur=lookSig(d.ids||[]);
  const versionsHtml=opts.length?'<div class="look-versions" role="group" aria-label="Versiones de este look">'+opts.map((v,i)=>{const on=lookSig(v.ids)===cur,diff=v.garments.filter(g=>!mainGs.includes(g)&&g.category!=="Bolsos"&&g.category!=="Accesorios");
    return '<button type="button" class="look-version'+(on?' on':'')+'" data-version="'+i+'" aria-pressed="'+on+'"><span class="look-version-thumbs">'+(i?diff:mainGs.filter(g=>g.category==="Zapatos"||g.category==="Capas")).slice(0,2).map(g=>validImage(g.image)?'<img src="'+photoUrl(g)+'" alt="" loading="lazy">':'<span aria-hidden="true">◇</span>').join("")+'</span><span>'+fx(v.label)+'</span></button>'}).join("")+'</div>':'';
+ const tasteNote=d.byTaste&&lookSig(d.ids||[])!==lookSig(mainGs.map(g=>g.id))&&chosenVersionLabel(d)===d.byTaste?'<p class="muted version-note">Te muestro la versión «'+fx(d.byTaste.toLowerCase())+'» porque es la que más eliges.</p>':'';
  return '<section class="feature-card daily-look"><div class="section-head"><h2>Tu look de hoy</h2></div>'+weather+
-  '<div class="daily-board">'+outfitBoard(gs)+'</div>'+versionsHtml+'<div class="look-items">'+gs.map(g=>'<span class="look-chip">'+fx(g.name)+'</span>').join("")+'</div>'+
+  '<div class="daily-board">'+outfitBoard(gs)+'</div>'+versionsHtml+tasteNote+'<div class="look-items">'+gs.map(g=>'<span class="look-chip">'+fx(g.name)+'</span>').join("")+'</div>'+
   (why?.reasons.length||why?.warnings.length?'<ul class="look-reasons">'+why.reasons.map(r=>'<li>'+fx(r)+'</li>').join("")+why.warnings.map(w=>'<li class="warn">'+fx(w)+'</li>').join("")+'</ul>':'')+
   '<div class="daily-actions">'+(d.worn||logs().some(x=>x.date===dayISO()&&lookSig(x.garmentIds||[])===lookSig(d.ids||[]))?'<span class="badge-ok">✓ Te lo has puesto hoy</span>':'<button type="button" class="primary" id="dailyWear">Me lo pongo</button>')+
   '<button type="button" class="secondary" id="dailyNext">↻ Otro look</button></div>'+
@@ -2399,8 +2422,8 @@ function bindDailyLook(root){
   const mainGs=(d.main?.length?d.main:d.ids).map(id=>myGarments().find(g=>g.id===id)).filter(Boolean),i=Number(b.dataset.version),v=i?lookVersions(mainGs,engineContext())[i-1]:{ids:mainGs.map(g=>g.id)};
   if(!v)return;if(!d.main?.length)d.main=mainGs.map(g=>g.id);d.ids=[...v.ids];d.worn=logs().some(x=>x.date===dayISO()&&lookSig(x.garmentIds||[])===lookSig(v.ids)) /* otra versión: «me lo pongo» vuelve a estar disponible (revisión de Codex, #171) */;d.touched=true;await saveState();render()}));
  $("#dailyAlmost",root)?.addEventListener("click",()=>{const d=p.dailyLook;if(!d?.ids?.length)return;openAlmost(d.ids,p.occasion||"daily",async()=>{ensureDailyLook(true);await saveState();render()})});
- $("#dailyWear",root)?.addEventListener("click",async()=>{const d=p.dailyLook;if(!d?.ids?.length)return;const now=new Date().toISOString();
-  await mutate(()=>{logs().unshift({id:uid(),date:today,garmentIds:[...d.ids],lookId:null,updatedAt:now});d.worn=true;d.touched=true},"Registrado: te lo has puesto hoy")});
+ $("#dailyWear",root)?.addEventListener("click",async()=>{const d=p.dailyLook;if(!d?.ids?.length)return;const now=new Date().toISOString(),label=chosenVersionLabel(d);
+  await mutate(()=>{if(label)p.versionTaste={...(p.versionTaste||{}),[label]:((p.versionTaste||{})[label]||0)+1};logs().unshift({id:uid(),date:today,garmentIds:[...d.ids],lookId:null,updatedAt:now});d.worn=true;d.touched=true},"Registrado: te lo has puesto hoy")});
  $("#dailySave",root)?.addEventListener("click",async()=>{const d=p.dailyLook;if(!d?.ids?.length)return;
   if(myLooks().some(l=>lookSig(l.garmentIds||[])===lookSig(d.ids)))return toast("Ese look ya está guardado");
   await mutate(()=>{d.touched=true;myLooks().unshift({id:uid(),name:"Look del "+fmtDay(today),garmentIds:[...d.ids],occasion:p.occasion||"daily",ai:false,updatedAt:new Date().toISOString()})},"Look guardado")});
