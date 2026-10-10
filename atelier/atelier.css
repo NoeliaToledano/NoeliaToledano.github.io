@@ -467,3 +467,13 @@ p.notice-card{display:block}
 .almost-why{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
 .garment-pairs .pair-marks{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .garment-pairs .pair-warn{color:#8a5a12;background:#f5ead6;border-radius:10px;padding:8px 10px}
+/* Versiones del look de hoy: mismo núcleo, otra intención */
+.look-versions{display:flex;gap:8px;overflow-x:auto;padding:4px 0 8px;margin-top:8px}
+.look-version{display:grid;gap:4px;justify-items:center;min-width:92px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:8px;font-size:12px;color:var(--ink);cursor:pointer;flex:0 0 auto}
+.look-version.on{border-color:var(--ink);box-shadow:0 0 0 2px var(--ink)}
+.look-version-thumbs{display:flex;gap:4px;height:40px}
+.look-version-thumbs img{width:40px;height:40px;object-fit:contain;border-radius:6px}
+.version-preview{display:grid;gap:8px;padding:8px 0}.plan-option-group{display:grid;gap:4px}
+/* Revisión general (10/10/2026): los campos de fecha no se salen de su tarjeta en el móvil; versiones compactas en las tarjetas de dos columnas */
+.field{min-width:0}.field input,.field select{min-width:0;max-width:100%}input[type="date"]{min-width:0;width:100%}
+.look-tile .look-version{min-width:74px;padding:6px;font-size:11px;gap:2px}.look-tile .look-version-thumbs{height:30px}.look-tile .look-version-thumbs img{width:30px;height:30px}
