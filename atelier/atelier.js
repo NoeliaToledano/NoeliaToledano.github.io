@@ -1014,11 +1014,11 @@ function renderGarmentPairs(g){
  const occs=REL_OCCS.filter(o=>occasionFits(g,o)),occ=occs.includes(pairsView.occ)?pairsView.occ:null,rel=relationsFor(g,REL_OK,occ);
  const missing=EVIDENCE_FIELDS(g).filter(f=>!g[f]&&f!=="color").map(f=>META_NAME[f]||f);
  const styleClash=g.style&&g.formality in SHEET_STYLE&&SHEET_STYLE[g.formality]!==g.style&&!(g.formality==="formal"&&g.style==="party"); /* etiquetas que se contradicen: el estilista usa la formalidad */
- const clothes=isClothes(g);
- if(!clothes){const ok=new Set(rel.map(x=>x.g.id)),bs=lookBases().filter(b=>b.every(x=>ok.has(x.id))).sort((a,b)=>a.length-b.length); /* zapatos, bolsos y complementos: con looks enteros (arriba + abajo, o vestido) */
+ const clothes=isClothes(g),wear=["Casa","Baño"].includes(g.category); /* pijama o bañador: look completo por sí mismo, no complemento (revisión de Codex, #185) */
+ if(!clothes&&!wear){const ok=new Set(rel.map(x=>x.g.id)),bs=lookBases().filter(b=>b.every(x=>ok.has(x.id))).sort((a,b)=>a.length-b.length); /* zapatos, bolsos y complementos: con looks enteros (arriba + abajo, o vestido) */
   box.innerHTML='<h3>Completa estos looks</h3>'+(occs.length?'<div class="pair-occs" role="group" aria-label="Ocasión">'+[[null,"Todas"],...occs.map(o=>[o,occasions[o]||o])].map(([o,t])=>'<button type="button" class="chip-button'+(o===occ?' active':'')+'" aria-pressed="'+(o===occ)+'" data-pair-occ="'+(o||"")+'">'+fx(t)+'</button>').join("")+'</div>':'')+'<p class="muted pair-note">'+(occ?'Para «'+fx((occasions[occ]||occ).toLowerCase())+'»':'En general')+': '+(bs.length?plural(bs.length,"base de look","bases de look")+' de tu armario con las que va bien.':'todavía no hay ninguna base de look (arriba + abajo, o vestido) con la que vaya bien.')+'</p>'+bs.slice(0,8).map(b=>'<div class="pair-group">'+thumbs(b,3)+'</div>').join("")+(bs.length>8?'<p class="muted">Y '+(bs.length-8)+' más.</p>':'')+(missing.length?'<p class="muted pair-note">Para afinar, completa en la ficha: '+fx(missing.join(", "))+'.</p>':'');
  }else{
- const groups=new Map();for(const x of rel.filter(x=>isClothes(x.g))){if(!groups.has(x.r.register))groups.set(x.r.register,[]);groups.get(x.r.register).push(x)}
+ const groups=new Map();for(const x of wear?rel:rel.filter(x=>isClothes(x.g))){if(!groups.has(x.r.register))groups.set(x.r.register,[]);groups.get(x.r.register).push(x)}
  const catRank=x=>BIG.includes(x.category)?0:x.category==="Zapatos"?1:2; /* primero ropa, luego calzado y complementos */
  const order=["informal","arreglado","de fiesta","deportivo"],occText=xs=>{if(occ)return "";const c=new Map();for(const x of xs)for(const o of x.r.contexts)c.set(o,(c.get(o)||0)+1);return [...c].sort((a,b)=>b[1]-a[1]).slice(0,3).map(([o])=>(occasions[o]||o).toLowerCase()).join(", ")};
  box.innerHTML='<h3>Combina con</h3>'+(occs.length?'<div class="pair-occs" role="group" aria-label="Ocasión">'+[[null,"Todas"],...occs.map(o=>[o,occasions[o]||o])].map(([o,t])=>'<button type="button" class="chip-button'+(o===occ?' active':'')+'" aria-pressed="'+(o===occ)+'" data-pair-occ="'+(o||"")+'">'+fx(t)+'</button>').join("")+'</div>':'')+'<p class="muted pair-note">'+(occ?'Para «'+fx((occasions[occ]||occ).toLowerCase())+'»':'En general')+', sin contar el tiempo de hoy: eso lo tiene en cuenta el estilista al proponer looks.</p>'+(groups.size?[...groups].sort((a,b)=>order.indexOf(a[0])-order.indexOf(b[0])).map(([reg,xs])=>'<div class="pair-group"><p class="muted"><strong>'+fx(reg[0].toUpperCase()+reg.slice(1))+'</strong> · '+xs.length+(xs.length===1?' prenda':' prendas')+(occText(xs)?' · '+fx(occText(xs)):'')+'</p>'+thumbs(xs.slice().sort((a,b)=>catRank(a.g)-catRank(b.g)||b.r.s-a.r.s).map(x=>x.g),10)+'</div>').join("")
@@ -1221,8 +1221,13 @@ const goes=(a,b,ctx=goesCtx())=>pairs(a,b)&&(relationOf(a,b,ctx)?.s??1)>=REL_OK;
 /* Ropa primero (Noelia, 10/10/2026): la ropa se relaciona con ropa; calzado, bolsos y complementos se miden contra bases de look completas
    (arriba + abajo, o un vestido), nunca contra una prenda suelta: unos pendientes van con un look, no con una camiseta */
 const CLOTHES=["Arriba","Abajo","Vestidos","Capas"],isClothes=g=>CLOTHES.includes(g?.category);
-function lookBases(gs=myGarments()){const tops=gs.filter(g=>g.category==="Arriba"),bottoms=gs.filter(g=>g.category==="Abajo"),out=gs.filter(g=>g.category==="Vestidos").map(d=>[d]);
- for(const t of tops)for(const b of bottoms)if(goes(t,b))out.push([t,b]);return out}
+let lbCache={k:"",v:[]};
+function lookBases(gs=myGarments()){ensureRelations();const k=relCache.sig+"|"+gs.map(g=>g.id).join(",");if(lbCache.k===k)return lbCache.v; /* se calcula una vez por armario y fichas (revisión de Codex, #185) */
+ const tops=gs.filter(g=>g.category==="Arriba"),bottoms=gs.filter(g=>g.category==="Abajo"),out=gs.filter(g=>g.category==="Vestidos").map(d=>[d]),combos=[];
+ for(const t of tops)for(const b of bottoms)if(goes(t,b))combos.push([t,b]);
+ const room=Math.max(0,400-out.length),step=combos.length>room?combos.length/room:1; /* como mucho 400, como outfitBases */
+ for(let i=0;i<combos.length&&out.length<400;i+=step)out.push(combos[Math.floor(i)]);
+ lbCache={k,v:out};return out}
 const basesFor=(c,bs=lookBases())=>bs.filter(b=>b.every(x=>goes(c,x))); /* zapatos, bolsos y complementos se miden contra looks enteros, no prenda a prenda */
 function pairs(a,b){
  if(a.id&&a.id===b.id)return false;
