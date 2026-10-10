@@ -74,3 +74,9 @@ test("denim wash remains unknown when absent",()=>{
  assert.equal(e.wash.known,false);
  assert.deepEqual(e.pattern.motifs,["floral"]);
 });
+
+test("blank advanced wash does not steal legacy wash provenance",()=>{
+ const e=garmentEvidence({denimWash:"acid",materialAttributes:{wash:"  ",washSource:"user"}});
+ assert.equal(e.wash.value,"acid");
+ assert.equal(e.wash.source,"legacy");
+});
