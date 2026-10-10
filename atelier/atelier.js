@@ -2250,9 +2250,11 @@ function looksAround(g,max=8,occasion=null){
 /* Explorar looks por ocasión (idea de Noelia, 10/10/2026): varias propuestas, cada una con un núcleo distinto y sus versiones. Sin IA. */
 /* Qué le falta al armario para montar un look de una ocasión (UX, 10/10/2026): mejor «te falta una parte de abajo» que «revisa las etiquetas» */
 function missingFor(occ){const fit=g=>!occ||occasionFits(g,occ),n=c=>myGarments().filter(g=>g.category===c&&fit(g)).length,o=occ?" para «"+(occasions[occ]||occ).toLowerCase()+"»":"";
- if(n("Vestidos")||["home","beach"].includes(occ))return "";const t=n("Arriba"),b=n("Abajo");
+ if(n("Vestidos")||occ==="home"&&n("Casa")||occ==="beach"&&n("Baño"))return ""; /* el bañador o el pijama ya son un look entero (revisión de Codex, #205) */
+ if(occ==="home")return "Todavía no tienes ropa de casa (pijama, chándal o ropa cómoda de estar por casa).";
+ const t=n("Arriba"),b=n("Abajo");
  return !t&&!b?"Todavía no tienes prendas"+o+": añade una parte de arriba y una de abajo, o un vestido.":!b?"Te falta una parte de abajo"+o+" (pantalón, falda, vaquero…) o un vestido.":!t?"Te falta una parte de arriba"+o+" (camiseta, blusa, jersey…) o un vestido.":""}
-const occsWithLooks=(skip,max=3)=>EXPLORE_OCCS.filter(o=>o!==skip&&rankOutfits({occasion:o,max:1}).length).slice(0,max);
+const occsWithLooks=(skip,max=3,so={})=>EXPLORE_OCCS.filter(o=>o!==skip&&rankOutfits({occasion:o,max:1,...so}).length).slice(0,max); /* misma temporada que lo mostrado (revisión de Codex, #205) */
 const EXPLORE_OCCS=["daily","work","party","event","formal","sport","beach","home"];
 function renderExplore(root){
  const p=appState.data.preferences,avail=EXPLORE_OCCS.filter(o=>myGarments().some(g=>occasionFits(g,o)&&["Arriba","Abajo","Vestidos","Casa","Baño"].includes(g.category)));
@@ -2264,7 +2266,7 @@ function renderExplore(root){
   '<p class="muted explore-note">'+fx(sd?seasons[p.season]+" ("+SEASON_TEMP[p.season]+" °C)":currentTemperature()+" °C")+' · cada propuesta usa una prenda principal distinta; debajo tienes sus versiones.</p>'+
   (looks.length?'<div class="grid">'+looks.map((l,i)=>{const gs=shown[i];return '<div class="look-tile"><article class="card">'+outfitBoard(gs)+'<div class="card-body"><div class="look-items">'+gs.map(x=>'<span class="look-chip">'+fx(x.name)+'</span>').join("")+'</div>'+(gs===l.garments&&l.reasons?.length?'<ul class="look-reasons">'+l.reasons.slice(0,2).map(r=>'<li>'+fx(r)+'</li>').join("")+'</ul>':'')+(gs===l.garments&&l.warnings?.length?'<ul class="look-reasons">'+l.warnings.map(w=>'<li class="warn">'+fx(w)+'</li>').join("")+'</ul>':'')+'</div></article>'+
    versionsRow(key(i),l.garments,ctx)+'<div class="tile-tools"><button class="chip-button" data-explore-save="'+i+'">♡ Guardar</button><button class="chip-button" data-explore-wear="'+i+'">✓ Llevado</button><button class="chip-button" data-explore-edit="'+i+'">✎ Editar</button><button class="chip-button" data-explore-almost="'+i+'">Casi</button></div></div>'}).join("")+'</div>'
-  :(()=>{const miss=missingFor(occ),alt=occ?occsWithLooks(occ):[]; /* vacío útil: qué falta y qué ocasiones sí tienen looks */
+  :(()=>{const miss=missingFor(occ),alt=occ?occsWithLooks(occ,3,so):[]; /* vacío útil: qué falta y qué ocasiones sí tienen looks */
    return '<div class="empty"><p class="muted">'+fx(miss||(occ?'Con '+(sd?SEASON_TEMP[p.season]:currentTemperature())+' °C no encuentro looks para «'+(occasions[occ]||occ).toLowerCase()+'». Revisa la temporada y cuánto abriga cada prenda en su ficha.':'Añade prendas de arriba y de abajo (o vestidos) para ver looks.'))+'</p>'+
     (alt.length?'<p class="muted">Sí tienes looks para:</p><div class="explore-occs">'+alt.map(o=>'<button type="button" class="chip-button" data-explore-occ="'+o+'">'+fx(occasions[o]||o)+'</button>').join("")+'</div>':'')+
     (miss?'<button type="button" class="primary" id="exploreAdd">+ Añadir prendas</button>':'')+'</div>'})());
