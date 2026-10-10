@@ -2319,8 +2319,9 @@ function lookVersions(main,ctxIn=null,max=3){
  const shoe0=main.find(g=>g.category==="Zapatos")||null,layer0=main.find(g=>g.category==="Capas")||null,rest=main.filter(g=>!nuc.includes(g)&&g!==shoe0&&g!==layer0);
  const near=(cat,lim)=>myGarments().filter(x=>x.category===cat&&usable(x)&&rel(x,nuc)).map(x=>({x,m:nuc.reduce((t,y)=>t+(relationOf(x,y,ctx)?.s??.6),0)})).sort((a,b)=>b.m-a.m).slice(0,lim).map(o=>o.x);
  const shoes=shoe0?[shoe0,...near("Zapatos",6)]:[null];
- const layers=[layer0,...(rule.need?[]:[null]),...(rule.max>=0?near("Capas",4).filter(x=>warmthOf(x)<=rule.max&&!insufficientColdLayer(x,ctx.temp)):[])].filter((x,i,a)=>a.indexOf(x)===i);
- const r0=scoreOutfit(main,ctx),s0=r0.score,w0=r0.warnings,f0=shoe0?formalLevel(shoe0):null,sig0=lookSig(main.map(g=>g.id)),cands=[];
+ const r0=scoreOutfit(main,ctx),s0=r0.score,w0=r0.warnings,cold=!layer0&&w0.some(w=>/frío/i.test(w)); /* si el principal avisa de frío y no hay capa ligera, «Si refresca» puede ofrecer una algo más abrigada (vestido de fiesta sin mangas a 17 °C) */
+ const layers=[layer0,...(rule.need?[]:[null]),...(rule.max>=0?near("Capas",4).filter(x=>warmthOf(x)<=rule.max+(cold?1:0)&&!insufficientColdLayer(x,ctx.temp)):[])].filter((x,i,a)=>a.indexOf(x)===i);
+ const f0=shoe0?formalLevel(shoe0):null,sig0=lookSig(main.map(g=>g.id)),cands=[];
  for(const z of shoes)for(const c of layers){
   if(z===shoe0&&c===layer0)continue;
   const core=[...nuc,z,c].filter(Boolean),gs=[...core,...rest];
@@ -2924,10 +2925,10 @@ function renderCalendar(root){
  root.innerHTML=heroHtml("Calendario de looks","Solo los días que hayas registrado; nunca inventamos usos.")+
   '<div class="feature-card"><label class="field"><span>Mes</span><input id="calendarMonth" type="month" value="'+fx(month)+'"></label>'+grid+'</div>'+
   '<div class="section-head"><h2>Historial de usos</h2><button class="secondary" id="backInsights">Volver al armario</button></div>'+
-  (history.length?'<div class="insight-list">'+history.map(l=>'<div class="history-line"><div><strong>'+fx(l.date)+'</strong><p class="muted">'+fx((l.garmentIds||[]).map(id=>myGarments().find(g=>g.id===id)?.name).filter(Boolean).join(" · "))+'</p></div><button class="chip-button" data-remove-use="'+fx(l.id)+'">Eliminar</button></div>').join("")+'</div>':'<div class="empty">Todavía no has registrado ningún conjunto utilizado.</div>');
+  (history.length?'<div class="insight-list">'+history.map(l=>'<div class="history-line"><div><strong>'+fx(validDay(l.date)?capFirst(weekdayName(l.date))+', '+fmtDay(l.date):String(l.date||"Sin fecha"))+'</strong><p class="muted">'+fx((l.garmentIds||[]).map(id=>myGarments().find(g=>g.id===id)?.name).filter(Boolean).join(" · "))+'</p></div><button class="chip-button" data-remove-use="'+fx(l.id)+'">Eliminar</button></div>').join("")+'</div>':'<div class="empty">Todavía no has registrado ningún conjunto utilizado.</div>');
  $("#calendarMonth")?.addEventListener("change",e=>{ui.calendarMonth=e.target.value||dayISO().slice(0,7);render()});
  $("#backInsights")?.addEventListener("click",()=>setView("wardrobe"));
- $$("[data-cal-date]",root).forEach(b=>b.addEventListener("click",()=>{const day=b.dataset.calDate,items=logs().filter(l=>l.date===day);toast(items.length?plural(items.length,"uso registrado","usos registrados")+" el "+day:"Sin usos registrados el "+day)}));
+ $$("[data-cal-date]",root).forEach(b=>b.addEventListener("click",()=>{const day=b.dataset.calDate,items=logs().filter(l=>l.date===day);toast(items.length?plural(items.length,"uso registrado","usos registrados")+" el "+fmtDay(day):"Sin usos registrados el "+fmtDay(day))}));
  $$("[data-remove-use]",root).forEach(b=>b.addEventListener("click",async()=>{if(!confirm("¿Eliminar este registro de uso?"))return;const id=b.dataset.removeUse;await mutate(()=>{appState.data.wearLog=logs().filter(l=>l.id!==id);tomb(id)},"Registro eliminado")}));
 }
 
@@ -2985,7 +2986,7 @@ function renderSettings(root){
   '<label class="field"><span>Prenda olvidada tras (días)</span><input id="settingsForget" type="number" min="30" max="365" value="'+fx(p.forgottenDays)+'"></label>'+
   '<label class="field"><span>Código de vestir en tu trabajo</span><select id="settingsWorkDress">'+Object.entries(WORK_DRESS).map(([k,v])=>'<option value="'+k+'"'+(workDress()===k?' selected':'')+'>'+fx(v)+'</option>').join("")+'</select></label><p class="helper">Lo uso en los looks de trabajo: en una oficina informal valen deportivas y sudaderas; en una formal, solo prendas arregladas.</p>'+
   '</div>'+ 
-  '<div class="feature-card"><h2>Uso de la IA hoy</h2><p class="muted">Análisis de fotos: '+u.analyze+' de '+AI_LIMITS.analyze+'. Sugerencias de looks: '+u.looks+' de '+AI_LIMITS.looks+'.</p><p class="helper">Los límites diarios mantienen bajo el coste de la API. «¿Lo compro?», las recomendaciones y «Combinar prenda» no usan la IA.</p></div>'+
+  '<div class="feature-card"><h2>Uso de la IA hoy</h2><p class="muted">Análisis de fotos: '+u.analyze+' de '+AI_LIMITS.analyze+'.</p><p class="helper">Solo el análisis de fotos usa la IA. Los looks, «¿Lo compro?», las recomendaciones, las maletas y el fondo blanco se calculan en tu móvil.</p></div>'+
   '<div class="feature-card"><h2>Fotos</h2><p class="muted">'+fx(myGarments().filter(g=>g.photoFx).length+" de "+myGarments().filter(g=>validImage(g.image)).length+" fotos mejoradas ("+myGarments().filter(g=>g.bgWhite).length+" con fondo blanco).")+'</p>'+
   (myGarments().some(needsWhite)?'<button class="secondary wide" id="whiteAll">✨ Fondo blanco en todas las fotos</button><p class="helper">Como en una tienda online: prenda sobre fondo blanco, con luz, color y nitidez. Si en alguna no se puede separar la prenda, se mejora conservando el fondo. Se hace en tu móvil, sin gastar tokens. Las originales se guardan en este dispositivo y puedes volver a ellas desde cada prenda.</p>':'')+'</div>'+
   '<div class="feature-card"><h2>Copias de seguridad</h2>'+(storage?'<p class="muted">'+fx(storage)+'</p>':'')+
