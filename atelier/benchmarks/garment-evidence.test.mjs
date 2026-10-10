@@ -92,3 +92,23 @@ test("the normal Atelier photo-analysis validator accepts known denim washes onl
  assert.equal(clean({fabric:"denim",denimWash:"acid",pattern:"plain"}).denimWash,"acid");
  assert.equal(clean({fabric:"denim",denimWash:"invented"}).denimWash,undefined);
 });
+
+test("visual drape and sheen are independent from fiber",()=>{
+ const e=garmentEvidence({fabric:"satin",drape:"fluid",surfaceSheen:"shiny"});
+ assert.equal(e.drape.value,"fluid");
+ assert.equal(e.surfaceSheen.value,"shiny");
+ assert.equal(e.fiber.known,false);
+});
+test("advanced drape provenance is not inherited by a fallback",()=>{
+ const e=garmentEvidence({drape:"structured",materialAttributes:{drape:" ",drapeSource:"user"}});
+ assert.equal(e.drape.value,"structured");
+ assert.equal(e.drape.source,"legacy");
+});
+test("AI validator only accepts known visual drape and sheen values",()=>{
+ const src=fs.readFileSync(new URL("../atelier.js",import.meta.url),"utf8");
+ const clean=new Function("document","sessionStorage","crypto",src+"\nreturn cleanAnalysis;")(
+  {addEventListener(){},querySelector(){return null},querySelectorAll(){return []}},
+  {getItem(){return null},removeItem(){}},{randomUUID:()=> "audit"});
+ assert.equal(clean({drape:"fluid",surfaceSheen:"shiny"}).drape,"fluid");
+ assert.equal(clean({drape:"heavy",surfaceSheen:"glitter"}).surfaceSheen,undefined);
+});

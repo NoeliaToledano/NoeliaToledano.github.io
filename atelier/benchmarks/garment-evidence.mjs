@@ -27,7 +27,8 @@ export function garmentEvidence(garment={}) {
     pattern:{motifs,known:patternKnown,plain:explicitlyPlain,source:!patternKnown?"unknown":(extraPatterns.filter(Boolean).length ? (KNOWN.has(advanced.patternsSource)?advanced.patternsSource:"legacy") : "legacy")},
     wash:value(advancedWash??finiteString(g.denimWash),advancedWash?advanced.washSource:"legacy"),
     decoration:value(Array.isArray(advanced.decoration)?unique(advanced.decoration.map(finiteString)):null,advanced.decorationSource),
-    drape:value(finiteString(advanced.drape),advanced.drapeSource),
+    drape:value(finiteString(advanced.drape)??finiteString(g.drape),finiteString(advanced.drape)?advanced.drapeSource:"legacy"),
+    surfaceSheen:value(finiteString(advanced.surfaceSheen)??finiteString(g.surfaceSheen),finiteString(advanced.surfaceSheen)?advanced.surfaceSheenSource:"legacy"),
     metadataWarnings:[
       ...(fabric==="satin"?["satin_is_not_a_fiber"]:[]),
       ...(fabric==="knit"?["knit_is_not_a_fiber"]:[]),
