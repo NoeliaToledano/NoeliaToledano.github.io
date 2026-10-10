@@ -2006,6 +2006,14 @@ function scoreOutfit(gs,ctx){
  const mix=new Set(styled.map(g=>g.style));
  if(mix.has("sport")&&mix.has("smart"))reasons.push("Las deportivas le dan un aire informal y actual");
  else if(mix.size===2&&styled.length>=3)reasons.push("Mezcla un toque de otro estilo");
+ // Compatibilidad física estimada: solo cuando el corte y grosor están declarados.
+ // No vetar capas ceñidas o volúmenes oversize de manera universal.
+ const tightOuter=gs.find(g=>g.category==="Capas"&&["entallado","ajustado"].includes(g.fit));
+ const bulkyUnder=tightOuter&&gs.find(g=>g!==tightOuter&&["Arriba","Vestidos"].includes(g.category)
+   &&g.thickness==="grueso"&&["oversize","holgado"].includes(g.fit));
+ if(bulkyUnder){
+  style=Math.max(0,style-.12);warnings.push("La capa ajustada puede limitar el volumen de la prenda gruesa");
+ }
  // Contexto (20): ocasión, capa adecuada al tiempo y look completo
  const rule=layerRule(ctx.temp),layer=gs.find(g=>g.category==="Capas");let context=.8;
  if(rule.need&&!layer){context-=.4;warnings.push(myGarments().some(g=>g.category==="Capas")?"Hace frío y no hay abrigo que combine":"Hace frío: añade un abrigo a tu armario")} /* el aviso dice qué hacer (revisión general, 10/10/2026) */
