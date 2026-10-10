@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 /** Unblind only after independent votes are recorded. Inputs remain local. */
 import fs from "node:fs";
+import {createHash} from "node:crypto";
 const [reviewPath,keyPath]=process.argv.slice(2);
 if(!reviewPath||!keyPath)throw Error("Usage: node blind-look-tally.mjs completed-review.json PRIVATE-answers.json");
 const review=JSON.parse(fs.readFileSync(reviewPath,"utf8"));
 const secret=JSON.parse(fs.readFileSync(keyPath,"utf8"));
 if(secret.kind!=="PRIVATE_ATELIER_AB_KEY"||!Array.isArray(secret.pairs)||!Array.isArray(review.pairs))throw Error("Invalid review or answer key");
+const actualDigest=createHash("sha256").update(JSON.stringify(review.pairs.map(p=>[p.id,p.scenario,p.A?.garmentIds,p.B?.garmentIds]))).digest("hex");
+if(!review.runDigest||review.runDigest!==secret.runDigest||actualDigest!==review.runDigest)throw Error("Private key does not belong to this exact review pack");
 const lookup=new Map(secret.pairs.map(r=>[r.id,r]));
 if(lookup.size!==secret.pairs.length||review.pairs.length!==lookup.size)throw Error("Incomplete or duplicate answer key");
 const totals={candidate:0,baseline:0,both:0,neither:0,insufficient:0,unreviewed:0};
