@@ -2190,8 +2190,13 @@ function rankOutfits(o={}){
   for(const g of gs)if(!BIG.includes(g.category)||g.category==="Capas")used.set(g.id,(used.get(g.id)||0)+1);
   const r={gs,score:sc.score,reasons:sc.reasons,warnings:[...warn,...sc.warnings]};seen.add(sig(r));out.push(r);
  }
+ /* Orden en pantalla (Noelia, 10/10/2026): todos combinan; primero los más completos, siempre que estén cerca del mejor en calidad */
+ const top=Math.max(...out.map(r=>r.score)),near=r=>r.score>=top-12?0:1;
+ out.sort((a,b)=>near(a)-near(b)||completeness(b.gs)-completeness(a.gs)||b.score-a.score);
  return out.map(r=>({garments:r.gs,ids:r.gs.map(g=>g.id),score:r.score,reasons:r.reasons,warnings:r.warnings}));
 }
+/* Lo completo que está un look: la base cuenta como una (arriba + abajo o vestido) y suma calzado, capa, bolso y complementos; desempata el número de piezas */
+const completeness=gs=>1+["Zapatos","Capas","Bolsos","Accesorios"].filter(c=>gs.some(g=>g.category===c)).length+gs.length/100;
 /* Combinar una prenda: looks calculados en el móvil, sin IA */
 function looksAround(g,max=8,occasion=null){
  // «¿con qué me pongo esta prenda?», para cualquier ocasión o una concreta (Noelia, 10/10/2026). Cada look lleva sus motivos (l.reasons)

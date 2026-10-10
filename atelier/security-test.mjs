@@ -404,6 +404,19 @@ console.log("PASS: Styling engine (20/100/500 prendas): capas según tiempo, var
   console.log("PASS: Clothes-first: clothing pairs with clothing, accessories with whole look bases");
 }
 
+// Orden en pantalla (Noelia, 10/10/2026): entre looks de calidad parecida, primero los más completos
+{
+  const sample=JSON.parse(fs.readFileSync(new URL("./benchmarks/sample-garments.json",import.meta.url),"utf8"));
+  const r=new Function("document","sessionStorage","crypto","sample",src+`
+  appState.profile={id:"noelia"};appState.data=normalizeData({garments:sample});
+  const out=[];for(const occasion of [null,"daily","work","party"])for(const temp of [10,22]){const ls=rankOutfits({occasion,temp,max:6});if(!ls.length)continue;const top=Math.max(...ls.map(l=>l.score));
+   const near=ls.filter(l=>l.score>=top-12);out.push({n:ls.length,near:near.length,ok:near.every((l,i)=>!i||completeness(near[i-1].garments)>=completeness(l.garments)),prefix:ls.slice(0,near.length).every(l=>l.score>=top-12)})}
+  return out;`)(document,sessionStorage,{randomUUID:()=>"t"},sample);
+  assert.ok(r.length&&r.some(x=>x.near>1),"Hay listas con varios looks que comparar");
+  assert.ok(r.every(x=>x.ok&&x.prefix),"Los looks cercanos al mejor salen primero y ordenados de más a menos completos "+JSON.stringify(r));
+  console.log("PASS: Looks list puts the most complete ones first among comparable quality");
+}
+
 // Looks editados: lo que la persona pone suma y lo que quita resta; el motor acaba proponiendo su versión
 {
   const r=new Function("document","sessionStorage","crypto",src+`
