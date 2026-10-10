@@ -70,6 +70,25 @@ try{
   return failures;
  });
  assert.deepEqual(collageAudit,[],"Regresión de composición fotográfica de looks");
+ // In dense looks, small accessories get a quieter presentation than clothing.
+ const accessoryHierarchy=await page.evaluate(()=>{
+  const canvas=document.createElement("canvas");canvas.width=40;canvas.height=80;
+  canvas.getContext("2d").fillRect(0,0,40,80);
+  const image=canvas.toDataURL("image/png");
+  const garments=["Arriba","Abajo","Capas","Zapatos","Bolsos","Accesorios"].map((category,i)=>({id:"a"+i,name:category,category,image}));
+  const host=document.createElement("div");host.style.cssText="position:fixed;left:0;top:0;width:340px;visibility:hidden";
+  document.body.append(host);
+  try{
+   host.innerHTML=outfitBoard(garments);
+   const accessory=host.querySelector('[data-piece-kind="accessory"] img');
+   const bag=host.querySelector('[data-piece-kind="bag"] img');
+   const clothing=host.querySelector('[data-piece-kind="garment"] img');
+   return Boolean(accessory&&bag&&clothing&&
+    parseFloat(getComputedStyle(accessory).paddingTop)>parseFloat(getComputedStyle(bag).paddingTop)&&
+    parseFloat(getComputedStyle(bag).paddingTop)>parseFloat(getComputedStyle(clothing).paddingTop));
+  }finally{host.remove()}
+ });
+ assert.equal(accessoryHierarchy,true,"Small accessories must remain visually secondary in dense looks");
 
  // A dress with shoes should not present the shoes as an equally important tile.
  const dressLayout=await page.evaluate(()=>{
