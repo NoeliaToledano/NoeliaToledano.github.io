@@ -813,10 +813,14 @@ function safetyBanner(){
   (msgs.some(m=>m.includes("copia"))?'<button class="chip-button" id="bannerBackup">Exportar copia</button>':'')+
   (!isStandalone()&&p.installHintHidden!==true?'<button class="chip-button" id="bannerHide">Ya la he instalado</button>':'')+'</div></div>';
 }
+/* Ficha incompleta (las etiquetas deciden los looks): falta formalidad u ocasiones, falta un dato de abrigo o se contradicen estilo y formalidad */
+function sheetGaps(g){const out=[];if(!g.formality)out.push("formalidad");if(!(Array.isArray(g.occasions)&&g.occasions.length))out.push("ocasiones");
+ for(const f of EVIDENCE_FIELDS(g))if(f!=="color"&&f!=="formality"&&!g[f])out.push(META_NAME[f]||f);
+ if(g.style&&g.formality in SHEET_STYLE&&SHEET_STYLE[g.formality]!==g.style&&!(g.formality==="formal"&&g.style==="party"))out.push("estilo y formalidad no cuadran");return out}
 function renderWardrobe(root){
  const cats=[...new Set(myGarments().map(g=>g.category).filter(Boolean))].sort();
  const q=ui.search.toLocaleLowerCase("es");
- let gs=myGarments().filter(g=>(!q||[g.name,g.category,g.color,g.notes,g.style].join(" ").toLocaleLowerCase("es").includes(q))&&(!ui.category||g.category===ui.category)&&(!ui.season||g.season===ui.season)&&(!ui.onlyFavorites||g.favorite)&&(!ui.onlyForgotten||forgottenStatus(g).forgotten));
+ let gs=myGarments().filter(g=>(!q||[g.name,g.category,g.color,g.notes,g.style].join(" ").toLocaleLowerCase("es").includes(q))&&(!ui.category||g.category===ui.category)&&(!ui.season||g.season===ui.season)&&(!ui.onlyFavorites||g.favorite)&&(!ui.onlyForgotten||forgottenStatus(g).forgotten)&&(!ui.onlyIncomplete||sheetGaps(g).length));
  const sorters={least:(a,b)=>wornCount(a.id)-wornCount(b.id),most:(a,b)=>wornCount(b.id)-wornCount(a.id),name:(a,b)=>String(a.name).localeCompare(String(b.name),"es"),oldest:(a,b)=>String(a.createdAt||"").localeCompare(String(b.createdAt||"")),recent:(a,b)=>String(b.updatedAt||"").localeCompare(String(a.updatedAt||""))};
  gs.sort(sorters[ui.sort]||sorters.recent);
  const filters='<div class="filter-panel"><label class="field"><span>Buscar prendas</span><input id="wardrobeSearch" type="search" placeholder="Nombre, color, estilo…" value="'+fx(ui.search)+'"></label>'+
@@ -826,11 +830,14 @@ function renderWardrobe(root){
   '<label class="field"><span>Ordenar</span><select id="filterSort">'+optionList([["recent","Recientes"],["name","Nombre"],["least","Menos usadas"],["most","Más usadas"],["oldest","Más antiguas"]],ui.sort)+'</select></label>'+
   '</div><label class="switch-line"><input type="checkbox" id="onlyFavorites"'+(ui.onlyFavorites?' checked':'')+'> Solo favoritas</label>'+
   '<label class="switch-line"><input type="checkbox" id="onlyForgotten"'+(ui.onlyForgotten?' checked':'')+'> Solo prendas olvidadas</label>'+
+  '<label class="switch-line"><input type="checkbox" id="onlyIncomplete"'+(ui.onlyIncomplete?' checked':'')+'> Solo fichas por completar</label>'+
   '<button class="secondary small" id="resetFilters">Limpiar filtros</button></details></div>';
- const cards=gs.map(g=>{const f=forgottenStatus(g),n=wornCount(g.id);return '<div class="garment-tile">'+garmentCard(g)+'<div class="tile-tools"><button class="chip-button" data-fav="'+fx(g.id)+'" aria-label="Favorito">'+(g.favorite?'♥':'♡')+'</button><button class="chip-button" data-wear="'+fx(g.id)+'" aria-label="Registrar uso">✓ Usada</button></div><div class="tile-hints">'+fx(plural(n,"uso registrado","usos registrados"))+(f.forgotten?' · ✦ Olvidada':'')+'</div></div>'}).join("");
+ const cards=gs.map(g=>{const f=forgottenStatus(g),n=wornCount(g.id);return '<div class="garment-tile">'+garmentCard(g)+'<div class="tile-tools"><button class="chip-button" data-fav="'+fx(g.id)+'" aria-label="Favorito">'+(g.favorite?'♥':'♡')+'</button><button class="chip-button" data-wear="'+fx(g.id)+'" aria-label="Registrar uso">✓ Usada</button></div><div class="tile-hints">'+fx(plural(n,"uso registrado","usos registrados"))+(f.forgotten?' · ✦ Olvidada':'')+(sheetGaps(g).length?' · <span class="gap-hint" title="Falta: '+fx(sheetGaps(g).join(", "))+'">Ficha por completar</span>':'')+'</div></div>'}).join("");
+ const incomplete=myGarments().filter(g=>sheetGaps(g).length).length;
  root.innerHTML=heroHtml("Mi armario","Toda tu ropa, aprovechada al máximo.")+safetyBanner()+
   '<div class="stats">'+miniStat("prendas",myGarments().length)+miniStat("favoritas",myGarments().filter(g=>g.favorite).length)+miniStat("olvidadas",myGarments().filter(g=>forgottenStatus(g).forgotten).length)+miniStat("looks",myLooks().length)+'</div>'+
   '<details class="wardrobe-summary"><summary>Resumen del armario</summary><div class="wardrobe-summary-body"><p class="helper">'+fx(myGarments().length)+' prendas · '+fx(myLooks().length)+' looks · '+fx(logs().length)+' usos registrados</p><button type="button" class="secondary small" id="wardrobeHistory">Calendario e historial</button><button type="button" class="secondary small" id="wardrobeForgotten">Prendas olvidadas</button></div></details>'+
+  (incomplete&&!ui.onlyIncomplete?'<div class="notice-card gaps-card"><div><p><strong>'+fx(plural(incomplete,"prenda tiene","prendas tienen"))+' la ficha por completar.</strong> Las etiquetas (sobre todo formalidad y ocasiones) deciden qué looks te propongo.</p></div><div class="notice-actions"><button class="chip-button" id="showIncomplete">Revisarlas</button></div></div>':'')+
   '<div class="section-head"><h2>Prendas <span class="muted">('+gs.length+')</span></h2><span class="head-actions"><button class="secondary" data-outfit-photo aria-label="Guardar el look que llevo con una foto">📸 Mi look</button><button id="addGarment" class="primary">+ Añadir</button></span></div>'+filters+
   (gs.length?'<div class="grid">'+cards+'</div>':'<div class="empty"><h3>No hay prendas con estos filtros</h3><p class="muted">Prueba otro filtro o añade una prenda.</p><button class="primary" id="emptyAdd">Añadir prenda</button></div>');
  $("#bannerBackup")?.addEventListener("click",downloadBackup);
@@ -838,9 +845,10 @@ function renderWardrobe(root){
  $("#addGarment")?.addEventListener("click",()=>openGarment());bindOutfitPhoto(root);
  $("#emptyAdd")?.addEventListener("click",()=>openGarment());
  $("#wardrobeSearch")?.addEventListener("input",e=>{ui.search=e.target.value;const pos=e.target.selectionStart;renderWardrobe(root);const input=$("#wardrobeSearch");input.focus();input.setSelectionRange(pos,pos)});
- for(const [id,key] of [["filterCategory","category"],["filterSeason","season"],["filterSort","sort"],["onlyFavorites","onlyFavorites"],["onlyForgotten","onlyForgotten"]])
+ $("#showIncomplete")?.addEventListener("click",()=>{ui.onlyIncomplete=true;render()});
+ for(const [id,key] of [["filterCategory","category"],["filterSeason","season"],["filterSort","sort"],["onlyFavorites","onlyFavorites"],["onlyForgotten","onlyForgotten"],["onlyIncomplete","onlyIncomplete"]])
   $("#"+id)?.addEventListener("change",e=>{ui[key]=e.target.type==="checkbox"?e.target.checked:e.target.value;renderWardrobe(root);const dt=$("#advancedFilters");if(dt)dt.open=true});
- $("#resetFilters")?.addEventListener("click",()=>{Object.assign(ui,{search:"",category:"",season:"",onlyFavorites:false,onlyForgotten:false,sort:"recent"});render()});
+ $("#resetFilters")?.addEventListener("click",()=>{Object.assign(ui,{search:"",category:"",season:"",onlyFavorites:false,onlyForgotten:false,onlyIncomplete:false,sort:"recent"});render()});
  $$("[data-garment]",root).forEach(x=>x.addEventListener("click",()=>openGarment(x.dataset.garment)));
  $$("[data-fav]",root).forEach(b=>b.addEventListener("click",async()=>{const g=myGarments().find(x=>x.id===b.dataset.fav);if(g)await mutate(()=>{g.favorite=!g.favorite;g.updatedAt=new Date().toISOString()},"Favoritos actualizados")}));
  $$("[data-wear]",root).forEach(b=>b.addEventListener("click",()=>promptWear([b.dataset.wear],null)));

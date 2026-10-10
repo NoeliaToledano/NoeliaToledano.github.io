@@ -479,3 +479,4 @@ p.notice-card{display:block}
 .look-tile .look-version{min-width:74px;padding:6px;font-size:11px;gap:2px}.look-tile .look-version-thumbs{height:30px}.look-tile .look-version-thumbs img{width:30px;height:30px}
 .formality-main{grid-column:1/-1}.formality-main select{width:100%}
 .version-note{font-size:12px;margin:0 0 6px}
+.gap-hint{color:#8a5a12;font-weight:600}
