@@ -57,3 +57,24 @@ test("blind pack includes no score or ground-truth preference",()=>{
   assert.throws(()=>execFileSync(process.execPath,[new URL("./blind-look-tally.mjs",import.meta.url).pathname,z,wrongKey],{stdio:"pipe"}),/Command failed/);
  }finally{fs.rmSync(folder,{recursive:true,force:true});}
 });
+
+test("blind assignment remains balanced and deterministic for a multi-scenario review",()=>{
+ const folder=fs.mkdtempSync(path.join(os.tmpdir(),"atelier-balanced-ab-"));
+ try{
+  const baseline=path.join(folder,"baseline.json"),candidate=path.join(folder,"candidate.json"),
+   catalog=path.join(folder,"catalog.json"),pack1=path.join(folder,"review-1.json"),pack2=path.join(folder,"review-2.json"),
+   key1=path.join(folder,"secret-1.json"),key2=path.join(folder,"secret-2.json");
+  const rows=Array.from({length:8},(_,i)=>({wn:"W"+i,occ:"daily",temp:20,i:0,ids:["a","b"]}));
+  fs.writeFileSync(baseline,JSON.stringify(rows));
+  fs.writeFileSync(candidate,JSON.stringify(rows.map(r=>({...r,ids:["a","c"]}))));
+  fs.writeFileSync(catalog,JSON.stringify(["a","b","c"].map(id=>({id,name:id,image:"data:image/png;base64,iVBORw0KGgo="}))));
+  for(const [pack,key] of [[pack1,key1],[pack2,key2]])
+   execFileSync(process.execPath,[new URL("./blind-look-review.mjs",import.meta.url).pathname,baseline,candidate,pack,catalog,key]);
+  const keys=[key1,key2].map(p=>JSON.parse(fs.readFileSync(p,"utf8")));
+  assert.deepEqual(keys[0].pairs,keys[1].pairs);
+  assert.equal(keys[0].pairs.filter(p=>p.candidate==="A").length,4);
+  assert.equal(keys[0].pairs.filter(p=>p.candidate==="B").length,4);
+  const publicPack=JSON.parse(fs.readFileSync(pack1,"utf8"));
+  assert.ok(!JSON.stringify(publicPack).includes("candidate"));
+ }finally{fs.rmSync(folder,{recursive:true,force:true});}
+});

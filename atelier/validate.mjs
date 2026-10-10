@@ -55,7 +55,7 @@ catch(e){fail("Silhouette evidence regression: "+String(e.stderr||e.message));}
 try{execFileSync(process.execPath,["--test",new URL("./benchmarks/layer-fit-evidence.test.mjs",import.meta.url).pathname],{stdio:"pipe"});}
 catch(e){fail("Layer fit evidence regression: "+String(e.stderr||e.message));}
 try{execFileSync(process.execPath,["--test",new URL("./benchmarks/visual-focus-and-blind.test.mjs",import.meta.url).pathname],{stdio:"pipe"});}
-catch(e){fail("Visual focus and blind review regression: "+String(e.stderr||e.message));}
+catch(e){fail("Visual focus and blind review regression: "+String(e.stdout||e.stderr||e.message));}
 try{execFileSync(process.execPath,["--test",new URL("./benchmarks/visual-hierarchy.test.mjs",import.meta.url).pathname],{stdio:"pipe"});}
 catch(e){fail("Visual hierarchy regression: "+String(e.stderr||e.message));}
 console.log("Atelier release gate OK (app y backend)");
