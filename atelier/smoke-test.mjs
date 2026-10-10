@@ -452,7 +452,7 @@ try{
  await page.getByRole("heading",{name:"Hoy",exact:true}).waitFor();
  await page.locator('[data-view="wardrobe"]').click();
  assert.equal(await page.getByText("Prenda auditada").count(),0,"Profile isolation broken");
- assert.equal(await page.getByText("No hay prendas con estos filtros").count(),1);
+ assert.equal(await page.getByText("Tu armario está vacío").count(),1,"Armario vacío: bienvenida, no «sin filtros»");
  assert.deepEqual(errors,[]);
  await page.screenshot({path:"atelier-smoke.png",fullPage:true});
  console.log("PASS: iPhone viewport, styles, login, wardrobe CRUD, packing lists, IndexedDB persistence, manual looks, AI garment recognition, explore looks, AI outages, expired sessions, profile isolation");

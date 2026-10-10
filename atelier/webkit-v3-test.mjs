@@ -81,7 +81,7 @@ try{
  await page.getByRole("heading",{name:"Hoy",exact:true}).waitFor();
  await page.locator('[data-view="wardrobe"]').click();
  assert.equal(await page.getByText("Camiseta WebKit").count(),0,"Cross-profile leak");
- assert.equal(await page.getByText("No hay prendas con estos filtros").count(),1);
+ assert.equal(await page.getByText("Tu armario está vacío").count(),1,"Armario vacío: bienvenida");
  assert.deepEqual(errors,[]);
  console.log("PASS WebKit: login, photo import, saved wardrobe, AI looks mock, wishlist, backup export/import, logout and profile isolation");
 }finally{await browser.close()}
