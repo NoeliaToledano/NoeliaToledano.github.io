@@ -79,6 +79,9 @@ function tabsHtml(name,tabs,current){return '<div class="seg-tabs" role="tablist
 const META_FIELDS=[
  ["subtype","Tipo concreto (ej. blazer, vaquero)",80,"ia"],
  ["pattern","Estampado",ANALYSIS_FIELDS.pattern,"ia"],
+ ["patternScale","Tamaño del estampado",["small","medium","large"],"ia"],
+ ["patternPlacement","Distribución del estampado",["localized","allover"],"ia"],
+ ["patternContrast","Contraste del estampado",["low","medium","high"],"ia"],
  ["secondaryColor","Color secundario",60,"ia"],
  ["fabric","Tejido aparente",ANALYSIS_FIELDS.fabric,"ia"],
  ["fit","Corte",["oversize","holgado","regular","entallado","ajustado","recto"],"ia"],
@@ -1350,7 +1353,7 @@ function pairEvidence(a,b){
  const mix=fa.urban&&b.category!=="Zapatos"&&fb.fl>=2||fb.urban&&a.category!=="Zapatos"&&fa.fl>=2?"zapatillas con prenda arreglada":fa.structured&&fb.denim||fb.structured&&fa.denim?"americana con vaquero":"";
  const ev={ids:[a.id,b.id],color:pc.s,colorKind:pc.k||"",small:!BIG.includes(a.category)||!BIG.includes(b.category),style:styleAffinity(fa.ss,fb.ss),formalGap:Math.abs(fa.fl-fb.fl),
   register:REGISTER_OF((fa.fl+fb.fl)/2),seasonClash:!!(a.season&&b.season&&a.season!=="all"&&b.season!=="all"&&a.season!==b.season),
-  thermalClash:fa.heavy&&fb.light||fb.heavy&&fa.light,textureClash:fa.denimMain&&fb.tailoredPrint||fb.denimMain&&fa.tailoredPrint,occasions:fa.occ.filter(o=>fb.occ.includes(o)),mix,declared:fa.declared.concat(fb.declared),uncertain:fa.missing.concat(fb.missing)};
+  thermalClash:fa.heavy&&fb.light||fb.heavy&&fa.light,patternUncertain:!!pc.uncertain,textureClash:fa.denimMain&&fb.tailoredPrint||fb.denimMain&&fa.tailoredPrint,occasions:fa.occ.filter(o=>fb.occ.includes(o)),mix,declared:fa.declared.concat(fb.declared),uncertain:fa.missing.concat(fb.missing)};
  if(!ma)relCache.ev.set(a,ma=new Map());ma.set(b,ev);let mb=relCache.ev.get(b);if(!mb)relCache.ev.set(b,mb=new Map());mb.set(a,ev);return ev;
 }
 function contextualizePair(ev,ctx){
@@ -1365,6 +1368,7 @@ function contextualizePair(ev,ctx){
  if(!ev.occasions.length)s*=.8;else if(ctx?.occasion&&!ev.occasions.includes(ctx.occasion))s*=.85;
  const n=relCache.learn.get(pk)||0;s+=Math.max(-.3,Math.min(.3,.1*n)); // lo aprendido del perfil
  /* El denim con un estampado de sastrería no es un veto: ambos pueden ser deliberados. Evaluar color, proporción, ocasión y el look global. */
+ if(ev.patternUncertain)s=Math.min(s,.59); /* mezcla posible, pero sin escala/distribución/contraste no aprobarla como pareja fuerte */
  if(relCache.block.has(pk))s=Math.min(s,.3); /* «no pegan» dicho por la persona: pareja débil */
  const r={s:Math.max(0,Math.min(1,Math.round(s*100)/100)),register:ev.register,contexts:ev.occasions,mix:ev.mix,uncertain:ev.uncertain};
  return r; /* la caché vive en relationOf, por objeto */
