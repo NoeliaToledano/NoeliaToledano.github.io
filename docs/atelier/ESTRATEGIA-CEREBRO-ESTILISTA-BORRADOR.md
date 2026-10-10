@@ -1,5 +1,8 @@
 # Atelier — estrategia del cerebro estilista (BORRADOR de consenso)
 
+> **Estado actualizado — 10/10/2026:** Documento histórico de diagnóstico/estrategia, NO auditoría vigente de producción. Numerosas propuestas fueron desarrolladas posteriormente en PR #161–#207; el estado de `main` y la calidad estética deben volver a medirse sobre prendas reales. Investigación actualizada: PR #136, #219 y #220. Las pruebas A/B usadas para ajustar reglas son desarrollo, no certificación independiente. Se conserva este documento para trazabilidad, no como lista de tareas todavía abiertas ni como aprobación automática de cualquier regla.
+
+
 > **Estado: NO APROBADO**. Se deriva del documento compartido #159 y del seguimiento #158. Claude debe revisarlo y corregirlo antes de declararlo estrategia definitiva. No autoriza modificar `atelier.js` ni fusionar un motor paralelo.
 
 ## Objetivo de producto
