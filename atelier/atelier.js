@@ -1230,7 +1230,7 @@ const METAL=/dorad|platead|\boro\b|\bplata\b|gold|silver|metal/i;
 const colorKey=g=>{if(METAL.test(g.color||""))return "";const c=colorInfo(g.color);return c.fam==="neutro"?c.word.replace(/a$/,"o"):c.fam==="estampado"?"multicolor":c.fam}; // un estampado cuenta por su color real (revisión de Codex, #157)
 const paletteOf=gs=>new Set(gs.map(colorKey).filter(Boolean));
 function colorInfo(text,pattern){
- if(pattern&&pattern!=="plain")return {fam:"estampado",word:"estampado-"+pattern};
+ if(pattern&&pattern!=="plain"&&pattern!=="unknown")return {fam:"estampado",word:"estampado-"+pattern};
  const key=String(text||"");if(colorCache.has(key))return colorCache.get(key);
  let info={fam:"",word:""};
  outer:for(const w of norm(text).split(/[^a-z]+/).filter(Boolean))for(const [fam,list] of COLOR_WORDS)if(list.includes(w)){info={fam,word:w};break outer}
@@ -1240,7 +1240,7 @@ const GOOD_PAIRS=new Set(["azul|rosa","azul|amarillo","azul|naranja","azul|rojo"
 function colorsMatch(a,b){
  if(!a.fam||!b.fam)return true;
  if(a.fam==="neutro"||b.fam==="neutro")return true;
- if(a.fam==="estampado"&&b.fam==="estampado")return false;
+ if(a.fam==="estampado"&&b.fam==="estampado")return true; // sin veto de familias: puntuar evidencia concreta del conjunto
  if(a.fam==="estampado"||b.fam==="estampado")return true;
  if(a.fam===b.fam)return true;
  return GOOD_PAIRS.has([a.fam,b.fam].sort().join("|"));
@@ -1356,7 +1356,7 @@ function pairEvidence(a,b){
 function contextualizePair(ev,ctx){
  if(!ev)return null;
  const pk=ev.ids[0]<ev.ids[1]?ev.ids[0]+"|"+ev.ids[1]:ev.ids[1]+"|"+ev.ids[0];
- const color=ev.colorKind==="two-patterns"&&ctx?.likes?.has("pattern")?.75:ev.colorKind==="opposite"&&ev.small?.75:ev.color;
+ const color=ev.colorKind==="two-patterns"&&ctx?.likes?.has("pattern")&&ev.color>=.5?Math.min(.8,ev.color+.05):ev.colorKind==="opposite"&&ev.small?.75:ev.color;
  const style=ev.mix?Math.max(ev.style,.85):ev.style,formal=ev.mix?Math.max(1-ev.formalGap/3,.75):1-ev.formalGap/3; // mezcla intencionada: no resta
  /* la ficha manda: si a una le falta la formalidad pero está marcada para esta ocasión (y ambas valen), su estilo no resta */
  const sheet=ctx?.occasion&&ev.declared?.includes(ctx.occasion)&&ev.occasions.includes(ctx.occasion);
@@ -1364,7 +1364,7 @@ function contextualizePair(ev,ctx){
  s=Math.min(s,Math.min(color,sheet?Math.max(style,.75):style,sheet?Math.max(formal,.75):formal)+.2); /* eslabón débil también dentro del par: un choque claro (dos estampados, deporte con fiesta) no lo compensan los demás aspectos */
  if(!ev.occasions.length)s*=.8;else if(ctx?.occasion&&!ev.occasions.includes(ctx.occasion))s*=.85;
  const n=relCache.learn.get(pk)||0;s+=Math.max(-.3,Math.min(.3,.1*n)); // lo aprendido del perfil
- if(ev.textureClash&&!ctx?.likes?.has("denim"))s=Math.min(s,.45); /* vaquero con estampado de sastrería (camisa vaquera + pantalón de cuadros): las dos piezas tienen protagonismo y compiten; convención de estilismo que se relaja si te gusta el vaquero */
+ /* El denim con un estampado de sastrería no es un veto: ambos pueden ser deliberados. Evaluar color, proporción, ocasión y el look global. */
  if(relCache.block.has(pk))s=Math.min(s,.3); /* «no pegan» dicho por la persona: pareja débil */
  const r={s:Math.max(0,Math.min(1,Math.round(s*100)/100)),register:ev.register,contexts:ev.occasions,mix:ev.mix,uncertain:ev.uncertain};
  return r; /* la caché vive en relationOf, por objeto */
@@ -1917,10 +1917,31 @@ const related=(a,b)=>(PAIRS[a.category]||[]).includes(b.category)||(PAIRS[b.cate
 const stylesOk=(a,b)=>styleAffinity(a,b)>=.3;
 /* Color: rueda de familias. Mismo tono 1 · neutro 0,9 · vecinos 0,8 · a dos pasos 0,6 · opuestos 0,45 (solo bien como acento). */
 const WHEEL=["rojo","naranja","amarillo","verde","azul","morado","rosa"];
+/* Los estampados no son una familia cromática única. La mezcla se deja incierta
+   cuando no hay datos y se distingue por señales observables, nunca por etiquetas
+   como «rayas+flores siempre bien/mal». Campos optativos, sin inferirlos de la nada. */
+function patternPairEvidence(a,b){
+ const fa=a.materialAttributes||{},fb=b.materialAttributes||{};
+ const tokens=g=>[g.color,g.secondaryColor,...(Array.isArray(g.materialAttributes?.patternColors)?g.materialAttributes.patternColors:[])]
+   .filter(x=>typeof x==="string"&&x.trim()).map(norm).filter(x=>!["multicolor","vaquero","unknown"].includes(x));
+ const ca=new Set(tokens(a)),cb=new Set(tokens(b)),shared=[...ca].some(x=>cb.has(x));
+ const scaleA=fa.patternScale||a.patternScale,scaleB=fb.patternScale||b.patternScale;
+ const coverageA=fa.patternPlacement||a.patternPlacement,coverageB=fb.patternPlacement||b.patternPlacement;
+ const contrastA=fa.patternContrast||a.patternContrast,contrastB=fb.patternContrast||b.patternContrast;
+ let score=.56; // neutral con incertidumbre, nunca «aprobación» por pertenecer a una familia
+ if(shared)score+=.08;
+ if(scaleA&&scaleB&&scaleA!==scaleB)score+=.08;
+ if(coverageA==="localized"||coverageB==="localized")score+=.06;
+ const bothBold=contrastA==="high"&&contrastB==="high"&&coverageA==="allover"&&coverageB==="allover";
+ if(bothBold&&!shared)score-=.13;
+ if(bothBold&&scaleA&&scaleA===scaleB)score-=.06;
+ return {s:Math.max(.35,Math.min(.8,Math.round(score*100)/100)),k:"two-patterns",
+  uncertain:!(scaleA&&scaleB&&coverageA&&coverageB&&contrastA&&contrastB)};
+}
 function pairColor(a,b){
  const ca=colorInfo(a.color,a.pattern),cb=colorInfo(b.color,b.pattern);
  if(!ca.fam||!cb.fam)return {s:.75};
- if(ca.fam==="estampado"&&cb.fam==="estampado")return {s:.35,k:"two-patterns"};
+ if(ca.fam==="estampado"&&cb.fam==="estampado")return patternPairEvidence(a,b);
  if(ca.fam==="estampado"||cb.fam==="estampado")return {s:.8};
  if(ca.fam==="neutro"||cb.fam==="neutro")return {s:.9,k:ca.fam===cb.fam?"neutral":"neutral-base"};
  if(ca.fam===cb.fam)return {s:1,k:"tonal:"+ca.fam};
@@ -1939,7 +1960,7 @@ function scoreOutfit(gs,ctx){
  let baseTotal=0,baseN=0,extrasTotal=0,extrasWeight=0,kinds=[];
  for(let i=0;i<gs.length;i++)for(let j=i+1;j<gs.length;j++){
   const r=pairColor(gs[i],gs[j]),aBig=BIG.includes(gs[i].category),bBig=BIG.includes(gs[j].category),bothBig=aBig&&bBig;
-  if(bothBig){baseTotal+=r.k==="two-patterns"&&ctx.likes?.has("pattern")?.75:r.s;baseN++} // si te gustan los estampados, mezclarlos no resta (votos de Noelia, #128)
+  if(bothBig){baseTotal+=r.s;baseN++} // No fingir compatibilidad: el gusto no anula evidencia cromática desfavorable
   else {const weight=aBig||bBig?1:.35;extrasTotal+=r.s*weight;extrasWeight+=weight}
   if(r.k)kinds.push(r.k+(bothBig?"":"~"));
  }
@@ -1971,7 +1992,7 @@ function scoreOutfit(gs,ctx){
   if(fit>=.85&&ctx.dress)reasons.push("Encaja con tu estilo de hoy: "+DRESS_LABEL[ctx.dress].toLowerCase());else if(fit>=.85)reasons.push("Arreglado para el trabajo")}
  // Detalles de estilista (banco A/B, #128): doble vaquero sin contraste y prendas llamativas en el trabajo restan un poco
  // La ficha manda: el nombre solo cuenta si falta el dato (revisión de Codex, #134)
- if(!ctx.likes?.has("denim")&&big.filter(isDenimPiece).length>=2&&big.filter(g=>g.category!=="Capas").every(isDenimPiece))style-=.25; // gusto: si te gusta el doble vaquero, no resta (sube de .15 a .25 al corregir la camisa vaquera del banco a «informal», 10/10/2026)
+ /* Doble denim es un estilo posible; evaluar lavados/acabados, proporciones y contexto, no penalizarlo por defecto. */
  // Animal print y pelo sí valen para la oficina (votos de Noelia, #128); brillos de noche, no
  const isLoud=g=>/lentejuel|sequin|purpurina|glitter|strass|rhinestone/i.test(textOf(g));
  if(ctx.occasion==="work"){const loud=gs.filter(isLoud).length;if(loud)style-=Math.min(.3,.15*loud)}
@@ -2058,7 +2079,7 @@ const closedBoot=g=>g.category==="Zapatos"&&/\bbot(a|as|ines?|[ií]n)\b|\bboots?
 const bootInHeat=(g,temp)=>temp>=26&&closedBoot(g);
 /* Estampado: la ficha manda; sin dato, el color o el nombre (camuflaje, leopardo, rayas…) (prueba de degradación) */
 const PATTERN_TEXT=/camufla|\bcamo\b|leopard|cebra|zebra|serpiente|snake|animal print|estampad|\bprint\b|rayas|stripe|cuadros|plaid|tartan|check|flores|floral|lunares|polka|\bdots\b|paisley|cachemir/i;
-const isPatterned=g=>g.pattern?g.pattern!=="plain":colorInfo(g.color).fam==="estampado"||PATTERN_TEXT.test(textOf(g));
+const isPatterned=g=>g.pattern&&g.pattern!=="unknown"?g.pattern!=="plain":colorInfo(g.color).fam==="estampado"||PATTERN_TEXT.test(textOf(g));
 /* Calzado de reserva de todo el armario: si la ficha indica ocasiones, mandan (revisión de Codex, #117) */
 const fallbackOccOk=(g,occ)=>!(Array.isArray(g.occasions)&&g.occasions.length)||occasionFits(g,occ);
 /* Contexto de bolsos y abrigos (evaluación Polyvore v88/v92) */
@@ -2076,7 +2097,7 @@ function lookIssues(gs,ctx){
   else if(g.category==="Accesorios"&&HEADWEAR.test([g.type,g.subtype,g.name].filter(Boolean).join(" "))&&!headwearMakesSense(g,ctx))out.push(nm(g)+": sin motivo (ni sol ni frío)");
   if(outdoorPack(g)&&hasSkirtOrDress(gs))out.push("Mochila de montaña con vestido o falda");
  }
- if(gs.some(g=>isPatterned(g)&&!BIG.includes(g.category))&&gs.filter(isPatterned).length>=2)out.push("Complemento estampado con otra prenda estampada");
+ /* Los accesorios estampados no son un fallo por sí mismos: evaluar relación y aportación real al look. */
  return out;
 }
 const PUFFER=/plum[ií]fero|plumas|anorak|acolchad|puffer|quilted|parka|cortavientos|softshell|forro polar|fleece/i;
@@ -2092,7 +2113,7 @@ function vividColorRepeat(gs){
 }
 function completeOutfitGreedy(base,pool,ctx,used=new Map(),firstPick=null){
  const l=[...base],rule=layerRule(ctx.temp),home=ctx.occasion==="home",beach=ctx.occasion==="beach";
- const fits=x=>!l.includes(x)&&!(l.some(g=>isBackpack(g)&&(isOutdoor(g)||formalLevel(g)<2))&&formalLevel(x)>=2)&&!heavyKnitInHeat(x,ctx.temp)&&!insufficientColdLayer(x,ctx.temp)&&weatherCompatible(x,l,ctx)&&l.every(p=>!related(x,p)||stylesOk(x,p))&&l.every(p=>pairColor(x,p).s>=.45||!BIG.includes(p.category)||!BIG.includes(x.category)||ctx.likes?.has("pattern")&&pairColor(x,p).k==="two-patterns")&&!(isPatterned(x)&&!BIG.includes(x.category)&&l.some(isPatterned))&&!(["Bolsos","Accesorios"].includes(x.category)&&newColorOverflow(x,l,ctx))&&l.every(p=>(relationOf(x,p,ctx)?.s??1)>=REL_WEAK); // ninguna pareja débil (calzado incluido: mejor sin calzado que uno que no combina)
+ const fits=x=>!l.includes(x)&&!(l.some(g=>isBackpack(g)&&(isOutdoor(g)||formalLevel(g)<2))&&formalLevel(x)>=2)&&!heavyKnitInHeat(x,ctx.temp)&&!insufficientColdLayer(x,ctx.temp)&&weatherCompatible(x,l,ctx)&&l.every(p=>!related(x,p)||stylesOk(x,p))&&l.every(p=>pairColor(x,p).s>=.45||!BIG.includes(p.category)||!BIG.includes(x.category)||ctx.likes?.has("pattern")&&pairColor(x,p).k==="two-patterns")&&!(["Bolsos","Accesorios"].includes(x.category)&&newColorOverflow(x,l,ctx))&&l.every(p=>(relationOf(x,p,ctx)?.s??1)>=REL_WEAK); // ninguna pareja débil (calzado incluido: mejor sin calzado que uno que no combina)
  const relMean=x=>{const rs=l.map(p=>relationOf(x,p,ctx)?.s).filter(v=>v!=null);return rs.length?rs.reduce((a,b)=>a+b,0)/rs.length:.6};
  let pm=new Map();const pref=x=>pm.has(x)?pm.get(x):pm.set(x,prefRaw(x)).get(x); /* memo por categoría: el orden compara muchas veces */
  const prefRaw=x=>(relMean(x)-.6)+l.reduce((t,p)=>t+learnOf(x,p)*.4,0)+ /* lo que la persona ha elegido o editado (looks guardados) */(x.favorite?.5:0)+(["Bolsos","Accesorios","Zapatos"].includes(x.category)&&colorKey(x)&&paletteOf(l).has(colorKey(x))?.6:0)+ /* repetir un color del look: ritmo (regla de tres colores) */1/(1+(ctx.worn.get(x.id)||0))+(ctx.forgotten.has(x.id)?.5:0)-(ctx.avoid.has(x.id)?2:0)-(used.get(x.id)||0)*1.5+
@@ -2181,9 +2202,7 @@ function rankOutfits(o={}){
     con el gusto del perfil. Antes una pareja floja (camisa vaquera + pantalón de cuadros, 0,45) podía salir primera si el resto del look puntuaba bien */
  {const strong=bases.filter(b=>b.every((x,i)=>b.every((y,j)=>j<=i||(relationOf(x,y,ctx)?.s??1)>=REL_OK)));if(strong.length)bases=strong}
  if(bases.some(b=>!b.some(g=>uncertainColdTop(g,ctx.temp))))bases=bases.filter(b=>!b.some(g=>uncertainColdTop(g,ctx.temp)&&g.id!==o.required)); // sin dato de manga y con frío: solo si no hay otra cosa
- // Bolso o complemento estampado elegido: bases lisas si las hay (revisión de Codex, #117)
- if(req&&isPatterned(req)&&!BIG.includes(req.category)){const plain=bases.filter(b=>!b.some(p=>p!==req&&isPatterned(p)));if(plain.length)bases=plain}
- // Puntuación y selección variada: valor = puntuación − solapamiento con las ya elegidas (prendas principales pesan más)
+  // Puntuación y selección variada: valor = puntuación − solapamiento con las ya elegidas (prendas principales pesan más)
  // R2: las bases se completan con la versión rápida; la búsqueda de calzado alternativo (completeOutfit) solo para las elegidas
  ctx.byCat=new Map();for(const g of pool){if(!ctx.byCat.has(g.category))ctx.byCat.set(g.category,[]);ctx.byCat.get(g.category).push(g)}
  ctx.lite=true;const used=new Map(),cands=bases.map(b=>{const gs=completeOutfitGreedy(b,pool,ctx);return {gs,...scoreOutfit(gs,ctx)}});
