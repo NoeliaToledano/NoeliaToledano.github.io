@@ -5,7 +5,7 @@ import fs from "node:fs";
 const source=fs.readFileSync(new URL("../atelier.js",import.meta.url),"utf8");
 const evaluate=new Function("document","sessionStorage","crypto",source+`
 appState.profile={id:"stylist-test"};appState.data=emptyData();
-return {patternPairEvidence,pairColor,colorInfo,colorsMatch,pairs,isPatterned,contextualizePair,lookIssues,ensureRelations};
+return {patternPairEvidence,pairColor,colorInfo,colorsMatch,pairs,isPatterned,contextualizePair,lookIssues,ensureRelations,pairEvidence};
 `);
 const E=evaluate({addEventListener(){},querySelector(){return null},querySelectorAll(){return []}},{getItem(){return null},removeItem(){}},{randomUUID:()=>"stylist-test"});
 const upper=(id,pattern,color,extra={})=>({id,category:"Arriba",name:"Prenda",pattern,color,season:"all",style:"casual",formality:"casual",...extra});
@@ -47,4 +47,12 @@ test("printed accessory is not a categorical outfit violation",()=>{
  const gs=[upper("a","floral","Rojo"),lower("b","plain","Negro"),{id:"c",category:"Accesorios",name:"Pañuelo",pattern:"stripes",color:"Rojo",style:"casual",formality:"casual"}];
  const issues=E.lookIssues(gs,{temp:20,occasion:"daily",likes:new Set()});
  assert.ok(!issues.some(x=>x.includes("Complemento estampado con otra")));
+});
+
+test("unknown motif scale does not certify a strong relationship",()=>{
+ const a=upper("ua","stripes","Azul"),b=lower("ub","floral","Azul");
+ E.ensureRelations();
+ const ev=E.pairEvidence(a,b);
+ assert.equal(ev.patternUncertain,true);
+ assert.ok(E.contextualizePair(ev,{occasion:"daily",likes:new Set()}).s<.6);
 });
