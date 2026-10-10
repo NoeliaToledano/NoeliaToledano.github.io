@@ -46,6 +46,6 @@ const board=side=>side.garmentIds.map(id=>{
 const html='<html lang="es"><head><meta charset="utf-8"><title>Evaluación ciega Atelier</title>'+
 '<style>body{font:16px system-ui;max-width:1050px;margin:auto;padding:24px;color:#222}section{margin:30px 0;border-top:1px solid #ddd;padding-top:20px}.pair{display:grid;grid-template-columns:1fr 1fr;gap:18px}.items{display:flex;gap:8px;flex-wrap:wrap}figure{width:125px;margin:0}img{width:100%;height:150px;object-fit:contain;background:#f4f4f4}figcaption{font-size:11px}h2{font-size:18px}</style></head><body><h1>Atelier · revisión estética ciega</h1><p>Compara A y B, sin scores ni identificar el motor. Registra A, B, both, neither o insufficient en el JSON.</p>'+
 pairs.map(p=>'<section><h2>'+esc(p.id)+' · '+esc(p.context)+'</h2><div class="pair"><div><h3>A</h3><div class="items">'+board(p.A)+'</div></div><div><h3>B</h3><div class="items">'+board(p.B)+'</div></div></div></section>').join("")+'</body></html>';
-fs.writeFileSync(out.replace(/\\.json$/i,"")+".html",html);
+fs.writeFileSync((out.toLowerCase().endsWith(".json")?out.slice(0,-5):out)+".html",html);
 fs.writeFileSync(out,JSON.stringify({instructions:"Revisión ciega: ver composición completa e imágenes de prendas de A y B. Elegir A, B, both, neither o insufficient; separar estética, función y gusto; ningún score automático visible.",options:["A","B","both","neither","insufficient"],pairs},null,2));
 console.log("Prepared "+pairs.length+" blind comparisons with neutral HTML board. No human judgment was performed.");
