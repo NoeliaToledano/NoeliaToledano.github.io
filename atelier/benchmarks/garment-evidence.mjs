@@ -24,7 +24,7 @@ export function garmentEvidence(garment={}) {
     construction:value(finiteString(advanced.construction),advanced.constructionSource),
     composition:value(composition,"user"),
     pattern:{motifs,known:patternKnown,plain:explicitlyPlain,source:!patternKnown?"unknown":(extraPatterns.filter(Boolean).length ? (KNOWN.has(advanced.patternsSource)?advanced.patternsSource:"legacy") : "legacy")},
-    wash:value(finiteString(advanced.wash),advanced.washSource),
+    wash:value(finiteString(advanced.wash)??finiteString(g.denimWash),advanced.wash?advanced.washSource:"legacy"),
     decoration:value(Array.isArray(advanced.decoration)?unique(advanced.decoration.map(finiteString)):null,advanced.decorationSource),
     drape:value(finiteString(advanced.drape),advanced.drapeSource),
     metadataWarnings:[
