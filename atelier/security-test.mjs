@@ -409,11 +409,12 @@ console.log("PASS: Styling engine (20/100/500 prendas): capas según tiempo, var
   const r=new Function("document","sessionStorage","crypto",src+`
   const G=(id,category,type,color,extra={})=>({id,name:type+" "+color,category,type,color,style:"casual",formality:"casual",season:"all",pattern:"plain",occasions:["daily"],updatedAt:"x",...extra});
   appState.profile={id:"noelia"};
-  appState.data=normalizeData({garments:[G("gown","Vestidos","Vestido largo de lentejuelas","Dorado",{style:"party",formality:"party",occasions:["party","formal","event"]}),G("d","Vestidos","Vestido camisero","Beige"),G("s","Zapatos","Zapatillas","Negro")]});
+  appState.data=normalizeData({garments:[G("gown","Vestidos","Vestido largo de lentejuelas","Dorado",{style:"party",formality:"party",occasions:["party","formal","event"]}),G("d","Vestidos","Vestido camisero","Beige"),G("s","Zapatos","Zapatillas","Negro"),G("m","Zapatos","Mocasines","Negro",{style:"smart",formality:"smartcasual"})]});
   ensureRelations();const by=id=>myGarments().find(g=>g.id===id);
-  return basesFor(by("s")).map(b=>b.map(g=>g.id).join("+"));`)(document,sessionStorage,{randomUUID:()=>"t"});
-  assert.ok(!r.includes("gown"),"Unas zapatillas de diario no completan un vestido de lentejuelas ("+r+")");
-  assert.ok(r.includes("d"),"Sí un vestido de diario");
+  return {s:basesFor(by("s")).map(b=>b.map(g=>g.id).join("+")),m:basesFor(by("m")).map(b=>b.map(g=>g.id).join("+"))};`)(document,sessionStorage,{randomUUID:()=>"t"});
+  assert.ok(!r.s.includes("gown"),"Unas zapatillas de diario no completan un vestido de lentejuelas ("+r.s+")");
+  assert.ok(r.s.includes("d"),"Sí un vestido de diario");
+  assert.ok(!r.m.includes("gown"),"Las ocasiones de la ficha mandan: mocasines solo de diario tampoco ("+r.m+")");
   console.log("PASS: Accessories only complete bases they share an occasion with");
 }
 

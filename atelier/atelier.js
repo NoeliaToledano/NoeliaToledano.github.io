@@ -791,7 +791,8 @@ function outfitBoard(pieces){
   // Evitar que una foto de una habitación ocupe el lugar protagonista.
   // Solo la foto protagonista debe tener preferencia por fondo blanco.
   // Las demás conservan el orden de vestirse, sin subir zapatos ni accesorios.
-  const hero=items.find(g=>g.bgWhite&&(visualPriority[g.category]??7)<=3)||items[0];
+  // Un vestido manda siempre sobre el abrigo que lleva encima (revisión con fotos reales, 10/10/2026).
+  const hero=items.find(g=>g.category==="Vestidos")||items.find(g=>g.bgWhite&&(visualPriority[g.category]??7)<=3)||items[0];
   const arranged=[hero,...items.filter(g=>g!==hero)];
   return '<div class="look-mixed-board" data-count="'+arranged.length+'" role="group" aria-label="Prendas del conjunto">'+arranged.map(g=>'<div class="look-mixed-item"><img src="'+photoUrl(g)+'" alt="'+fx(g.name||g.category||"Prenda")+'" loading="lazy"></div>').join("")+'</div>';
 }
@@ -1231,7 +1232,8 @@ function lookBases(gs=myGarments()){ensureRelations();const k=relCache.sig+"|"+g
  for(let i=0;i<combos.length&&out.length<400;i+=step)out.push(combos[Math.floor(i)]);
  lbCache={k,v:out};return out}
 /* Un complemento completa una base solo si hay una ocasión en la que se llevan todos: unas zapatillas de diario no van con un vestido de lentejuelas (revisión, 10/10/2026) */
-const sharesOccasion=(c,b)=>REL_OCCS.some(o=>occasionFits(c,o)&&b.every(x=>occasionFits(x,o)));
+const fitsOcc=(g,o)=>Array.isArray(g.occasions)&&g.occasions.length?g.occasions.includes(o):occasionFits(g,o), /* las ocasiones de la ficha mandan; sin ficha, se deducen (revisión de Codex, #191) */
+ sharesOccasion=(c,b)=>REL_OCCS.some(o=>fitsOcc(c,o)&&b.every(x=>fitsOcc(x,o)));
 const basesFor=(c,bs=lookBases())=>bs.filter(b=>b.every(x=>goes(c,x))&&sharesOccasion(c,b)); /* zapatos, bolsos y complementos se miden contra looks enteros, no prenda a prenda */
 function pairs(a,b){
  if(a.id&&a.id===b.id)return false;
@@ -2804,7 +2806,7 @@ function simulate(c,gs,bases){
  else if(c.category==="Abajo")looks=gs.filter(g=>g.category==="Arriba"&&goes(c,g)).map(t=>[t,c]);
  else if(c.category==="Vestidos")looks=gs.filter(g=>["Zapatos","Capas"].includes(g.category)&&goes(c,g)&&sharesOccasion(g,[c])).map(e=>[c,e]);
  else looks=bases.filter(p=>p.every(x=>goes(c,x))&&sharesOccasion(c,p)).map(p=>[...p,c]);
- const complete=c.category==="Zapatos"?looks.filter(l=>!gs.some(g=>g.category==="Zapatos"&&l.slice(0,-1).every(p=>goes(g,p)))).length:0;
+ const complete=c.category==="Zapatos"?looks.filter(l=>!gs.some(g=>g.category==="Zapatos"&&l.slice(0,-1).every(p=>goes(g,p))&&sharesOccasion(g,l.slice(0,-1)))).length:0;
  const examples=looks.slice(0,40).map(l=>{if(["Arriba","Abajo"].includes(c.category)){const rest=l.filter(x=>x!==c),s=gs.find(g=>g.category==="Zapatos"&&goes(g,c)&&rest.every(p=>goes(g,p))&&sharesOccasion(g,l));return s?[...l,s]:l}return l});
  const q=l=>{let t=0,n=0,min=1;for(let i=0;i<l.length;i++)for(let j=i+1;j<l.length;j++){const r=relationOf(l[i],l[j]);if(r){t+=r.s;n++;min=Math.min(min,r.s)}}return min<REL_OK?0:n?t/n:.6}; /* eslabón débil: una pareja floja descarta el ejemplo (revisión de Codex, #174) */
  examples.sort((a,b)=>b.length-a.length||q(b)-q(a));

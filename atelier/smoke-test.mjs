@@ -63,7 +63,8 @@ try{
      if(rect.width<1||rect.height<1||rect.left<outer.left-1||rect.top<outer.top-1||rect.right>outer.right+1||rect.bottom>outer.bottom+1)failures.push("Tarjeta fuera de rejilla: "+count+"/"+i);
      if(!img||!img.complete||img.naturalWidth!==60||img.naturalHeight!==120||getComputedStyle(img).objectFit!=="contain"||!photoRect||photoRect.width<1||photoRect.height<1||photoRect.left<rect.left-1||photoRect.top<rect.top-1||photoRect.right>rect.right+1||photoRect.bottom>rect.bottom+1)failures.push("Foto recortada o sin cargar: "+count+"/"+i);
     }
-    if(count>=2&&(images[0]?.alt!=="Pieza 0"||areas[0]<=Math.max(...areas.slice(1))))failures.push("Jerarquía protagonista: "+count);
+    const hero=pieces.slice(0,count).find(p=>p.category==="Vestidos")?.name||"Pieza 0"; // un vestido siempre protagoniza
+    if(count>=2&&(images[0]?.alt!==hero||areas[0]<=Math.max(...areas.slice(1))))failures.push("Jerarquía protagonista: "+count);
    }
   }finally{host.remove()}
   return failures;
