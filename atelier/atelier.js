@@ -1986,7 +1986,7 @@ function scoreOutfit(gs,ctx){
  // Silueta (25): equilibrio de volúmenes cuando se conoce el corte
  const vol=g=>({oversize:2,holgado:2,regular:1,recto:1,entallado:0,ajustado:0}[g.fit]);
  const top=gs.find(g=>g.category==="Arriba"),bottom=gs.find(g=>g.category==="Abajo");let sil=.75; // Q1 (#108): sin corte conocido, igual que un vestido
- if(top&&bottom&&vol(top)!=null&&vol(bottom)!=null){const a=vol(top),b=vol(bottom);sil=Math.abs(a-b)===2?1:Math.abs(a-b)===1?.88:a===1?.8:ctx.dress==="comoda"&&a===2?.82:.6;if(Math.abs(a-b)===2)reasons.push("Volúmenes equilibrados: amplio con ajustado")}
+ if(top&&bottom&&vol(top)!=null&&vol(bottom)!=null){const a=vol(top),b=vol(bottom);sil=Math.abs(a-b)===2?1:Math.abs(a-b)===1?.88:a===1?.8:a===b&&a!==1?.78:.6;if(Math.abs(a-b)===2)reasons.push("Volúmenes equilibrados: amplio con ajustado")}
  else if(gs.some(g=>g.category==="Vestidos"))sil=.75;
  // Estilo (20): coherencia de estilo; una pieza de otro nivel puede ser intencionada (F03)
  const styled=gs.filter(g=>g.style).map(sheetStyle),aff=[]; /* la formalidad de la ficha manda sobre el estilo (camisa vaquera «smart» con formalidad informal = informal) */
