@@ -9,7 +9,7 @@ const unique = xs => [...new Set(xs.filter(Boolean))];
 const value = (v, source) => ({value:v??null,source:v==null?"unknown":KNOWN.has(source)?source:"legacy",known:v!=null});
 export function garmentEvidence(garment={}) {
   const g=garment&&typeof garment==="object"?garment:{};
-  const fabric=finiteString(g.fabric);
+  const fabric=finiteString(g.fabric)==="unknown"?null:finiteString(g.fabric);
   const pattern=finiteString(g.pattern);
   const composition=finiteString(g.composition);
   const advanced=g.materialAttributes&&typeof g.materialAttributes==="object"?g.materialAttributes:{};
@@ -23,7 +23,7 @@ export function garmentEvidence(garment={}) {
     textile:value(finiteString(advanced.textile)??fabric,advanced.textileSource),
     construction:value(finiteString(advanced.construction),advanced.constructionSource),
     composition:value(composition,"user"),
-    pattern:{motifs,known:patternKnown,plain:explicitlyPlain,source:patternKnown?"legacy":"unknown"},
+    pattern:{motifs,known:patternKnown,plain:explicitlyPlain,source:!patternKnown?"unknown":(extraPatterns.filter(Boolean).length ? (KNOWN.has(advanced.patternsSource)?advanced.patternsSource:"legacy") : "legacy")},
     wash:value(finiteString(advanced.wash),advanced.washSource),
     decoration:value(Array.isArray(advanced.decoration)?unique(advanced.decoration.map(finiteString)):null,advanced.decorationSource),
     drape:value(finiteString(advanced.drape),advanced.drapeSource),
