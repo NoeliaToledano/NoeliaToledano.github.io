@@ -70,6 +70,86 @@ try{
   return failures;
  });
  assert.deepEqual(collageAudit,[],"Regresión de composición fotográfica de looks");
+ // In dense looks, small accessories get a quieter presentation than clothing.
+ const accessoryHierarchy=await page.evaluate(()=>{
+  const canvas=document.createElement("canvas");canvas.width=40;canvas.height=80;
+  canvas.getContext("2d").fillRect(0,0,40,80);
+  const image=canvas.toDataURL("image/png");
+  const garments=["Arriba","Abajo","Capas","Zapatos","Bolsos","Accesorios"].map((category,i)=>({id:"a"+i,name:category,category,image}));
+  const host=document.createElement("div");host.style.cssText="position:fixed;left:0;top:0;width:340px;visibility:hidden";
+  document.body.append(host);
+  try{
+   host.innerHTML=outfitBoard(garments);
+   const accessory=host.querySelector('[data-piece-kind="accessory"] img');
+   const bag=host.querySelector('[data-piece-kind="bag"] img');
+   const clothing=host.querySelector('[data-piece-kind="garment"] img');
+   return Boolean(accessory&&bag&&clothing&&
+    parseFloat(getComputedStyle(accessory).paddingTop)>parseFloat(getComputedStyle(bag).paddingTop)&&
+    parseFloat(getComputedStyle(bag).paddingTop)>parseFloat(getComputedStyle(clothing).paddingTop));
+  }finally{host.remove()}
+ });
+ assert.equal(accessoryHierarchy,true,"Small accessories must remain visually secondary in dense looks");
+
+
+ // A dress with shoes should not present the shoes as an equally important tile.
+ const dressLayout=await page.evaluate(()=>{
+  const cv=document.createElement("canvas");cv.width=40;cv.height=80;cv.getContext("2d").fillRect(0,0,40,80);
+  const image=cv.toDataURL("image/png");
+  const host=document.createElement("div");host.style.cssText="width:300px;position:fixed;left:0;top:0;visibility:hidden";
+  document.body.append(host);
+  try{
+   const dress={id:"hero-dress",name:"Vestido",category:"Vestidos",image};
+   const shoes={id:"side-shoes",name:"Zapatos",category:"Zapatos",image};
+   host.innerHTML=outfitBoard([shoes,dress]);
+   const board=host.querySelector(".look-mixed-board");
+   const cards=[...host.querySelectorAll(".look-mixed-item")];
+   const dressArea=cards[0].getBoundingClientRect(),shoeArea=cards[1].getBoundingClientRect();
+   const ratio=(dressArea.width*dressArea.height)/(shoeArea.width*shoeArea.height);
+   const dressOk=board.dataset.heroCategory==="dress"&&cards[0].querySelector("img").alt==="Vestido"&&ratio>2;
+   host.innerHTML=outfitBoard([{id:"a",name:"Camisa",category:"Arriba",image},{id:"b",name:"Pantalón",category:"Abajo",image}]);
+   const ordinary=host.querySelector(".look-mixed-board");
+   return {dressOk,ordinaryOk:ordinary.dataset.heroCategory==="other"};
+  }finally{host.remove()}
+ });
+ assert.equal(dressLayout.dressOk,true,"Dress must dominate shoes in a 2-piece collage");
+ assert.equal(dressLayout.ordinaryOk,true,"Top-and-bottom looks retain their standard layout");
+
+
+ // Premium: test actual responsive media queries, at each viewport width.
+ const originalViewport=page.viewportSize();
+ const cardOverflow=[];
+ try{
+  for(const width of [320,375,430]){
+   await page.setViewportSize({width,height:844});
+   const failures=await page.evaluate(()=>{
+    const failures=[];
+    const host=document.createElement("div");
+    host.style.cssText="position:fixed;left:0;top:0;width:100vw;z-index:-1;visibility:hidden;pointer-events:none";
+    host.innerHTML='<div class="grid"><article class="garment-tile"><div class="card-body"><div class="card-title">Chaqueta-de-invierno-impermeable-extralarga-con-nombre-muy-largo</div><div class="card-meta">Estampado floral multicolor con detalles especiales y descripción extensa</div></div><div class="tile-tools"><button class="chip-button">Editar esta prenda</button><button class="chip-button">Ver detalles adicionales</button></div></article><article class="look-tile"><div class="card-body"><div class="card-title">Look-para-evento-muy-especial-con-titulo-larguisimo</div><div class="card-meta">Descripción de conjunto para diferentes ocasiones</div></div><div class="tile-tools"><button class="chip-button">Guardar conjunto</button><button class="chip-button">Cambiar prendas</button></div></article></div>';
+    document.body.append(host);
+    try{
+     const viewportWidth=document.documentElement.clientWidth;
+     for(const tile of host.querySelectorAll(".garment-tile,.look-tile")){
+      const bounds=tile.getBoundingClientRect();
+      if(bounds.width<1||bounds.left< -1||bounds.right>viewportWidth+1)failures.push("Tile outside viewport: "+tile.className);
+      if(tile.scrollWidth>tile.clientWidth+1)failures.push("Tile scroll overflow: "+tile.className);
+      for(const element of tile.querySelectorAll(".card-title,.card-meta,.tile-tools,.tile-tools button")){
+       const box=element.getBoundingClientRect();
+       if(box.left<bounds.left-1||box.right>bounds.right+1)failures.push("Escapes tile: "+element.className);
+       if(element.scrollWidth>element.clientWidth+1)failures.push("Text scroll overflow: "+element.className);
+      }
+     }
+    }finally{host.remove()}
+    return failures;
+   });
+   cardOverflow.push(...failures.map(message=>width+"px: "+message));
+  }
+ }finally{
+  if(originalViewport)await page.setViewportSize(originalViewport);
+ }
+ assert.deepEqual(cardOverflow,[],"Premium cards must not overflow narrow mobile viewports");
+
+
 
  // A dress with shoes should not present the shoes as an equally important tile.
  const dressLayout=await page.evaluate(()=>{
