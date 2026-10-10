@@ -55,12 +55,9 @@ try{
  await page.getByText("Camiseta WebKit",{exact:true}).first().waitFor();
  await addGarment("Pantalón WebKit","Abajo"); // un look necesita arriba y abajo
  await page.locator('[data-view="stylist"]').click();
- await page.locator("#openLooks").click();
- await page.locator(".looks-tools").evaluate(el=>el.open=true);
- await page.locator("#aiLooks").click();
- await page.getByText("Combinación de prueba",{exact:true}).waitFor();
- await page.locator("#aiSheet [data-ai-save]").first().click();
- await page.locator("#aiSheet").waitFor({state:"detached"});
+ await page.locator('[data-stylist-tab="explore"]').click();
+ await page.locator("[data-explore-save]").first().click();
+ await page.locator("#toast",{hasText:"Look guardado"}).waitFor();
  await page.locator('[data-view="shopping"]').click();
  await page.locator('[data-shop-tab="wish"]').click();
  await page.locator('[name="wishName"]').fill("Zapatos de prueba");
