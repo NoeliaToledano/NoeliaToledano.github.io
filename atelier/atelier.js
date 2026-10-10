@@ -1975,6 +1975,14 @@ function visualFocusEvidence(gs){
   optionalCompetition:coreStrong.length>=2&&optionalStrong.length>0,
   known:gs.some(g=>g.patternContrast||g.surfaceSheen)};
 }
+/* Los estampados no implican competencia solo por contarlos. Esta señal
+   exige contraste alto y cobertura completa declarados en las prendas principales. */
+function focalCompetition(gs,ctx){
+ const foci=gs.filter(g=>BIG.includes(g.category)&&g.pattern&&g.pattern!=="plain"&&g.pattern!=="unknown"
+  &&(g.patternContrast||g.materialAttributes?.patternContrast)==="high"
+  &&(g.patternPlacement||g.materialAttributes?.patternPlacement)==="allover");
+ return {knownFoci:foci.length,scoreAdjustment:foci.length>=3&&!ctx.likes?.has("pattern")&&!ctx.likes?.has("multicolor")?-3:0};
+}
 function scoreOutfit(gs,ctx){
  const reasons=[],warnings=[],big=gs.filter(g=>BIG.includes(g.category));
  // Color (25): el conjunto principal manda. Bolsos y accesorios no deben
@@ -2062,7 +2070,7 @@ function scoreOutfit(gs,ctx){
  const clamp=v=>Math.max(0,Math.min(1,v));
  // Lo usado hace poco resta aparte (hasta 15 puntos), para que «distinto cada día» pese de verdad
  const recent=Math.min(1,personal<0?-personal:0);
- const score=Math.round(25*clamp(color+colorAdj)+25*clamp(sil)+20*clamp(style)+20*clamp(context)+10*clamp(personal)-15*recent-(patterns>=3&&!ctx.likes?.has("pattern")?12:0)-(ctx.likes?.has("vividmono")?0:12)*vividColorRepeat(gs)); // gusto: solo si te gusta el tono sobre tono en color vivo (no basta con «monocromático»)
+ const score=Math.round(25*clamp(color+colorAdj)+25*clamp(sil)+20*clamp(style)+20*clamp(context)+10*clamp(personal)-15*recent+focalCompetition(gs,ctx).scoreAdjustment-(ctx.likes?.has("vividmono")?0:12)*vividColorRepeat(gs)); // gusto: solo si te gusta el tono sobre tono en color vivo (no basta con «monocromático»)
  return {score,reasons:[...new Set(reasons)].slice(0,3),warnings};
 }
 /* Contexto común (se calcula una vez por llamada: usos, olvidadas y gustos) */
