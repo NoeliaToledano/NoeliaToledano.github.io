@@ -529,3 +529,13 @@ p.notice-card{display:block}
  .look-mixed-item{border:1px solid CanvasText}
  .look-mixed-board{border:1px solid CanvasText}
 }
+
+/* Premium card resilience: real garment names must not break narrow layouts. */
+.garment-tile .card-body,.look-tile .card-body{min-width:0}
+.garment-tile .card-title,.look-tile .card-title{overflow-wrap:anywhere;line-height:1.35}
+.garment-tile .card-meta,.look-tile .card-meta,.tile-hints{overflow-wrap:anywhere;line-height:1.45}
+@media(max-width:370px){
+ .garment-tile .tile-tools,.look-tile .tile-tools{flex-wrap:wrap;gap:6px}
+ .garment-tile .tile-tools>*,
+ .look-tile .tile-tools>*{max-width:100%}
+}
