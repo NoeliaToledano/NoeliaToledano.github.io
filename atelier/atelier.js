@@ -2387,12 +2387,26 @@ function dayProposals(date,max=3,avoid=new Set(),seen=[],skipNuclei=[]){
  return rankOutfits({date,max,avoid:new Set([...avoid,...near]),seen,skipNuclei}).map(r=>Object.assign(r.garments,{reasons:r.reasons,warnings:r.warnings}));
 }
 function showSheet(id,html,onClose){
- $$("#"+id).forEach(x=>x.remove());
- document.body.insertAdjacentHTML("beforeend",'<div id="'+id+'" class="overlay"><section class="sheet" role="dialog" aria-modal="true" aria-labelledby="'+id+'Title">'+html+'</section></div>');
- const el=$("#"+id),close=()=>{el.remove();onClose?.()};
- el.addEventListener("click",e=>{if(e.target===el)close()});el.addEventListener("keydown",e=>{if(e.key==="Escape")close()});
- $$("[data-close-sheet]",el).forEach(b=>b.addEventListener("click",close));
- setTimeout(()=>el.querySelector("button")?.focus(),0);
+ const previous=$("#"+id);
+ const origin=previous?previous.__returnFocus||document.activeElement:document.activeElement;
+ if(previous)previous.remove();
+ document.body.insertAdjacentHTML("beforeend",'<div id="'+id+'" class="overlay"><section class="sheet" role="dialog" aria-modal="true" aria-labelledby="'+id+'Title" tabindex="-1">'+html+'</section></div>');
+ const el=$("#"+id),dialog=el.querySelector('[role="dialog"]');
+ el.__returnFocus=origin;
+ const focusable=()=>[...dialog.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')].filter(x=>x.getClientRects().length>0&&!x.closest('[hidden],.hidden,[inert]'));
+ const close=()=>{if(!el.isConnected)return;el.remove();onClose?.();if(origin?.isConnected&&typeof origin.focus==="function")origin.focus()};
+ el.addEventListener("click",e=>{if(e.target===el)close()});
+ el.addEventListener("keydown",e=>{
+  if(e.key==="Escape"){e.preventDefault();close();return}
+  if(e.key!=="Tab")return;
+  const nodes=focusable();
+  if(!nodes.length){e.preventDefault();dialog.focus();return}
+  const first=nodes[0],last=nodes[nodes.length-1];
+  if(e.shiftKey&&(document.activeElement===first||document.activeElement===dialog)){e.preventDefault();last.focus()}
+  else if(!e.shiftKey&&(document.activeElement===last||!dialog.contains(document.activeElement))){e.preventDefault();first.focus()}
+ });
+ $("[data-close-sheet]",el).forEach(b=>b.addEventListener("click",close));
+ setTimeout(()=>{if(el.isConnected)(focusable()[0]||dialog).focus()},0);
  return {el,close};
 }
 /* Versiones en cualquier lista de looks (Combinar prenda, Mis looks, Mi semana): la elección vive en la pantalla (no se guarda)
