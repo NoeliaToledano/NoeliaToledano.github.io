@@ -52,4 +52,6 @@ try{execFileSync(process.execPath,["--test",new URL("./benchmarks/pattern-mixing
 catch(e){fail("Pattern-mixing engine regression: "+String(e.stderr||e.message));}
 try{execFileSync(process.execPath,["--test",new URL("./benchmarks/silhouette-evidence.test.mjs",import.meta.url).pathname],{stdio:"pipe"});}
 catch(e){fail("Silhouette evidence regression: "+String(e.stderr||e.message));}
+try{execFileSync(process.execPath,["--test",new URL("./benchmarks/layer-fit-evidence.test.mjs",import.meta.url).pathname],{stdio:"pipe"});}
+catch(e){fail("Layer fit evidence regression: "+String(e.stderr||e.message));}
 console.log("Atelier release gate OK (app y backend)");
