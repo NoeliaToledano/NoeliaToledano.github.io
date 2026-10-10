@@ -492,3 +492,13 @@ p.notice-card{display:block}
 .store-links{display:flex;flex-wrap:wrap;gap:6px}.store-links .muted{font-size:11px}.store-title{font-size:12px;margin:8px 0 4px}
 .suggestion-alt{border-top:1px solid var(--line);margin-top:10px;padding-top:8px;display:grid;gap:6px}.suggestion-alt p{margin:0;font-size:14px}
 .store-links a.chip-button{text-decoration:none}
+
+/* Premium accessibility: clear keyboard focus, touch comfort and restrained motion. */
+:root{--focus-ring:#235c9f}
+:where(button,a,input,select,textarea,summary,[tabindex]):focus-visible{outline:3px solid var(--focus-ring);outline-offset:3px}
+:where(.primary,.secondary,.danger,.profile-pill,.profile-option,.chip-button,.look-version,.edit-option,.almost-piece,.edit-row-actions button,.auth-back,.password-toggle){min-height:44px}
+:where(.chip-button,.profile-pill,.look-version,.edit-option,.almost-piece){transition:background-color .16s ease,border-color .16s ease,box-shadow .16s ease}
+@media(prefers-reduced-motion:reduce){
+ :where(.chip-button,.profile-pill,.look-version,.edit-option,.almost-piece){transition:none!important}
+ html:focus-within{scroll-behavior:auto}
+}
