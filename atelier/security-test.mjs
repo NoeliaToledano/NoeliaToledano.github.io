@@ -433,6 +433,21 @@ console.log("PASS: Styling engine (20/100/500 prendas): capas según tiempo, var
   console.log("PASS: «Si refresca» offers a warmer layer when the principal warns of cold");
 }
 
+// «Los looks tienen que llevar cosas que combinen 100 %»: núcleo y calzado con relación ≥ 0,6 (caso real: camisa vaquera + pantalón de cuadros)
+{
+  const H=new URL("./benchmarks/real-photos/",import.meta.url),L=JSON.parse(fs.readFileSync(new URL("labels-polyvore.json",H),"utf8")),W=JSON.parse(fs.readFileSync(new URL("wardrobes-polyvore.json",H),"utf8"));
+  const gs=W.P.map(id=>L.find(g=>g.id===id)).map(g=>({...g,image:"",updatedAt:"2026-10-01T10:00:00Z",createdAt:"2026-10-01"}));
+  const r=new Function("document","sessionStorage","crypto","gs",src+`
+  appState.profile={id:"noelia"};appState.data=normalizeData({garments:gs});Object.assign(appState.data.preferences,{temperature:17,autoWeather:false});ensureRelations();
+  const a=myGarments().find(g=>/chambray/.test(g.name)),wk=l=>l.some((x,i)=>l.slice(i+1).some(y=>(relationOf(x,y)?.s??1)<REL_OK));
+  const around=rankOutfits({required:a.id,max:8}).map(l=>l.garments);let all=[];for(const occasion of [null,"daily","work","party"])all=all.concat(rankOutfits({occasion,max:6}).map(l=>l.garments));
+  return {check:around.some(l=>l.some(g=>/chlo. checked/.test(g.name))),weakAround:around.filter(wk).length,weakAll:all.filter(wk).length,n:all.length};`)(document,sessionStorage,{randomUUID:()=>"t"},gs);
+  assert.equal(r.check,false,"La camisa vaquera no se propone con el pantalón de cuadros (Noelia)");
+  assert.equal(r.weakAround,0,"Ningún look de «Combinar» con una pareja floja");
+  assert.ok(r.weakAll<=1,"Casi ningún look con una pareja floja ("+r.weakAll+" de "+r.n+")");
+  console.log("PASS: Looks combine 100%: strong nucleus and shoes (real chambray + checks case)");
+}
+
 // Orden en pantalla (Noelia, 10/10/2026): entre looks de calidad parecida, primero los más completos
 {
   const sample=JSON.parse(fs.readFileSync(new URL("./benchmarks/sample-garments.json",import.meta.url),"utf8"));
