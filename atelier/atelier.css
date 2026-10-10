@@ -555,3 +555,7 @@ p.notice-card{display:block}
 /* Dense collages: treat small accessories as supporting details. */
 .look-mixed-board:is([data-count="6"],[data-count="7"])>.look-mixed-item[data-piece-kind="accessory"] img{padding:18%}
 .look-mixed-board:is([data-count="6"],[data-count="7"])>.look-mixed-item[data-piece-kind="bag"] img{padding:9%}
+
+/* Premium: disclosure for secondary look actions must remain comfortably tappable. */
+.look-secondary-actions>summary{min-height:44px;display:flex;align-items:center;line-height:1.4;font-size:12px;overflow-wrap:anywhere}
+.look-secondary-actions[open]>summary{color:var(--ink);font-weight:600}
