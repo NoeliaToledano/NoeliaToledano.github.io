@@ -2201,6 +2201,33 @@ async function setPlan(date,garmentIds,{name,lookId}={}){
 }
 /* Propuestas para un día (Hoy y Mi semana): motor común con la ocasión y la temperatura de esa fecha,
    evitando lo planificado en los días cercanos y lo que se pide evitar (avoid). */
+/* Versiones de un look (idea de Noelia, 10/10/2026): el mismo núcleo (vestido, o arriba + abajo) con otra intención.
+   Más informal, más arreglada, «si refresca» u otros zapatos. Solo cuentan si cambian el calzado o la capa (un complemento no basta),
+   si combinan con todo, cumplen las reglas y puntúan cerca del principal. Sin relleno: si no hay ninguna a la altura, ninguna. */
+const VERSION_GAP=6;
+function lookVersions(main,ctxIn=null,max=3){
+ ensureRelations();const ctx=ctxIn||engineContext(),nuc=nucleusOf(main);if(!nuc.length||!main.length)return [];
+ const notes=pieceNotes(),usable=x=>!main.includes(x)&&seasonFits(x,ctx.season)&&(!ctx.occasion||occasionFits(x,ctx.occasion)&&!ctx.offOcc.has(x.id))&&!notes.disliked.has(x.id);
+ const rel=(x,ys)=>ys.every(y=>(relationOf(x,y,ctx)?.s??1)>=REL_OK),rule=layerRule(ctx.temp);
+ const shoe0=main.find(g=>g.category==="Zapatos")||null,layer0=main.find(g=>g.category==="Capas")||null,rest=main.filter(g=>!nuc.includes(g)&&g!==shoe0&&g!==layer0);
+ const near=(cat,lim)=>myGarments().filter(x=>x.category===cat&&usable(x)&&rel(x,nuc)).map(x=>({x,m:nuc.reduce((t,y)=>t+(relationOf(x,y,ctx)?.s??.6),0)})).sort((a,b)=>b.m-a.m).slice(0,lim).map(o=>o.x);
+ const shoes=shoe0?[shoe0,...near("Zapatos",6)]:[null];
+ const layers=[layer0,...(rule.need?[]:[null]),...(rule.max>=0?near("Capas",4).filter(x=>warmthOf(x)<=rule.max&&!insufficientColdLayer(x,ctx.temp)):[])].filter((x,i,a)=>a.indexOf(x)===i);
+ const r0=scoreOutfit(main,ctx),s0=r0.score,w0=r0.warnings,f0=shoe0?formalLevel(shoe0):null,sig0=lookSig(main.map(g=>g.id)),cands=[];
+ for(const z of shoes)for(const c of layers){
+  if(z===shoe0&&c===layer0)continue;
+  const core=[...nuc,z,c].filter(Boolean),gs=[...core,...rest.filter(r=>rel(r,core))];
+  if(!core.every((x,i)=>rel(x,core.filter((_,j)=>j!==i)))||lookIssues(gs,ctx).length||!lookComplete(gs))continue;
+  const r=scoreOutfit(gs,ctx);if(r.score<s0-VERSION_GAP||r.warnings.some(w=>!w0.includes(w)))continue; /* ningún aviso nuevo respecto al principal */
+  cands.push({gs,score:r.score,f:z&&shoe0?formalLevel(z):null,sameLayer:c===layer0,sameShoe:z===shoe0,addsLayer:!layer0&&!!c,sig:lookSig(gs.map(g=>g.id))});
+ }
+ const out=[],take=(label,list)=>{const best=list.filter(v=>v.sig!==sig0&&!out.some(o=>o.sig===v.sig)).sort((a,b)=>b.score-a.score)[0];if(best&&out.length<max)out.push({...best,label})};
+ /* cada intención cambia una sola cosa: el calzado (más informal / más arreglada / otros zapatos) o la capa (si refresca) */
+ if(f0!=null){take("Más informal",cands.filter(v=>v.sameLayer&&v.f!=null&&f0-v.f>=.5));take("Más arreglada",cands.filter(v=>v.sameLayer&&v.f!=null&&v.f-f0>=.5))}
+ if(ctx.temp>=12&&ctx.temp<24)take("Si refresca",cands.filter(v=>v.sameShoe&&v.addsLayer));
+ if(out.length<2&&shoe0)take("Otros zapatos",cands.filter(v=>v.sameLayer&&!v.sameShoe&&(v.f==null||f0==null||Math.abs(v.f-f0)<.5))); /* p. ej. en una fiesta, otros tacones */
+ return out.map(v=>({label:v.label,garments:v.gs,ids:v.gs.map(g=>g.id),score:v.score}));
+}
 function dayProposals(date,max=3,avoid=new Set(),seen=[]){
  const near=myPlans().filter(p=>p.date!==date&&Math.abs(Date.parse(p.date)-Date.parse(date))<=3*86400000).flatMap(p=>p.garmentIds||[]);
  return rankOutfits({date,max,avoid:new Set([...avoid,...near]),seen}).map(r=>Object.assign(r.garments,{reasons:r.reasons,warnings:r.warnings}));
@@ -2291,7 +2318,7 @@ function ensureDailyLook(force=false){
  const skip=force&&d?.date===today?[...(d.skip||[]),lookSig(d.ids||[])]:[];
  let l=computeDaily(today,skip),wrapped=false;
  if(!l&&skip.length){wrapped=true;l=computeDaily(today,[]);if(l)toast("Ya has visto todas las propuestas de hoy: vuelvo a empezar")}
- d=p.dailyLook={date:today,ids:l?l.map(g=>g.id):[],temp,wsig,skip:wrapped?[]:skip,touched:force||d?.date===today&&!!d?.touched,worn:false};
+ d=p.dailyLook={date:today,ids:l?l.map(g=>g.id):[],main:l?l.map(g=>g.id):[] /* look principal: sus versiones se calculan sobre él */,temp,wsig,skip:wrapped?[]:skip,touched:force||d?.date===today&&!!d?.touched,worn:false};
  return d;
 }
 function weatherLabel(){
@@ -2306,8 +2333,12 @@ function dailyLookHtml(){
  const d=ensureDailyLook(),gs=(d.ids||[]).map(id=>myGarments().find(g=>g.id===id)).filter(Boolean),why=gs.length?scoreOutfit(gs,engineContext()):null;
  if(gs.length<1){const occ=appState.data.preferences.occasion,other=occ&&rankOutfits({max:1,occasion:null}).length;
   return '<section class="feature-card daily-look"><div class="section-head"><h2>Tu look de hoy</h2></div>'+weather+(other?'<p class="muted">No tienes prendas para «'+fx(occasions[occ]||occ)+'». Cambia la ocasión en «Más opciones» o marca en la ficha de tus prendas para qué ocasiones sirven.</p>':'<p class="muted">Añade al menos una parte de arriba y una de abajo (o un vestido) y aquí tendrás cada día un look listo.</p><button type="button" class="primary" id="dailyAdd">+ Añadir prendas</button>')+'</section>'}
+ const mainGs=(d.main?.length?d.main:d.ids).map(id=>myGarments().find(g=>g.id===id)).filter(Boolean),versions=mainGs.length?lookVersions(mainGs,engineContext()):[];
+ const opts=versions.length?[{label:"Principal",ids:mainGs.map(g=>g.id),garments:mainGs},...versions]:[],cur=lookSig(d.ids||[]);
+ const versionsHtml=opts.length?'<div class="look-versions" role="group" aria-label="Versiones de este look">'+opts.map((v,i)=>{const on=lookSig(v.ids)===cur,diff=v.garments.filter(g=>!mainGs.includes(g)&&g.category!=="Bolsos"&&g.category!=="Accesorios");
+   return '<button type="button" class="look-version'+(on?' on':'')+'" data-version="'+i+'" aria-pressed="'+on+'"><span class="look-version-thumbs">'+(i?diff:mainGs.filter(g=>g.category==="Zapatos"||g.category==="Capas")).slice(0,2).map(g=>validImage(g.image)?'<img src="'+photoUrl(g)+'" alt="" loading="lazy">':'<span aria-hidden="true">◇</span>').join("")+'</span><span>'+fx(v.label)+'</span></button>'}).join("")+'</div>':'';
  return '<section class="feature-card daily-look"><div class="section-head"><h2>Tu look de hoy</h2></div>'+weather+
-  '<div class="daily-board">'+outfitBoard(gs)+'</div><div class="look-items">'+gs.map(g=>'<span class="look-chip">'+fx(g.name)+'</span>').join("")+'</div>'+
+  '<div class="daily-board">'+outfitBoard(gs)+'</div>'+versionsHtml+'<div class="look-items">'+gs.map(g=>'<span class="look-chip">'+fx(g.name)+'</span>').join("")+'</div>'+
   (why?.reasons.length||why?.warnings.length?'<ul class="look-reasons">'+why.reasons.map(r=>'<li>'+fx(r)+'</li>').join("")+why.warnings.map(w=>'<li class="warn">'+fx(w)+'</li>').join("")+'</ul>':'')+
   '<div class="daily-actions">'+(d.worn||logs().some(x=>x.date===dayISO()&&lookSig(x.garmentIds||[])===lookSig(d.ids||[]))?'<span class="badge-ok">✓ Te lo has puesto hoy</span>':'<button type="button" class="primary" id="dailyWear">Me lo pongo</button>')+
   '<button type="button" class="secondary" id="dailyNext">↻ Otro look</button></div>'+
@@ -2335,6 +2366,9 @@ function bindDailyLook(root){
  if(dailyDirty){dailyDirty=false;saveState().catch(()=>{})}
  $("#dailyAdd",root)?.addEventListener("click",()=>setView("wardrobe"));
  $("#dailyNext",root)?.addEventListener("click",async()=>{ensureDailyLook(true);await saveState();render()});
+ $$("[data-version]",root).forEach(b=>b.addEventListener("click",async()=>{const d=p.dailyLook;if(!d?.ids?.length)return;
+  const mainGs=(d.main?.length?d.main:d.ids).map(id=>myGarments().find(g=>g.id===id)).filter(Boolean),i=Number(b.dataset.version),v=i?lookVersions(mainGs,engineContext())[i-1]:{ids:mainGs.map(g=>g.id)};
+  if(!v)return;if(!d.main?.length)d.main=mainGs.map(g=>g.id);d.ids=[...v.ids];d.touched=true;await saveState();render()}));
  $("#dailyAlmost",root)?.addEventListener("click",()=>{const d=p.dailyLook;if(!d?.ids?.length)return;openAlmost(d.ids,p.occasion||"daily",async()=>{ensureDailyLook(true);await saveState();render()})});
  $("#dailyWear",root)?.addEventListener("click",async()=>{const d=p.dailyLook;if(!d?.ids?.length)return;const now=new Date().toISOString();
   await mutate(()=>{logs().unshift({id:uid(),date:today,garmentIds:[...d.ids],lookId:null,updatedAt:now});d.worn=true;d.touched=true},"Registrado: te lo has puesto hoy")});
