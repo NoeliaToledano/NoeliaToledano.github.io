@@ -480,3 +480,4 @@ p.notice-card{display:block}
 .formality-main{grid-column:1/-1}.formality-main select{width:100%}
 .version-note{font-size:12px;margin:0 0 6px}
 .gap-hint{color:#8a5a12;font-weight:600}
+.explore-occs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:6px}.explore-occs .chip-button{white-space:nowrap}.explore-note{font-size:12px;margin:0 0 10px}

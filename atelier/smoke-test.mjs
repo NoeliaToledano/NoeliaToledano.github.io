@@ -14,6 +14,8 @@ await page.route("https://atelier-ai-backend-pi.vercel.app/**",async route=>{
  console.log("MOCK",req.method(),url);if(req.method()==="OPTIONS")return route.fulfill({status:204,headers,body:""});
  if(url.endsWith("/api/login")){const body=JSON.parse(req.postData()||"{}");return route.fulfill({status:200,headers,body:JSON.stringify({profileId:body.profileId,token:"test-token"})})}
  if(url.endsWith("/api/session"))return route.fulfill({status:200,headers,body:JSON.stringify({authenticated:true,profileId:currentProfile})});
+ if(url.endsWith("/api/analyze")&&forceUnauthorized){forceUnauthorized=false;return route.fulfill({status:401,headers,body:JSON.stringify({error:"Sesión caducada"})})}
+ if(url.endsWith("/api/analyze")&&forceServerError){forceServerError=false;return route.fulfill({status:503,headers,body:JSON.stringify({error:"Servicio no disponible"})})}
  if(url.endsWith("/api/analyze"))return route.fulfill({status:200,headers,body:JSON.stringify({garment:{name:"Camisa reconocida por IA",type:"top",color:"Azul",fabric:"cotton",pattern:"stripes",fit:"regular",sleeve:"larga",subtype:"camisa",confidence:"media",details:"botones frontales",occasions:["daily","work"]}})});
  if(url.endsWith("/api/looks")&&forceUnauthorized){forceUnauthorized=false;return route.fulfill({status:401,headers,body:JSON.stringify({error:"Sesión caducada"})})}
  if(url.endsWith("/api/looks")&&forceServerError){forceServerError=false;return route.fulfill({status:503,headers,body:JSON.stringify({error:"Servicio no disponible"})})}
@@ -252,16 +254,14 @@ try{
  assert.equal(await page.locator("#meta-fit").inputValue(),"regular");
  assert.equal(await page.locator("#meta-brand").inputValue(),"Marca introducida a mano");
  await page.locator("#closeGarment").click();
- await page.locator('[data-view="stylist"]').click(); await page.locator("#openLooks").click();
- await page.locator(".looks-tools > summary").click();
- await page.locator(".looks-tools").evaluate(el=>el.open=true);
- await page.locator("#aiLooks").click();
- await page.getByText("Look de prueba IA").waitFor();
- // Las propuestas de la IA se revisan: no se guardan solas
- assert.equal(await page.evaluate(()=>myLooks().filter(l=>l.ai).length),0,"La IA no debe guardar looks sin revisión");
- await page.locator("#aiSheet [data-ai-save]").first().click();
- await page.locator("#aiSheet").waitFor({state:"detached"});
- assert.equal(await page.evaluate(()=>myLooks().filter(l=>l.ai).length),1);
+ // Los looks ya no se piden a la IA (decisión de Noelia, 10/10/2026): «Explorar» los hace el motor y se guardan a mano
+ await page.locator('[data-view="stylist"]').click(); await page.locator('[data-stylist-tab="explore"]').click();
+ assert.equal(await page.locator("#aiLooks").count(),0,"Sin botón de looks con IA");
+ const looksBefore=await page.evaluate(()=>myLooks().length);
+ await page.locator("[data-explore-save]").first().click();
+ await page.locator("#toast",{hasText:"Look guardado"}).waitFor();
+ assert.equal(await page.evaluate(()=>myLooks().length),looksBefore+1);
+ assert.equal(await page.evaluate(()=>myLooks().filter(l=>l.ai).length),0);
  await page.locator('[data-view="wardrobe"]').click();
  await page.locator('[data-fav]').first().click();
  await page.locator('[data-wear]').first().click();
@@ -319,19 +319,22 @@ try{
  assert.ok(await page.locator("[data-remove-use]").count()>0,"Wear records must appear in calendar");
  await page.locator('[data-view="today"]').click();
  assert.equal(await page.locator("#prefDiversity").count(),0,"El porcentaje de diversidad no debe mostrarse");
- await page.locator('[data-view="stylist"]').click(); await page.locator("#openLooks").click();
- const existingLooks=await page.locator("[data-look]").count();
+ // Fallo del servidor de IA al analizar: aviso y nada cambia
+ await page.locator('[data-view="wardrobe"]').click();
+ const existingGarments=await page.evaluate(()=>myGarments().length);
+ const withPhoto=await page.evaluate(()=>myGarments().find(g=>validImage(g.image))?.id);assert.ok(withPhoto,"Hace falta una prenda con foto");
+ await page.evaluate(id=>openGarment(id),withPhoto);
  forceServerError=true;
- await page.locator(".looks-tools").evaluate(el=>el.open=true);
- await page.locator("#aiLooks").click();
- await page.getByText("No se pudieron generar looks").waitFor();
- assert.equal(await page.locator("[data-look]").count(),existingLooks,"Server failures must not create looks");
+ await page.locator("#analyzeBtn").click();
+ await page.getByText("No se pudo analizar la prenda").waitFor();
+ await page.locator("#closeGarment").click();
+ assert.equal(await page.evaluate(()=>myGarments().length),existingGarments,"Server failures must not change the wardrobe");
  await page.locator('[data-view="today"]').click();
  assert.equal(await page.locator("[data-extra-pref]").count(),0,"Los looks se completan automáticamente");
- await page.locator('[data-view="stylist"]').click(); await page.locator("#openLooks").click();
+ await page.locator('[data-view="wardrobe"]').click();
+ await page.evaluate(()=>openGarment(myGarments().find(g=>validImage(g.image))?.id));
  forceUnauthorized=true;
- await page.locator(".looks-tools").evaluate(el=>el.open=true);
- await page.locator("#aiLooks").click();
+ await page.locator("#analyzeBtn").click();
  await page.locator("#auth").waitFor({state:"visible"});
  assert.equal(await page.locator("#app").isVisible(),false);
  assert.equal(await page.getByText("Prenda auditada").count(),0,"Logout must purge private DOM");
@@ -346,5 +349,5 @@ try{
  assert.equal(await page.getByText("No hay prendas con estos filtros").count(),1);
  assert.deepEqual(errors,[]);
  await page.screenshot({path:"atelier-smoke.png",fullPage:true});
- console.log("PASS: iPhone viewport, styles, login, wardrobe CRUD, packing lists, IndexedDB persistence, manual looks, AI garment recognition, AI looks, AI outages, expired sessions, profile isolation");
+ console.log("PASS: iPhone viewport, styles, login, wardrobe CRUD, packing lists, IndexedDB persistence, manual looks, AI garment recognition, explore looks, AI outages, expired sessions, profile isolation");
 }finally{await browser.close()}
