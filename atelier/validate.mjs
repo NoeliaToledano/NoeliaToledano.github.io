@@ -44,4 +44,6 @@ try{execFileSync(process.execPath,[new URL("./benchmarks/relation-cache.test.mjs
 catch(e){fail("Incremental relation cache regression: "+String(e.stderr||e.message));}
 try{execFileSync(process.execPath,[new URL("./benchmarks/relation-rank-once.test.mjs",import.meta.url).pathname],{stdio:"pipe"});}
 catch(e){fail("Contextual rank-once regression: "+String(e.stderr||e.message));}
+try{execFileSync(process.execPath,["--test",new URL("./benchmarks/garment-evidence.test.mjs",import.meta.url).pathname],{stdio:"pipe"});}
+catch(e){fail("Garment evidence regression: "+String(e.stderr||e.message));}
 console.log("Atelier release gate OK (app y backend)");
