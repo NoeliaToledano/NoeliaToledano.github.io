@@ -558,3 +558,7 @@ p.notice-card{display:block}
 .empty .explore-occs{flex-wrap:wrap;justify-content:center;overflow:visible}
 .welcome-empty p{max-width:34ch;margin-inline:auto}
 .daily-occs{margin:2px 0 10px}
+
+/* Wardrobe: keep insights available on demand without pushing garments below the fold. */
+.wardrobe-summary-body>.stats{flex-basis:100%;width:100%;margin:4px 0 8px}
+.wardrobe-summary>summary{min-height:44px;display:flex;align-items:center;line-height:1.4}
