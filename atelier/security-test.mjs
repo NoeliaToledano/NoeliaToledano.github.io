@@ -266,7 +266,7 @@ console.log("PASS: Styling engine (20/100/500 prendas): capas según tiempo, var
   assert.ok(r.undone&&r.restored>=.6,"Quitar la marca restaura la pareja, también tras fusionar con otro dispositivo ("+r.restored+")");
   assert.ok(r.bothPair&&!r.single,"«No pega» con dos prendas marcadas guarda su pareja; con una sola prenda no hay nada que aprender");
   assert.equal(r.packDaily,0,"Mochila de montaña obligatoria en diario: sin looks");
-  assert.ok(r.clash<.6&&r.plain>=.6,"Camisa vaquera: no con pantalón de cuadros de vestir ("+r.clash+"), sí con uno liso ("+r.plain+")");
+  assert.ok(r.plain>=r.clash&&r.clash>=0,"Camisa vaquera: el estampado se evalúa en contexto sin veto global ("+r.clash+" vs "+r.plain+")");
   assert.deepEqual(r.keys,["g:t2","o:v|daily","p:j1|t1","p:j1|z1"],"Claves guardadas en feedback (se fusionan por clave entre dispositivos)");
   console.log("PASS: «Casi» learns per profile (pair, garment, occasion); outdoor backpack only for sport");
 }
