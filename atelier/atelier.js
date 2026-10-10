@@ -700,8 +700,9 @@ function mapAnalysis(d){
 }
 
 /* ===================== 5. Sesión y navegación ===================== */
+function resetBulk(){bulkQueue=[];bulkTotal=0} /* al salir o cambiar de perfil, la cola no pasa a otra persona (revisión de Codex, #177) */
 function showAuth(){
- resetSyncSession();clearPhotoUrls();
+ resetSyncSession();clearPhotoUrls();resetBulk();
  appState.profile=null;appState.token=null;appState.data=emptyData();lastSavedData=emptyData();appState.view="wardrobe";
  buyCheck=null;storedImages=new Map();ui.aroundId="";
  $("#content").replaceChildren();$("#profileName").textContent="";$("#garmentForm").reset();$("#lookForm").reset();$("#lookGarments").replaceChildren();
@@ -1021,7 +1022,7 @@ function renderGarmentPairs(g){
 /* Subida en lote: cola de fotos que se van abriendo en la ficha, una a una */
 let bulkQueue=[],bulkTotal=0,loadSheetFile=null;
 function updateBulkTitle(){if(bulkTotal>1)$("#garmentTitle").textContent="Nueva prenda · "+(bulkTotal-bulkQueue.length)+" de "+bulkTotal}
-function closeGarment(fromSave=false){fromSave=fromSave===true;$("#garmentSheet").classList.add("hidden");if(!fromSave&&bulkQueue.length){toast(plural(bulkQueue.length,"foto se ha quedado","fotos se han quedado")+" sin añadir");bulkQueue=[]}if(!fromSave)bulkTotal=0}
+function closeGarment(fromSave=false){fromSave=fromSave===true;$("#garmentSheet").classList.add("hidden");if(!fromSave&&bulkTotal>1){const left=bulkQueue.length+1;toast(plural(left,"foto se ha quedado","fotos se han quedado")+" sin añadir")} /* la que estaba abierta también (revisión de Codex, #177) */if(!fromSave){bulkQueue=[];bulkTotal=0}}
 async function saveGarment(e){
  e.preventDefault();
  const ph=sheetPhoto;
