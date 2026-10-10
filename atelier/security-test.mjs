@@ -418,6 +418,21 @@ console.log("PASS: Styling engine (20/100/500 prendas): capas según tiempo, var
   console.log("PASS: Accessories only complete bases they share an occasion with");
 }
 
+// «Si refresca»: si el principal avisa de frío y solo hay una capa algo más abrigada, se ofrece igualmente
+{
+  const r=new Function("document","sessionStorage","crypto",src+`
+  const G=(id,category,type,color,extra={})=>({id,name:type+" "+color,category,type,color,style:"party",formality:"party",season:"all",pattern:"plain",occasions:["party"],updatedAt:"x",...extra});
+  appState.profile={id:"noelia"};
+  appState.data=normalizeData({garments:[G("d","Vestidos","Vestido corto","Rosa",{sleeve:"sin mangas",length:"short",thickness:"fino"}),G("h","Zapatos","Tacones","Nude"),
+   G("c","Capas","Abrigo","Gris",{style:"smart",formality:"smartcasual",occasions:["daily","party"],thickness:"grueso",warmth:"alto",sleeve:"larga"})]});
+  Object.assign(appState.data.preferences,{temperature:17,autoWeather:false});ensureRelations();
+  const ctx=engineContext({occasion:"party",temp:17}),main=[myGarments()[0],myGarments()[1]],w=scoreOutfit(main,ctx).warnings;
+  return {cold:w.some(x=>/frío/i.test(x)),v:lookVersions(main,ctx).map(x=>x.label+":"+x.ids.join("+"))};`)(document,sessionStorage,{randomUUID:()=>"t"});
+  assert.ok(r.cold,"El vestido sin mangas a 17 °C avisa de frío");
+  assert.ok(r.v.some(x=>x.startsWith("Si refresca:")&&x.includes("c")),"«Si refresca» ofrece el abrigo ("+r.v+")");
+  console.log("PASS: «Si refresca» offers a warmer layer when the principal warns of cold");
+}
+
 // Orden en pantalla (Noelia, 10/10/2026): entre looks de calidad parecida, primero los más completos
 {
   const sample=JSON.parse(fs.readFileSync(new URL("./benchmarks/sample-garments.json",import.meta.url),"utf8"));
