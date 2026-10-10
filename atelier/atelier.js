@@ -1259,6 +1259,7 @@ const REL_OK=.6,REL_WEAK=.4;
 /* con ocasión: la pareja se valora para esa ocasión y las dos prendas tienen que valer para ella */
 const relationsFor=(g,min=REL_OK,occ=null)=>{ensureRelations();const ctx=occ?{occasion:occ}:undefined;return myGarments().map(x=>({g:x,r:relationOf(g,x,ctx)})).filter(x=>x.r&&x.r.s>=min&&(!occ||x.r.contexts.includes(occ))).sort((a,b)=>b.r.s-a.r.s)};
 /* Núcleo del look: el vestido o mono, o la parte de arriba + la de abajo. Marca la dirección estética. */
+const nucleusKey=gs=>lookSig(nucleusOf(gs).map(g=>g.id)); /* identifica el núcleo de un look: «Otro look» salta al siguiente núcleo */
 const nucleusOf=gs=>{const d=gs.find(g=>g.category==="Vestidos");return d?[d]:gs.filter(g=>g.category==="Arriba"||g.category==="Abajo")};
 function comboIdentity(gs,ctx){
  const rels=[];for(let i=0;i<gs.length;i++)for(let j=i+1;j<gs.length;j++){const r=relationOf(gs[i],gs[j],ctx);if(r)rels.push({a:gs[i],b:gs[j],r})}
@@ -2118,7 +2119,7 @@ function rankOutfits(o={}){
  // R2: las bases se completan con la versión rápida; la búsqueda de calzado alternativo (completeOutfit) solo para las elegidas
  ctx.byCat=new Map();for(const g of pool){if(!ctx.byCat.has(g.category))ctx.byCat.set(g.category,[]);ctx.byCat.get(g.category).push(g)}
  ctx.lite=true;const used=new Map(),cands=bases.map(b=>{const gs=completeOutfitGreedy(b,pool,ctx);return {gs,...scoreOutfit(gs,ctx)}});
- ctx.lite=false;const seen=new Set(o.seen||[]),out=[],picked=new Set();
+ ctx.lite=false;const seen=new Set(o.seen||[]),skipN=new Set(o.skipNuclei||[]),out=[],picked=new Set();
  const hasTopBottom=cands.some(c=>c.gs.some(g=>g.category==="Arriba")&&c.gs.some(g=>g.category==="Abajo"));
  const overlap=(a,b)=>a.gs.reduce((t,g)=>t+(b.gs.includes(g)?(BIG.includes(g.category)&&g.category!=="Capas"?1:.35):0),0);
  const sig=c=>c.gs.map(g=>g.id).sort().join("|");
@@ -2126,7 +2127,7 @@ function rankOutfits(o={}){
   let best=null,bv=-1e9;
   // Q1 (#108): variedad de bases; si ya hay un vestido elegido y existen looks de arriba+abajo, el siguiente vestido cuesta más
   const dressOut=out.filter(x=>x.gs.some(g=>g.category==="Vestidos")).length;
-  const eligible=cands.filter(c=>!picked.has(c)&&!seen.has(sig(c)));
+  const eligible=cands.filter(c=>!picked.has(c)&&!seen.has(sig(c))&&!(skipN.size&&skipN.has(nucleusKey(c.gs))));
   // Una pareja nueva de camiseta+pantalón no es realmente distinta si
   // reutiliza una de esas dos prendas. Preferir menos piezas principales
   // repetidas, siempre dentro de un margen razonable de calidad.
@@ -2222,7 +2223,8 @@ function lookVersions(main,ctxIn=null,max=3){
  const r0=scoreOutfit(main,ctx),s0=r0.score,w0=r0.warnings,f0=shoe0?formalLevel(shoe0):null,sig0=lookSig(main.map(g=>g.id)),cands=[];
  for(const z of shoes)for(const c of layers){
   if(z===shoe0&&c===layer0)continue;
-  const core=[...nuc,z,c].filter(Boolean),gs=[...core,...rest.filter(r=>rel(r,core))];
+  const core=[...nuc,z,c].filter(Boolean),gs=[...core,...rest];
+  if(!rest.every(r=>rel(r,core)))continue; /* sin quitar piezas a escondidas: una versión cambia una sola cosa (revisión de Codex, #171) */
   if(!core.every((x,i)=>rel(x,core.filter((_,j)=>j!==i)))||lookIssues(gs,ctx).length||!lookComplete(gs))continue;
   const r=scoreOutfit(gs,ctx);if(r.score<s0-VERSION_GAP||r.warnings.some(w=>!w0.includes(w)))continue; /* ningún aviso nuevo respecto al principal */
   cands.push({gs,score:r.score,f:z&&shoe0?formalLevel(z):null,sameLayer:c===layer0,sameShoe:z===shoe0,addsLayer:!layer0&&!!c,sig:lookSig(gs.map(g=>g.id))});
@@ -2234,9 +2236,9 @@ function lookVersions(main,ctxIn=null,max=3){
  if(out.length<2&&shoe0)take("Otros zapatos",cands.filter(v=>v.sameLayer&&!v.sameShoe&&(v.f==null||f0==null||Math.abs(v.f-f0)<.5))); /* p. ej. en una fiesta, otros tacones */
  return out.map(v=>({label:v.label,garments:v.gs,ids:v.gs.map(g=>g.id),score:v.score}));
 }
-function dayProposals(date,max=3,avoid=new Set(),seen=[]){
+function dayProposals(date,max=3,avoid=new Set(),seen=[],skipNuclei=[]){
  const near=myPlans().filter(p=>p.date!==date&&Math.abs(Date.parse(p.date)-Date.parse(date))<=3*86400000).flatMap(p=>p.garmentIds||[]);
- return rankOutfits({date,max,avoid:new Set([...avoid,...near]),seen}).map(r=>Object.assign(r.garments,{reasons:r.reasons,warnings:r.warnings}));
+ return rankOutfits({date,max,avoid:new Set([...avoid,...near]),seen,skipNuclei}).map(r=>Object.assign(r.garments,{reasons:r.reasons,warnings:r.warnings}));
 }
 function showSheet(id,html,onClose){
  $$("#"+id).forEach(x=>x.remove());
@@ -2320,10 +2322,10 @@ function dailyAvoid(date){
  const worn=logs().filter(l=>validDay(l.date)&&l.date<date&&l.date>=addDays(date,-3)).flatMap(l=>l.garmentIds||[]);
  return new Set([...prev,...worn]);
 }
-function computeDaily(date,skip=[]){
- // «Otro look»: además de no repetir, evita (penaliza) las prendas de los looks ya vistos hoy
+function computeDaily(date,skip=[],skipN=[]){
+ // «Otro look»: otro núcleo (revisión de ChatGPT, #171); además evita (penaliza) las prendas de los looks ya vistos hoy
  const seenIds=skip.flatMap(sig=>sig.split("|"));
- return dayProposals(date,1,new Set([...dailyAvoid(date),...seenIds]),skip)[0]||dayProposals(date,1,dailyAvoid(date),skip)[0]||null;
+ return dayProposals(date,1,new Set([...dailyAvoid(date),...seenIds]),skip,skipN)[0]||dayProposals(date,1,dailyAvoid(date),skip,skipN)[0]||null;
 }
 let dailyDirty=false;
 function ensureDailyLook(force=false){
@@ -2333,10 +2335,11 @@ function ensureDailyLook(force=false){
  if(!stale&&!force)return d;
  dailyDirty=true;
  if(d&&validDay(d.date)&&d.date!==today&&d.ids?.length){p.dailyHistory=[...(p.dailyHistory||[]).filter(h=>h.date>=addDays(today,-7)),{date:d.date,ids:d.ids}].slice(-7)}
- const skip=force&&d?.date===today?[...(d.skip||[]),lookSig(d.ids||[])]:[];
- let l=computeDaily(today,skip),wrapped=false;
- if(!l&&skip.length){wrapped=true;l=computeDaily(today,[]);if(l)toast("Ya has visto todas las propuestas de hoy: vuelvo a empezar")}
- d=p.dailyLook={date:today,ids:l?l.map(g=>g.id):[],main:l?l.map(g=>g.id):[] /* look principal: sus versiones se calculan sobre él */,temp,wsig,skip:wrapped?[]:skip,touched:force||d?.date===today&&!!d?.touched,worn:false};
+ const same=force&&d?.date===today,cur=same?(d.main?.length?d.main:d.ids||[]).map(id=>myGarments().find(g=>g.id===id)).filter(Boolean):[];
+ const skip=same?[...(d.skip||[]),lookSig(d.ids||[]),...(d.main?.length?[lookSig(d.main)]:[])]:[],skipN=same?[...(d.skipN||[]),...(cur.length?[nucleusKey(cur)]:[])]:[];
+ let l=computeDaily(today,skip,skipN),wrapped=false;
+ if(!l&&skip.length){wrapped=true;l=computeDaily(today,[],[]);if(l)toast("Ya has visto todas las propuestas de hoy: vuelvo a empezar")}
+ d=p.dailyLook={date:today,ids:l?l.map(g=>g.id):[],main:l?l.map(g=>g.id):[] /* look principal: sus versiones se calculan sobre él */,temp,wsig,skip:wrapped?[]:skip,skipN:wrapped?[]:skipN,touched:force||d?.date===today&&!!d?.touched,worn:false};
  return d;
 }
 function weatherLabel(){
@@ -2386,7 +2389,7 @@ function bindDailyLook(root){
  $("#dailyNext",root)?.addEventListener("click",async()=>{ensureDailyLook(true);await saveState();render()});
  $$("[data-version]",root).forEach(b=>b.addEventListener("click",async()=>{const d=p.dailyLook;if(!d?.ids?.length)return;
   const mainGs=(d.main?.length?d.main:d.ids).map(id=>myGarments().find(g=>g.id===id)).filter(Boolean),i=Number(b.dataset.version),v=i?lookVersions(mainGs,engineContext())[i-1]:{ids:mainGs.map(g=>g.id)};
-  if(!v)return;if(!d.main?.length)d.main=mainGs.map(g=>g.id);d.ids=[...v.ids];d.touched=true;await saveState();render()}));
+  if(!v)return;if(!d.main?.length)d.main=mainGs.map(g=>g.id);d.ids=[...v.ids];d.worn=logs().some(x=>x.date===dayISO()&&lookSig(x.garmentIds||[])===lookSig(v.ids)) /* otra versión: «me lo pongo» vuelve a estar disponible (revisión de Codex, #171) */;d.touched=true;await saveState();render()}));
  $("#dailyAlmost",root)?.addEventListener("click",()=>{const d=p.dailyLook;if(!d?.ids?.length)return;openAlmost(d.ids,p.occasion||"daily",async()=>{ensureDailyLook(true);await saveState();render()})});
  $("#dailyWear",root)?.addEventListener("click",async()=>{const d=p.dailyLook;if(!d?.ids?.length)return;const now=new Date().toISOString();
   await mutate(()=>{logs().unshift({id:uid(),date:today,garmentIds:[...d.ids],lookId:null,updatedAt:now});d.worn=true;d.touched=true},"Registrado: te lo has puesto hoy")});

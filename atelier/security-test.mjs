@@ -284,6 +284,11 @@ console.log("PASS: Styling engine (20/100/500 prendas): capas según tiempo, var
   versionPick.set("t:0",1);out.picked=lookSig(pickedLook("t:0",main,ctx).map(g=>g.id))===lookSig(vs[0].ids);versionPick.set("t:0",9);out.fallback=pickedLook("t:0",main,ctx)===main;
   out.allValid=vs.every(v=>v.ids.includes("v")&&!lookIssues(v.garments,ctx).length&&v.score>=s0-6&&(v.ids.includes("d")!==main.some(g=>g.id==="d")||v.ids.includes("c")));
   appState.data=normalizeData({garments:[G("v2","Vestidos","Vestido midi","Negro",{style:"smart",formality:"smartcasual",sleeve:"corta"}),G("t2","Zapatos","Tacones","Negro",{style:"smart",formality:"smartcasual"}),G("p2","Accesorios","Pendientes","Dorado"),G("p3","Accesorios","Collar","Plateado")]});
+  // «Otro look» salta al siguiente núcleo aunque haya varios zapatos, y elegir otra versión reactiva «Me lo pongo» (revisiones de ChatGPT y Codex, #171)
+  appState.data=normalizeData({garments:[G("A","Vestidos","Vestido midi","Negro",{style:"smart",formality:"smartcasual",sleeve:"corta"}),G("B","Vestidos","Vestido midi","Azul",{style:"smart",formality:"smartcasual",sleeve:"corta"}),
+   G("z1","Zapatos","Tacones","Negro",{formality:"smartcasual"}),G("z2","Zapatos","Bailarinas","Negro",{formality:"smartcasual"}),G("z3","Zapatos","Deportivas","Blanco",{formality:"casual"})]});
+  Object.assign(appState.data.preferences,{occasion:"daily",temperature:24,autoWeather:false});
+  const n1=nucleusKey(ensureDailyLook(true).ids.map(by)),n2=nucleusKey(ensureDailyLook(true).ids.map(by));out.nextCore=n1!==n2;
   out.none=lookVersions([by("v2"),by("t2"),by("p2")],engineContext({occasion:"daily",temp:26,date:"2026-07-15"})).length;
   return out;`);
   const r=probe(document,sessionStorage,{randomUUID:()=>"t"});
@@ -291,6 +296,7 @@ console.log("PASS: Styling engine (20/100/500 prendas): capas según tiempo, var
   assert.ok(r.labels.includes("Si refresca"),"A 18 °C, versión «si refresca» con capa ("+r.labels+")");
   assert.ok(r.allValid,"Las versiones mantienen el núcleo, cumplen las reglas, puntúan cerca y cambian calzado o capa");
   assert.ok(r.picked&&r.fallback,"Listas de looks: la versión elegida es la que se usa; si ya no existe, el principal");
+  assert.ok(r.nextCore,"«Otro look» pasa a otro vestido, no a otros zapatos del mismo");
   assert.equal(r.none,0,"Sin otro calzado ni capa posible: sin versiones (cambiar un complemento no cuenta)");
   console.log("PASS: Look versions: same nucleus, different intent (casual, dressier, if it gets cool), no filler");
 }
