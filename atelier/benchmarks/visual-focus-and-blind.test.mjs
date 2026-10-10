@@ -51,5 +51,9 @@ test("blind pack includes no score or ground-truth preference",()=>{
   assert.equal(totals.results.candidate,1);
   assert.equal(totals.results.baseline,0);
   assert.equal(totals.candidateWinRate,1);
+  assert.equal(pack.runDigest,key.runDigest);
+  const wrongKey=path.join(folder,"wrong-key.json");
+  fs.writeFileSync(wrongKey,JSON.stringify({...key,runDigest:"wrong"}));
+  assert.throws(()=>execFileSync(process.execPath,[new URL("./blind-look-tally.mjs",import.meta.url).pathname,z,wrongKey],{stdio:"pipe"}),/Command failed/);
  }finally{fs.rmSync(folder,{recursive:true,force:true});}
 });
