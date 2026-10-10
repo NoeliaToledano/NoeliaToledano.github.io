@@ -2413,7 +2413,7 @@ function showSheet(id,html,onClose){
   if(e.shiftKey&&(document.activeElement===first||document.activeElement===dialog)){e.preventDefault();last.focus()}
   else if(!e.shiftKey&&(document.activeElement===last||!dialog.contains(document.activeElement))){e.preventDefault();first.focus()}
  });
- $("[data-close-sheet]",el).forEach(b=>b.addEventListener("click",close));
+ $$("[data-close-sheet]",el).forEach(b=>b.addEventListener("click",close));
  setTimeout(()=>{if(el.isConnected)(focusable()[0]||dialog).focus()},0);
  return {el,close};
 }
