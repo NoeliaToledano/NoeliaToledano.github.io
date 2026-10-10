@@ -550,3 +550,9 @@ p.notice-card{display:block}
 /* A dress is the hero when a two-piece look contains a dress and a supporting piece. */
 .look-mixed-board[data-count="2"][data-hero-category="dress"]>.look-mixed-item:first-child{grid-area:1/1/13/9}
 .look-mixed-board[data-count="2"][data-hero-category="dress"]>.look-mixed-item:nth-child(2){grid-area:7/9/13/13}
+
+/* Small accessories should read as supporting details, not equal-size hero items. */
+.look-mixed-board[data-count="6"]>.look-mixed-item[data-piece-kind="accessory"] img,
+.look-mixed-board[data-count="7"]>.look-mixed-item[data-piece-kind="accessory"] img{padding:18%}
+.look-mixed-board[data-count="6"]>.look-mixed-item[data-piece-kind="bag"] img,
+.look-mixed-board[data-count="7"]>.look-mixed-item[data-piece-kind="bag"] img{padding:9%}
