@@ -10,6 +10,7 @@ import fs from "node:fs";
 const [before,after,out,catalogPath,keyPath]=process.argv.slice(2);
 if(!before||!after||!out||!catalogPath||!keyPath)throw Error("Usage: node blind-look-review.mjs baseline.json candidate.json review.json photo-catalog.json PRIVATE-answers.json");
 if([before,after,out,catalogPath].some(p=>p===keyPath)||keyPath===(out.toLowerCase().endsWith(".json")?out.slice(0,-5):out)+".html")throw Error("Private answer key must be stored separately from the review pack and board");
+if(fs.existsSync(keyPath))throw Error("Private answer key already exists; refusing to overwrite it");
 const read=p=>{const v=JSON.parse(fs.readFileSync(p,"utf8"));return Array.isArray(v)?v:v.looks;};
 const arr=read(before),brr=read(after);
 if(!Array.isArray(arr)||!Array.isArray(brr))throw Error("Expected reports with looks");
