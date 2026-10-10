@@ -2154,12 +2154,14 @@ const EXPLORE_OCCS=["daily","work","party","event","formal","sport","beach","hom
 function renderExplore(root){
  const p=appState.data.preferences,avail=EXPLORE_OCCS.filter(o=>myGarments().some(g=>occasionFits(g,o)&&["Arriba","Abajo","Vestidos","Casa","Baño"].includes(g.category)));
  const occ=avail.includes(ui.exploreOcc)?ui.exploreOcc:avail.includes(p.occasion)?p.occasion:avail[0];
- const ctx=engineContext({occasion:occ}),looks=occ?rankOutfits({occasion:occ,max:6}):[],key=i=>"explore:"+occ+":"+i,shown=looks.map((l,i)=>pickedLook(key(i),l.garments,ctx));
+ /* la temporada elegida en «Hoy › Más opciones» manda; si es «Todo el año», hoy y su tiempo (revisión de Codex, #182) */
+ const y=dayISO().slice(0,4),sd=p.season==="warm"?y+"-07-15":p.season==="cold"?y+"-01-15":null,so=sd?{date:sd,temp:SEASON_TEMP[p.season]}:{};
+ const ctx=engineContext({occasion:occ,...so}),looks=occ?rankOutfits({occasion:occ,max:6,...so}):[],key=i=>"explore:"+occ+":"+i,shown=looks.map((l,i)=>pickedLook(key(i),l.garments,ctx));
  const body='<div class="explore-occs" role="group" aria-label="Ocasión">'+avail.map(o=>'<button type="button" class="chip-button'+(o===occ?' on':'')+'" aria-pressed="'+(o===occ)+'" data-explore-occ="'+o+'">'+fx(occasions[o]||o)+'</button>').join("")+'</div>'+
-  '<p class="muted explore-note">'+fx(currentTemperature()+" °C")+' · cada propuesta usa una prenda principal distinta; debajo tienes sus versiones.</p>'+
+  '<p class="muted explore-note">'+fx(sd?seasons[p.season]+" ("+SEASON_TEMP[p.season]+" °C)":currentTemperature()+" °C")+' · cada propuesta usa una prenda principal distinta; debajo tienes sus versiones.</p>'+
   (looks.length?'<div class="grid">'+looks.map((l,i)=>{const gs=shown[i];return '<div class="look-tile"><article class="card">'+outfitBoard(gs)+'<div class="card-body"><div class="look-items">'+gs.map(x=>'<span class="look-chip">'+fx(x.name)+'</span>').join("")+'</div>'+(gs===l.garments&&l.reasons?.length?'<ul class="look-reasons">'+l.reasons.slice(0,2).map(r=>'<li>'+fx(r)+'</li>').join("")+'</ul>':'')+(gs===l.garments&&l.warnings?.length?'<ul class="look-reasons">'+l.warnings.map(w=>'<li class="warn">'+fx(w)+'</li>').join("")+'</ul>':'')+'</div></article>'+
    versionsRow(key(i),l.garments,ctx)+'<div class="tile-tools"><button class="chip-button" data-explore-save="'+i+'">♡ Guardar</button><button class="chip-button" data-explore-wear="'+i+'">✓ Llevado</button><button class="chip-button" data-explore-almost="'+i+'">Casi</button></div></div>'}).join("")+'</div>'
-  :'<div class="empty"><p class="muted">'+(occ?'No encuentro looks para «'+fx((occasions[occ]||occ).toLowerCase())+'» con '+fx(currentTemperature())+' °C. Revisa las ocasiones y la temporada de tus prendas.':'Añade prendas de arriba y de abajo (o vestidos) para ver looks.')+'</p></div>');
+  :'<div class="empty"><p class="muted">'+(occ?'No encuentro looks para «'+fx((occasions[occ]||occ).toLowerCase())+'» con '+fx(sd?SEASON_TEMP[p.season]:currentTemperature())+' °C. Revisa las ocasiones y la temporada de tus prendas.':'Añade prendas de arriba y de abajo (o vestidos) para ver looks.')+'</p></div>');
  stylistShell(root,"Explorar looks","Todo lo que puedes ponerte, por ocasión, con versiones de cada look.",body);
  $$("[data-explore-occ]",root).forEach(b=>b.addEventListener("click",()=>{ui.exploreOcc=b.dataset.exploreOcc;render()}));
  bindVersions(root);
