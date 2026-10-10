@@ -2002,7 +2002,7 @@ function scoreOutfit(gs,ctx){
  // al menos dos focos visuales documentados en la ropa, un tercer foco opcional
  // puede saturar el look. Penalización moderada, nunca prohibición universal.
  const visualFocus=visualFocusEvidence(gs);
- if(visualFocus.optionalCompetition){colorAdj-=.06;warnings.push("Valora si el complemento compite con los protagonistas del look");}
+ if(visualFocus.optionalCompetition&&!ctx.likes?.has("pattern")&&!ctx.likes?.has("multicolor")){colorAdj-=.06;warnings.push("Valora si el complemento compite con los protagonistas del look");}
  // Silueta (25): equilibrio de volúmenes cuando se conoce el corte
  const vol=g=>({oversize:2,holgado:2,regular:1,recto:1,entallado:0,ajustado:0}[g.fit]);
  const top=gs.find(g=>g.category==="Arriba"),bottom=gs.find(g=>g.category==="Abajo");let sil=.75; // Q1 (#108): sin corte conocido, igual que un vestido
