@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
+import fs from "node:fs";
 import {garmentEvidence,evidenceNeedsReview} from "./garment-evidence.mjs";
 
 test("unknown pattern never becomes plain",()=>{
@@ -79,4 +80,15 @@ test("blank advanced wash does not steal legacy wash provenance",()=>{
  const e=garmentEvidence({denimWash:"acid",materialAttributes:{wash:"  ",washSource:"user"}});
  assert.equal(e.wash.value,"acid");
  assert.equal(e.wash.source,"legacy");
+});
+
+test("the normal Atelier photo-analysis validator accepts known denim washes only",()=>{
+ const src=fs.readFileSync(new URL("../atelier.js",import.meta.url),"utf8");
+ const clean=new Function("document","sessionStorage","crypto",src+"\nreturn cleanAnalysis;")(
+   {addEventListener(){},querySelector(){return null},querySelectorAll(){return []}},
+   {getItem(){return null},removeItem(){}},
+   {randomUUID:()=> "audit"}
+ );
+ assert.equal(clean({fabric:"denim",denimWash:"acid",pattern:"plain"}).denimWash,"acid");
+ assert.equal(clean({fabric:"denim",denimWash:"invented"}).denimWash,undefined);
 });
