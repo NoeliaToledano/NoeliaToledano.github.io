@@ -69,7 +69,17 @@ export function createRelationCache({profileId,engineVersion,pairEvidence}){
   }
   // Ranking depends on weather, occasion and personal preferences. Never cache it.
   // Crucially, rank BEFORE applying the limit so insertion order cannot bury a good match.
-  if(rank)out.sort((a,b)=>rank(b.evidence,items.get(b.garmentId))-rank(a.evidence,items.get(a.garmentId)) || a.garmentId.localeCompare(b.garmentId));
+  if(rank){
+   // Contextual scoring is potentially expensive and must be evaluated exactly once per candidate.
+   // Keep these scores ephemeral: changing context must never invalidate or pollute pair evidence.
+   const scored=out.map(candidate=>{
+    const score=rank(candidate.evidence,items.get(candidate.garmentId));
+    if(typeof score!=="number"||!Number.isFinite(score))throw Error("Invalid contextual rank score");
+    return {candidate,score};
+   });
+   scored.sort((a,b)=>b.score-a.score||a.candidate.garmentId.localeCompare(b.candidate.garmentId));
+   return scored.slice(0,limit).map(x=>x.candidate);
+  }
   return out.slice(0,limit);
  }
  return Object.freeze({profileId,engineVersion,reconcile,evidence,neighbors,
