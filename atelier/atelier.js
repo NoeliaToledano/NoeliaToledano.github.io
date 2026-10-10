@@ -911,6 +911,12 @@ function buildMetadataSection(){
  $("#garmentImage")?.closest(".field")?.insertAdjacentHTML("beforeend",'<div id="photoControls"></div><label class="switch-line" id="autoWhiteOption"><input type="checkbox" id="autoWhite" checked> Mejorar la foto automáticamente (luz, color y fondo blanco)</label><label class="switch-line" id="autoAnalyzeOption"><input type="checkbox" id="autoAnalyze" checked> Analizar automáticamente al elegir la foto</label><p class="helper" id="autoAnalyzeStatus" role="status" aria-live="polite"></p>');
  const occasionField=$("#metadataDetails .occ-grid")?.closest(".field"),occasionSlot=$("#occasionSlot");
  if(occasionField&&occasionSlot){occasionSlot.append(occasionField);$$(`[name="meta-occasion"]`,occasionSlot).forEach(input=>input.addEventListener("change",updateOccasionSummary));updateOccasionSummary()}
+ /* Formalidad junto al estilo (revisión general, 10/10/2026): es la etiqueta que más decide los looks; las dos se mantienen coherentes */
+ const formalField=$("#meta-formality")?.closest(".field"),styleField=$("#garmentStyle")?.closest(".field");
+ if(formalField&&styleField){formalField.classList.add("formality-main");styleField.after(formalField);
+  const STYLE_TO_FORMAL={casual:"casual",smart:"smartcasual",party:"party",sport:"sport"};
+  $("#meta-formality").addEventListener("change",e=>{const st=SHEET_STYLE[e.target.value];if(st)$("#garmentStyle").value=st});
+  $("#garmentStyle").addEventListener("change",e=>{const f=$("#meta-formality");if(f.value&&SHEET_STYLE[f.value]!==e.target.value&&!(f.value==="formal"&&e.target.value==="party"))f.value=STYLE_TO_FORMAL[e.target.value]||""})}
  $("#autoAnalyze")?.addEventListener("change",e=>{if(appState.profile)setPref("autoAnalyze",e.target.checked,false)});
  $("#autoWhite")?.addEventListener("change",e=>{if(appState.profile)setPref("autoWhite",e.target.checked,false)});
  // La vista previa va justo encima de los controles de la foto
@@ -1054,7 +1060,9 @@ async function analyzeGarment(){
   if(sheetPhoto===ph){
    const manual=Object.fromEntries(Object.entries(readMetadata()).filter(([k])=>META_FIELDS.find(x=>x[0]===k)?.[3]==="manual"));
    populateMetadata({...manual,...lastAnalysis,occasions:occasionDefaults(d.category,$("#garmentType").value,lastAnalysis?.occasions)});const details=$("#metadataDetails");if(details)details.open=true;
-   setAnalyzeStatus("Ficha completada. Revisa los datos y pulsa Confirmar y guardar.");
+   const fv=$("#meta-formality")?.value,st=SHEET_STYLE[fv];if(st&&$("#garmentStyle").value!==st&&!(fv==="formal"&&$("#garmentStyle").value==="party"))$("#garmentStyle").value=st; /* estilo coherente con la formalidad que da la IA */
+   const occOpen=$("#garmentOccasions");if(occOpen)occOpen.open=true;
+   setAnalyzeStatus("Ficha completada. Revisa sobre todo la formalidad y las ocasiones: son lo que más cambia tus looks. Luego pulsa Confirmar y guardar.");
   }
   toast("Análisis completado");
  }catch(e){console.error("ANALYZE",e);setAnalyzeStatus("No se pudo analizar. Puedes rellenar los datos a mano o reintentarlo.");if(e.message!=="AI_QUOTA")toast("No se pudo analizar la prenda")}
