@@ -2849,7 +2849,7 @@ const CATALOG_DRESSY={"Camiseta blanca básica":["Camiseta blanca de punto fino"
 /* Tiendas por franja de precio: el enlace busca la prenda en su web (no se leen precios: solo la franja habitual de cada tienda) */
 const STORES=[["Primark","primark.com",1],["Lefties","lefties.com",1],["H&M","hm.com",2],["Uniqlo","uniqlo.com",2],["Zara","zara.com",3],["Mango","mango.com",3],["Massimo Dutti","massimodutti.com",4],["El Corte Inglés","elcorteingles.es",4]];
 const storesFor=c=>{const dressy=c.formality==="smartcasual"||c.formality==="party"||c.style!=="casual";return STORES.filter(x=>dressy?x[2]>=2:x[2]<=3).slice(0,dressy?5:5)};
-const storeLinks=c=>'<div class="store-links" aria-label="Buscar en tiendas, de más barata a más cara">'+storesFor(c).map(([n,d,t])=>'<a class="chip-button" href="https://www.google.com/search?q='+encodeURIComponent(c.name+" mujer site:"+d)+'" target="_blank" rel="noopener noreferrer">'+fx(n)+' <span class="muted">'+"€".repeat(t)+'</span></a>').join("")+'</div>';
+const storeLinks=c=>'<div class="store-links" aria-label="Buscar en tiendas, de más barata a más cara">'+storesFor(c).map(([n,d,t])=>'<a class="chip-button" href="https://www.google.com/search?q='+encodeURIComponent(c.name+" site:"+d)+'" target="_blank" rel="noopener noreferrer">'+fx(n)+' <span class="muted">'+"€".repeat(t)+'</span></a>').join("")+'</div>';
 /* Ficha dibujada de una prenda que aún no tienes (Noelia, 10/10/2026): silueta según el tipo, en su color; sin IA ni red (CSP img-src data:) */
 const SKETCH_HEX={blanco:"#f7f5f1",negro:"#26231f",beige:"#d9c4a6",gris:"#9b9893",camel:"#b4825a","azul marino":"#28324d",vaquero:"#5f7ea6",crudo:"#ede5d5",nude:"#e2c2a9",azul:"#4f6fa8"};
 const SKETCH_PATH={
@@ -2885,7 +2885,7 @@ function suggestionBoard(l){const order={Capas:0,Arriba:1,Vestidos:2,Abajo:3,Zap
  if(arr.length<2)return "";
  return '<div class="look-mixed-board suggestion-board" data-count="'+arr.length+'" role="group" aria-label="Así quedaría con tu armario">'+arr.map(g=>'<div class="look-mixed-item'+(g.id?'':' is-new')+'"><img src="'+(g.id?photoUrl(g):pieceSketch(g))+'" alt="'+fx(g.name)+(g.id?'':' (nueva)')+'" loading="lazy">'+(g.id?'':'<span class="new-badge">Nueva</span>')+'</div>').join("")+'</div>'}
 /* Productos reales con foto y precio, de muchas tiendas: se abren en Google Shopping (gratis, sin llamadas desde la app) */
-const shopLink=(c,text="Ver productos con foto y precio")=>'<a class="primary shop-link" href="https://www.google.com/search?tbm=shop&q='+encodeURIComponent(c.name+" mujer")+'" target="_blank" rel="noopener noreferrer">'+fx(text)+' ↗</a>';
+const shopLink=(c,text="Ver productos con foto y precio")=>'<a class="primary shop-link" href="https://www.google.com/search?tbm=shop&q='+encodeURIComponent(c.name)+'" target="_blank" rel="noopener noreferrer">'+fx(text)+' ↗</a>';
 function simulate(c,gs,bases){
  let looks=[];
  if(c.category==="Arriba")looks=gs.filter(g=>g.category==="Abajo"&&goes(c,g)).map(b=>[c,b]);
@@ -2962,7 +2962,7 @@ function wishlistHtml(){
   '<label class="field"><span>Enlace (opcional)</span><input name="wishUrl" type="url" placeholder="https://..."></label>'+
   '<button class="primary wide" type="submit">Añadir a mi lista</button></form></div>'+
   '<div class="section-head"><h2>Mis deseos</h2><button id="wishPending" class="secondary">'+(ui.wishlistFilter==="pending"?"Ver todos":"Solo pendientes")+'</button></div>'+
-  (wishlist.length?'<div class="insight-list">'+wishlist.map(w=>{const similar=myGarments().filter(g=>g.category&&g.category===w.category).length,link=/^https?:\/\//i.test(w.url||"")?'<a href="'+fx(w.url)+'" rel="noopener noreferrer" target="_blank">Ver tienda ↗</a>':w.bought?"":'<a href="https://www.google.com/search?tbm=shop&q='+encodeURIComponent(w.name+" mujer")+'" rel="noopener noreferrer" target="_blank">Ver productos con foto y precio ↗</a>'; /* sin enlace propio: productos reales en Google Shopping */
+  (wishlist.length?'<div class="insight-list">'+wishlist.map(w=>{const similar=myGarments().filter(g=>g.category&&g.category===w.category).length,link=/^https?:\/\//i.test(w.url||"")?'<a href="'+fx(w.url)+'" rel="noopener noreferrer" target="_blank">Ver tienda ↗</a>':w.bought?"":'<a href="https://www.google.com/search?tbm=shop&q='+encodeURIComponent(w.name)+'" rel="noopener noreferrer" target="_blank">Ver productos con foto y precio ↗</a>'; /* sin enlace propio: productos reales en Google Shopping */
    return '<div class="wish-row">'+(w.category?'<img class="wish-sketch" src="'+pieceSketch(w)+'" alt="">':'')+'<div class="wish-main"><strong>'+fx(w.name)+'</strong><p class="muted">'+euro(w.price)+(w.verdict?' · '+fx(w.verdict):'')+(w.bought?' · Comprada':'')+(similar?' · ya tienes '+plural(similar,"prenda","prendas")+' de esa categoría':'')+'</p>'+link+'</div><div class="wish-actions"><button class="chip-button" data-wish-bought="'+fx(w.id)+'">'+(w.bought?'Pendiente':'Comprada ✓')+'</button><button class="chip-button" data-wish-remove="'+fx(w.id)+'" aria-label="Quitar">✕</button></div></div>'}).join("")+'</div>':'<div class="empty">Tu lista está vacía.</div>')+
   (gaps.length?'<p class="helper">Categorías que aún no tienes en el armario: '+fx(gaps.map(x=>x[1].toLocaleLowerCase("es")).join(", "))+'.</p>':'');
 }
