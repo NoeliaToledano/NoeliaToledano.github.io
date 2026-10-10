@@ -18,10 +18,12 @@ export async function auditPhotoFidelity(page){
       const ctx=c.getContext("2d");
       ctx.fillStyle=background;ctx.fillRect(0,0,90,150);
       ctx.fillStyle=garment;ctx.fillRect(25,15,40,120);
+      // Dark corner markers make clipping detectable even on a white studio photo.
+      if(background==="#ffffff"){ctx.fillStyle="#777777";for(const [x,y] of [[10,75],[82,75],[45,9],[45,141]])ctx.fillRect(x-6,y-6,13,13)}
       return c.toDataURL("image/png");
      };
      const fixtures=[
-      ["Vestidos","Vestido","#bcbcbc","#e8d9c1"],
+      ["Vestidos","Vestido","#ffffff","#e8d9c1"],
       ["Capas","Abrigo","#999999","#21345b"],
       ["Zapatos","Zapatos","#c5a27d","#151515"],
       ["Arriba","Camisa","#bcbcbc","#e8d9c1"],
@@ -54,7 +56,8 @@ export async function auditPhotoFidelity(page){
       samplePoints.push([[45,75],[10,75],[82,75],[45,9],[45,141]].map(([x,y])=>({
        x:(left+x*factor)/rect.width,y:(top+y*factor)/rect.height
       })));
-      expected.push([rgb(g.ink),rgb(g.bg),rgb(g.bg),rgb(g.bg),rgb(g.bg)]);
+      const edge=g.bg==="#ffffff"?"#777777":g.bg;
+      expected.push([rgb(g.ink),rgb(edge),rgb(edge),rgb(edge),rgb(edge)]);
      }
      return {failures,samplePoints,expected};
     },{width,count});
