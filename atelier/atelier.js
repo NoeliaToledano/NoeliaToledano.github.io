@@ -1491,7 +1491,8 @@ function bindOutfitPhoto(root){$$("[data-outfit-photo]",root).forEach(b=>b.addEv
 async function startOutfitPhoto(file,inspo=false){
  let image;try{image=await readImage(file)}catch(e){return toast(e.message==="IMAGE_TOO_LARGE"?"La imagen es demasiado grande":"No se pudo leer la foto")}
  if(!image)return;
- outfitDraft={token:{},image,preview:true,inspo};renderOutfitSheet(); // primero vista previa: el análisis solo se gasta al confirmar
+ outfitDraft={token:{},image,preview:true,inspo};renderOutfitSheet(); // vista previa; con «Analizar automáticamente», se analiza sin otro toque (UX: lo mínimo posible)
+ if(appState.data.preferences.autoAnalyze!==false&&aiUsage().analyze<AI_LIMITS.analyze)analyzeOutfit();
 }
 async function analyzeOutfit(){
  const d0=outfitDraft;if(!d0?.image||d0.loading)return;
@@ -1506,7 +1507,7 @@ async function analyzeOutfit(){
    items.push({...it,matches,choice:matches[0]?.id||(inspo?"missing":"new")});
   }
   if(outfitDraft?.token!==token)return;
-  outfitDraft=items.length?{token,image,items,name:"",wear:false,inspo,wish:true}:{token,image,preview:true,inspo,error:"No he encontrado prendas en la foto. Prueba con una foto de cuerpo entero y con buena luz."};
+  outfitDraft=items.length?{token,image,items,name:"",wear:!inspo,inspo,wish:true} /* es el look que llevas: «me lo he puesto hoy» marcado de entrada */:{token,image,preview:true,inspo,error:"No he encontrado prendas en la foto. Prueba con una foto de cuerpo entero y con buena luz."};
  }catch(e){
   if(outfitDraft?.token!==token)return;
   if(e.message==="SESSION_EXPIRED"){outfitDraft=null;$$("#outfitSheet").forEach(x=>x.remove());return}
