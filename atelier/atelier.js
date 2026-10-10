@@ -1,6 +1,6 @@
 /* Atelier · Mi Armario — app web (PWA) para 3 perfiles familiares.
    Un solo archivo, sin capas de parches. Secciones:
-   1. Configuración y utilidades       7. Estilista (looks IA, combinar prenda, tiempo)
+   1. Configuración y utilidades       7. Estilista (explorar, combinar prenda, semana, tiempo)
    2. Almacenamiento local (IndexedDB) 8. Compras (¿Lo compro?, recomendaciones, wishlist)
    3. Sincronización con el servidor   9. Análisis y calendario
    4. API y ahorro de tokens          10. Ajustes y copias de seguridad
@@ -791,7 +791,8 @@ function outfitBoard(pieces){
   // Evitar que una foto de una habitación ocupe el lugar protagonista.
   // Solo la foto protagonista debe tener preferencia por fondo blanco.
   // Las demás conservan el orden de vestirse, sin subir zapatos ni accesorios.
-  const hero=items.find(g=>g.bgWhite&&(visualPriority[g.category]??7)<=3)||items[0];
+  // Un vestido manda siempre sobre el abrigo que lleva encima (revisión con fotos reales, 10/10/2026).
+  const hero=items.find(g=>g.category==="Vestidos")||items.find(g=>g.bgWhite&&(visualPriority[g.category]??7)<=3)||items[0];
   const arranged=[hero,...items.filter(g=>g!==hero)];
   return '<div class="look-mixed-board" data-count="'+arranged.length+'" role="group" aria-label="Prendas del conjunto">'+arranged.map(g=>'<div class="look-mixed-item"><img src="'+photoUrl(g)+'" alt="'+fx(g.name||g.category||"Prenda")+'" loading="lazy"></div>').join("")+'</div>';
 }
@@ -1016,8 +1017,9 @@ function renderGarmentPairs(g){
  const missing=EVIDENCE_FIELDS(g).filter(f=>!g[f]&&f!=="color").map(f=>META_NAME[f]||f);
  const styleClash=g.style&&g.formality in SHEET_STYLE&&SHEET_STYLE[g.formality]!==g.style&&!(g.formality==="formal"&&g.style==="party"); /* etiquetas que se contradicen: el estilista usa la formalidad */
  const clothes=isClothes(g),wear=["Casa","Baño"].includes(g.category); /* pijama o bañador: look completo por sí mismo, no complemento (revisión de Codex, #185) */
- if(!clothes&&!wear){const ok=new Set(rel.map(x=>x.g.id)),bs=lookBases().filter(b=>b.every(x=>ok.has(x.id))).sort((a,b)=>a.length-b.length); /* zapatos, bolsos y complementos: con looks enteros (arriba + abajo, o vestido) */
-  box.innerHTML='<h3>Completa estos looks</h3>'+(occs.length?'<div class="pair-occs" role="group" aria-label="Ocasión">'+[[null,"Todas"],...occs.map(o=>[o,occasions[o]||o])].map(([o,t])=>'<button type="button" class="chip-button'+(o===occ?' active':'')+'" aria-pressed="'+(o===occ)+'" data-pair-occ="'+(o||"")+'">'+fx(t)+'</button>').join("")+'</div>':'')+'<p class="muted pair-note">'+(occ?'Para «'+fx((occasions[occ]||occ).toLowerCase())+'»':'En general')+': '+(bs.length?plural(bs.length,"base de look","bases de look")+' de tu armario con las que va bien.':'todavía no hay ninguna base de look (arriba + abajo, o vestido) con la que vaya bien.')+'</p>'+bs.slice(0,8).map(b=>'<div class="pair-group">'+thumbs(b,3)+'</div>').join("")+(bs.length>8?'<p class="muted">Y '+(bs.length-8)+' más.</p>':'')+(missing.length?'<p class="muted pair-note">Para afinar, completa en la ficha: '+fx(missing.join(", "))+'.</p>':'');
+ if(!clothes&&!wear){const ok=new Set(rel.map(x=>x.g.id)),bs=basesFor(g).filter(b=>b.every(x=>ok.has(x.id))&&(!occ||occasionFits(g,occ)&&b.every(x=>occasionFits(x,occ)))),q=b=>b.reduce((t,x)=>t+(relationOf(g,x)?.s??.6),0)/b.length;bs.sort((a,b)=>q(b)-q(a)); /* las bases que mejor le van, primero */
+  const show=[],seenP=new Set();for(const pass of [0,1])for(const b of bs){if(show.length>=8)break;if(show.includes(b)||!pass&&b.some(x=>seenP.has(x.id)))continue;show.push(b);b.forEach(x=>seenP.add(x.id))} /* variadas: sin repetir prenda mientras se pueda */ /* zapatos, bolsos y complementos: con looks enteros (arriba + abajo, o vestido) */
+  box.innerHTML='<h3>Completa estos looks</h3>'+(occs.length?'<div class="pair-occs" role="group" aria-label="Ocasión">'+[[null,"Todas"],...occs.map(o=>[o,occasions[o]||o])].map(([o,t])=>'<button type="button" class="chip-button'+(o===occ?' active':'')+'" aria-pressed="'+(o===occ)+'" data-pair-occ="'+(o||"")+'">'+fx(t)+'</button>').join("")+'</div>':'')+'<p class="muted pair-note">'+(occ?'Para «'+fx((occasions[occ]||occ).toLowerCase())+'»':'En general')+': '+(bs.length?plural(bs.length,"base de look","bases de look")+' de tu armario con las que va bien.':'todavía no hay ninguna base de look (arriba + abajo, o vestido) con la que vaya bien.')+'</p>'+'<div class="base-grid">'+show.map(b=>'<div class="base-card">'+thumbs(b,3)+'</div>').join("")+'</div>'+(bs.length>8?'<p class="muted">Y '+(bs.length-8)+' más.</p>':'')+(missing.length?'<p class="muted pair-note">Para afinar, completa en la ficha: '+fx(missing.join(", "))+'.</p>':'');
  }else{
  const groups=new Map();for(const x of wear?rel:rel.filter(x=>isClothes(x.g))){if(!groups.has(x.r.register))groups.set(x.r.register,[]);groups.get(x.r.register).push(x)}
  const catRank=x=>BIG.includes(x.category)?0:x.category==="Zapatos"?1:2; /* primero ropa, luego calzado y complementos */
@@ -1229,7 +1231,10 @@ function lookBases(gs=myGarments()){ensureRelations();const k=relCache.sig+"|"+g
  const room=Math.max(0,400-out.length),step=combos.length>room?combos.length/room:1; /* como mucho 400, como outfitBases */
  for(let i=0;i<combos.length&&out.length<400;i+=step)out.push(combos[Math.floor(i)]);
  lbCache={k,v:out};return out}
-const basesFor=(c,bs=lookBases())=>bs.filter(b=>b.every(x=>goes(c,x))); /* zapatos, bolsos y complementos se miden contra looks enteros, no prenda a prenda */
+/* Un complemento completa una base solo si hay una ocasión en la que se llevan todos: unas zapatillas de diario no van con un vestido de lentejuelas (revisión, 10/10/2026) */
+const fitsOcc=(g,o)=>Array.isArray(g.occasions)&&g.occasions.length?g.occasions.includes(o):occasionFits(g,o), /* las ocasiones de la ficha mandan; sin ficha, se deducen (revisión de Codex, #191) */
+ sharesOccasion=(c,b)=>REL_OCCS.some(o=>fitsOcc(c,o)&&b.every(x=>fitsOcc(x,o)));
+const basesFor=(c,bs=lookBases())=>bs.filter(b=>b.every(x=>goes(c,x))&&sharesOccasion(c,b)); /* zapatos, bolsos y complementos se miden contra looks enteros, no prenda a prenda */
 function pairs(a,b){
  if(a.id&&a.id===b.id)return false;
  if(a.category&&b.category&&!(PAIRS[a.category]||[]).includes(b.category))return false;
@@ -1718,7 +1723,7 @@ function renderLooks(root){
  if(ui.lookFilter==="favorites")looks=looks.filter(l=>l.favorite);
  if(ui.lookFilter==="ai")looks=looks.filter(l=>l.ai);
  const fb=appState.data.feedback;
- stylistShell(root,"Mis looks","Tus combinaciones guardadas y las sugeridas por la IA.",
+ stylistShell(root,"Mis looks","Tus combinaciones guardadas: las que creas tú y las que guardas del estilista.",
   '<div class="section-head"><h2>Conjuntos ('+looks.length+')</h2><span class="head-actions"><button class="secondary" data-inspo-photo aria-label="Recrear con mi armario un look que me inspira">✨ Inspiración</button><button class="secondary" data-outfit-photo aria-label="Guardar el look que llevo con una foto">📸 Foto</button><button class="primary" id="newLook">+ Crear</button></span></div>'+
   '<div class="filter-tabs">'+[["all","Todos"],["favorites","Favoritos ♡"],...(myLooks().some(l=>l.ai)?[["ai","Sugeridos por IA"]]:[])].map(([k,t])=>'<button class="chip-button'+(ui.lookFilter===k?' on':'')+'" data-look-filter="'+k+'">'+t+'</button>').join("")+'</div>'+
   '<details class="looks-tools"><summary>Más opciones para mis looks</summary><div class="looks-tools-body">'+tasteCardHtml()+'</div></details>'+
@@ -2662,7 +2667,7 @@ function buyCheckHtml(){
   '<h3 class="mini-title">Combina con ('+r.compatible.length+')</h3>'+(r.compatible.length?thumbs(r.compatible):'<p class="muted">Ninguna prenda de tu armario.</p>')+
   (r.duplicates.length?'<h3 class="mini-title">Se parece a ('+r.duplicates.length+')</h3>'+thumbs(r.duplicates):'')+
   '<button class="secondary wide" id="buyLooks"'+(r.compatible.length?'':' disabled')+'>✦ Ver looks con esta prenda</button>'+
-  (c.looks?c.looks.length?'<div class="grid buy-looks">'+c.looks.map(l=>{const gs=l.ids.map(id=>id==="__nueva__"?{name:c.name||"Prenda nueva",image:c.image,category:c.category,bgWhite:!!c.bgWhite}:myGarments().find(g=>g.id===id)).filter(Boolean);return '<article class="card">'+outfitBoard(gs)+'<div class="card-body"><div class="card-title">'+fx(l.why)+'</div><div class="look-items">'+gs.map(g=>'<span class="look-chip">'+fx(g.name)+'</span>').join("")+'</div></div></article>'}).join("")+'</div>':'<p class="muted">La IA no ha propuesto looks con esta prenda. Prueba a cambiar la ocasión en Estilista.</p>':'')+
+  (c.looks?c.looks.length?'<div class="grid buy-looks">'+c.looks.map(l=>{const gs=l.ids.map(id=>id==="__nueva__"?{name:c.name||"Prenda nueva",image:c.image,category:c.category,bgWhite:!!c.bgWhite}:myGarments().find(g=>g.id===id)).filter(Boolean);return '<article class="card">'+outfitBoard(gs)+'<div class="card-body"><div class="card-title">'+fx(l.why)+'</div><div class="look-items">'+gs.map(g=>'<span class="look-chip">'+fx(g.name)+'</span>').join("")+'</div></div></article>'}).join("")+'</div>':'<p class="muted">Con tu armario actual no salen looks que combinen bien con esta prenda.</p>':'')+
   '<p class="helper">El veredicto se calcula en tu móvil con reglas de color, categoría, estilo y temporada; es orientativo y no gasta tokens. Solo «Reconocer con IA» usa la IA, cuando lo pulsas.</p>'+
   '<div class="actions"><button class="secondary" id="buyWish">♡ A la wishlist</button><button class="primary" id="buyAdd">Lo he comprado</button></div>'+
   '<button class="secondary small wide" id="buyReset">Valorar otra prenda</button></div>';
@@ -2799,10 +2804,10 @@ function simulate(c,gs,bases){
  let looks=[];
  if(c.category==="Arriba")looks=gs.filter(g=>g.category==="Abajo"&&goes(c,g)).map(b=>[c,b]);
  else if(c.category==="Abajo")looks=gs.filter(g=>g.category==="Arriba"&&goes(c,g)).map(t=>[t,c]);
- else if(c.category==="Vestidos")looks=gs.filter(g=>["Zapatos","Capas"].includes(g.category)&&goes(c,g)).map(e=>[c,e]);
- else looks=bases.filter(p=>p.every(x=>goes(c,x))).map(p=>[...p,c]);
- const complete=c.category==="Zapatos"?looks.filter(l=>!gs.some(g=>g.category==="Zapatos"&&l.slice(0,-1).every(p=>goes(g,p)))).length:0;
- const examples=looks.slice(0,40).map(l=>{if(["Arriba","Abajo"].includes(c.category)){const rest=l.filter(x=>x!==c),s=gs.find(g=>g.category==="Zapatos"&&goes(g,c)&&rest.every(p=>goes(g,p)));return s?[...l,s]:l}return l});
+ else if(c.category==="Vestidos")looks=gs.filter(g=>["Zapatos","Capas"].includes(g.category)&&goes(c,g)&&sharesOccasion(g,[c])).map(e=>[c,e]);
+ else looks=bases.filter(p=>p.every(x=>goes(c,x))&&sharesOccasion(c,p)).map(p=>[...p,c]);
+ const complete=c.category==="Zapatos"?looks.filter(l=>!gs.some(g=>g.category==="Zapatos"&&l.slice(0,-1).every(p=>goes(g,p))&&sharesOccasion(g,l.slice(0,-1)))).length:0;
+ const examples=looks.slice(0,40).map(l=>{if(["Arriba","Abajo"].includes(c.category)){const rest=l.filter(x=>x!==c),s=gs.find(g=>g.category==="Zapatos"&&goes(g,c)&&rest.every(p=>goes(g,p))&&sharesOccasion(g,l));return s?[...l,s]:l}return l});
  const q=l=>{let t=0,n=0,min=1;for(let i=0;i<l.length;i++)for(let j=i+1;j<l.length;j++){const r=relationOf(l[i],l[j]);if(r){t+=r.s;n++;min=Math.min(min,r.s)}}return min<REL_OK?0:n?t/n:.6}; /* eslabón débil: una pareja floja descarta el ejemplo (revisión de Codex, #174) */
  examples.sort((a,b)=>b.length-a.length||q(b)-q(a));
  return {count:looks.length,complete,examples:examples.filter(l=>q(l)>=REL_OK).slice(0,12)}; /* se eligen 2 al final, variados entre tarjetas */
@@ -2871,7 +2876,8 @@ function wishlistHtml(){
   '<label class="field"><span>Enlace (opcional)</span><input name="wishUrl" type="url" placeholder="https://..."></label>'+
   '<button class="primary wide" type="submit">Añadir a mi lista</button></form></div>'+
   '<div class="section-head"><h2>Mis deseos</h2><button id="wishPending" class="secondary">'+(ui.wishlistFilter==="pending"?"Ver todos":"Solo pendientes")+'</button></div>'+
-  (wishlist.length?'<div class="insight-list">'+wishlist.map(w=>{const similar=myGarments().filter(g=>g.category&&g.category===w.category).length,link=/^https?:\/\//i.test(w.url||"")?'<a href="'+fx(w.url)+'" rel="noopener noreferrer" target="_blank">Ver tienda ↗</a>':"";return '<div class="wish-row"><div><strong>'+fx(w.name)+'</strong><p class="muted">'+euro(w.price)+(w.verdict?' · '+fx(w.verdict):'')+(w.bought?' · Comprada':'')+(similar?' · '+plural(similar,"prenda","prendas")+' de esa categoría en tu armario':'')+'</p>'+link+'</div><div class="wish-actions"><button class="chip-button" data-wish-bought="'+fx(w.id)+'">'+(w.bought?'Pendiente':'Comprada ✓')+'</button><button class="chip-button" data-wish-remove="'+fx(w.id)+'" aria-label="Quitar">✕</button></div></div>'}).join("")+'</div>':'<div class="empty">Tu lista está vacía.</div>')+
+  (wishlist.length?'<div class="insight-list">'+wishlist.map(w=>{const similar=myGarments().filter(g=>g.category&&g.category===w.category).length,link=/^https?:\/\//i.test(w.url||"")?'<a href="'+fx(w.url)+'" rel="noopener noreferrer" target="_blank">Ver tienda ↗</a>':w.bought?"":'<a href="https://www.google.com/search?tbm=shop&q='+encodeURIComponent(w.name+" mujer")+'" rel="noopener noreferrer" target="_blank">Ver productos con foto y precio ↗</a>'; /* sin enlace propio: productos reales en Google Shopping */
+   return '<div class="wish-row">'+(w.category?'<img class="wish-sketch" src="'+pieceSketch(w)+'" alt="">':'')+'<div class="wish-main"><strong>'+fx(w.name)+'</strong><p class="muted">'+euro(w.price)+(w.verdict?' · '+fx(w.verdict):'')+(w.bought?' · Comprada':'')+(similar?' · ya tienes '+plural(similar,"prenda","prendas")+' de esa categoría':'')+'</p>'+link+'</div><div class="wish-actions"><button class="chip-button" data-wish-bought="'+fx(w.id)+'">'+(w.bought?'Pendiente':'Comprada ✓')+'</button><button class="chip-button" data-wish-remove="'+fx(w.id)+'" aria-label="Quitar">✕</button></div></div>'}).join("")+'</div>':'<div class="empty">Tu lista está vacía.</div>')+
   (gaps.length?'<p class="helper">Categorías que aún no tienes en el armario: '+fx(gaps.map(x=>x[1].toLocaleLowerCase("es")).join(", "))+'.</p>':'');
 }
 function renderShopping(root){
