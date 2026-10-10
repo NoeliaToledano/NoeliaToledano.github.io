@@ -703,6 +703,7 @@ function mapAnalysis(d){
 function resetBulk(){bulkQueue=[];bulkTotal=0} /* al salir o cambiar de perfil, la cola no pasa a otra persona (revisión de Codex, #177) */
 function showAuth(){
  resetSyncSession();clearPhotoUrls();resetBulk();
+ versionPick.clear();versionCache.clear(); /* una selección temporal nunca se traslada al siguiente perfil */
  appState.profile=null;appState.token=null;appState.data=emptyData();lastSavedData=emptyData();appState.view="wardrobe";
  buyCheck=null;storedImages=new Map();ui.aroundId="";
  $("#content").replaceChildren();$("#profileName").textContent="";$("#garmentForm").reset();$("#lookForm").reset();$("#lookGarments").replaceChildren();
