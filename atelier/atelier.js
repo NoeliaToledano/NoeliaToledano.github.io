@@ -998,13 +998,19 @@ function renderGarmentPairs(g){
  if(pairsView.id!==g.id)pairsView={id:g.id,occ:null};
  const occs=REL_OCCS.filter(o=>occasionFits(g,o)),occ=occs.includes(pairsView.occ)?pairsView.occ:null,rel=relationsFor(g,REL_OK,occ);
  const missing=EVIDENCE_FIELDS(g).filter(f=>!g[f]&&f!=="color").map(f=>META_NAME[f]||f);
+ const styleClash=g.style&&g.formality in SHEET_STYLE&&SHEET_STYLE[g.formality]!==g.style&&!(g.formality==="formal"&&g.style==="party"); /* etiquetas que se contradicen: el estilista usa la formalidad */
  const groups=new Map();for(const x of rel){if(!groups.has(x.r.register))groups.set(x.r.register,[]);groups.get(x.r.register).push(x)}
  const catRank=x=>BIG.includes(x.category)?0:x.category==="Zapatos"?1:2; /* primero ropa, luego calzado y complementos */
  const order=["informal","arreglado","de fiesta","deportivo"],occText=xs=>{if(occ)return "";const c=new Map();for(const x of xs)for(const o of x.r.contexts)c.set(o,(c.get(o)||0)+1);return [...c].sort((a,b)=>b[1]-a[1]).slice(0,3).map(([o])=>(occasions[o]||o).toLowerCase()).join(", ")};
  box.innerHTML='<h3>Combina con</h3>'+(occs.length?'<div class="pair-occs" role="group" aria-label="Ocasión">'+[[null,"Todas"],...occs.map(o=>[o,occasions[o]||o])].map(([o,t])=>'<button type="button" class="chip-button'+(o===occ?' active':'')+'" aria-pressed="'+(o===occ)+'" data-pair-occ="'+(o||"")+'">'+fx(t)+'</button>').join("")+'</div>':'')+'<p class="muted pair-note">'+(occ?'Para «'+fx((occasions[occ]||occ).toLowerCase())+'»':'En general')+', sin contar el tiempo de hoy: eso lo tiene en cuenta el estilista al proponer looks.</p>'+(rel.length?[...groups].sort((a,b)=>order.indexOf(a[0])-order.indexOf(b[0])).map(([reg,xs])=>'<div class="pair-group"><p class="muted"><strong>'+fx(reg[0].toUpperCase()+reg.slice(1))+'</strong> · '+xs.length+(xs.length===1?' prenda':' prendas')+(occText(xs)?' · '+fx(occText(xs)):'')+'</p>'+thumbs(xs.slice().sort((a,b)=>catRank(a.g)-catRank(b.g)||b.r.s-a.r.s).map(x=>x.g),10)+'</div>').join("")
-  :'<p class="muted">Todavía no hay prendas en tu armario que combinen bien con esta.</p>')+(missing.length?'<p class="muted pair-note">Para afinar, completa en la ficha: '+fx(missing.join(", "))+'.</p>':'');
+  :'<p class="muted">Todavía no hay prendas en tu armario que combinen bien con esta.</p>')+(missing.length?'<p class="muted pair-note">Para afinar, completa en la ficha: '+fx(missing.join(", "))+'.</p>':'')+(styleClash?'<p class="pair-note pair-warn">Revisa las etiquetas: el estilo es «'+fx(styleNames[g.style]||g.style)+'» pero la formalidad es «'+fx(metaLabel("formality",g.formality))+'». El estilista se guía por la formalidad.</p>':'');
  $$("[data-thumb]",box).forEach(b=>b.addEventListener("click",()=>openGarment(b.dataset.thumb)));
  $$("[data-pair-occ]",box).forEach(b=>b.addEventListener("click",()=>{pairsView.occ=b.dataset.pairOcc||null;renderGarmentPairs(g)}));
+ /* Lo que has marcado con «Casi» sobre esta prenda, para poder deshacerlo */
+ const fb=appState.data.feedback||{},nm=id=>myGarments().find(x=>x.id===id)?.name||"una prenda borrada";
+ const marks=Object.keys(fb).filter(k=>fb[k]&&(k==="g:"+g.id||k.startsWith("o:"+g.id+"|")||k.startsWith("p:")&&k.slice(2).split("|").includes(g.id))).map(k=>[k,k.startsWith("g:")?"No te gusta esta prenda":k.startsWith("o:")?"No para «"+(occasions[k.split("|")[1]]||k.split("|")[1]).toLowerCase()+"»":"No combinar con "+nm(k.slice(2).split("|").find(x=>x!==g.id))]);
+ if(marks.length){box.insertAdjacentHTML("beforeend",'<div class="pair-marks"><p class="muted pair-note">Lo que has marcado con «Casi»:</p>'+marks.map(([k,t])=>'<span class="look-chip">'+fx(t)+' <button type="button" class="link-button" data-unmark="'+fx(k)+'" aria-label="Quitar: '+fx(t)+'">Quitar</button></span>').join("")+'</div>');
+  $$("[data-unmark]",box).forEach(b=>b.addEventListener("click",async()=>{const k=b.dataset.unmark;if(await mutate(()=>{delete appState.data.feedback[k]},"Quitado"))renderGarmentPairs(myGarments().find(x=>x.id===g.id))}))}
 }
 function closeGarment(){$("#garmentSheet").classList.add("hidden")}
 async function saveGarment(e){
@@ -1192,7 +1198,7 @@ function intentionalMix(a,b){
  return "";
 }
 const EVIDENCE_FIELDS=g=>["color",...(["Arriba","Vestidos","Capas"].includes(g.category)?["sleeve","thickness"]:[]),...(BIG.includes(g.category)?["warmth"]:[]),"formality"];
-let relCache={sig:"",ev:new Map(),learn:new Map(),fast:new Map(),feat:new Map()};
+let relCache={sig:"",ev:new Map(),learn:new Map(),fast:new Map(),feat:new Map(),block:new Set()};
 /* Huella por prenda de los datos que usan las relaciones (no basta el updatedAt máximo: una edición sincronizada puede traer una fecha anterior; revisión de ChatGPT, #164) */
 const REL_FIELDS=["id","name","category","type","subtype","color","secondaryColor","pattern","fabric","fit","length","sleeve","neckline","thickness","warmth","formality","occasions","season","style","details","archived"];
 const relPrint=g=>REL_FIELDS.map(k=>{const v=g[k];return v==null?"":Array.isArray(v)?v.join("+"):String(v)}).join("\u0001");
@@ -1200,7 +1206,7 @@ function relSig(){const d=appState.data||{};return (d.garments||[]).map(relPrint
 /* Una vez por cálculo (rankOutfits, ficha): si el armario, el feedback o el código de vestir cambian, se rehace la caché */
 function ensureRelations(){
  const sig=relSig();if(relCache.sig===sig)return;
- relCache={sig,ev:new Map(),learn:new Map(),fast:new Map(),feat:new Map()};const fb=appState.data.feedback||{};
+ relCache={sig,ev:new Map(),learn:new Map(),fast:new Map(),feat:new Map(),block:pieceNotes().pairs};const fb=appState.data.feedback||{};
  for(const l of myLooks()){const v=fb[l.id]==="down"?(l.dislikeReason==="hoy"||l.dislikeReason==="color"?0:-1):fb[l.id]==="up"||l.favorite||l.inspired?1:0;if(!v)continue;const ids=l.garmentIds||[];
   for(let i=0;i<ids.length;i++)for(let j=i+1;j<ids.length;j++){const k=[ids[i],ids[j]].sort().join("|");relCache.learn.set(k,(relCache.learn.get(k)||0)+v)}}
 }
@@ -1211,7 +1217,7 @@ const sheetStyle=g=>g.formality in SHEET_STYLE&&g.style!==SHEET_STYLE[g.formalit
 function relFeat(g){
  let f=relCache.feat.get(g);if(f)return f;const t=textOf(g);
  f={fl:formalLevel(g),heavy:warmthOf(g)>=2||g.thickness==="grueso",light:summerFootwear(g)||isShortBottom(g)||g.sleeve==="sin mangas",occ:REL_OCCS.filter(o=>occasionFits(g,o)),ss:sheetStyle(g),
-  urban:isSneaker(g)&&g.formality!=="sport"&&!OUTDOOR.test(t),structured:g.category==="Capas"&&STRUCTURED.test(t),denim:isDenimPiece(g),declared:!g.formality&&Array.isArray(g.occasions)?g.occasions:[],
+  urban:isSneaker(g)&&g.formality!=="sport"&&!OUTDOOR.test(t),denimMain:isDenimPiece(g)&&["Arriba","Abajo","Vestidos"].includes(g.category),tailoredPrint:isPatterned(g)&&formalLevel(g)>=2&&["Arriba","Abajo","Vestidos"].includes(g.category),structured:g.category==="Capas"&&STRUCTURED.test(t),denim:isDenimPiece(g),declared:!g.formality&&Array.isArray(g.occasions)?g.occasions:[],
   missing:EVIDENCE_FIELDS(g).filter(k=>!g[k]).map(k=>(g.name||g.type||g.category)+": "+k)};
  relCache.feat.set(g,f);return f;
 }
@@ -1222,7 +1228,7 @@ function pairEvidence(a,b){
  const mix=fa.urban&&b.category!=="Zapatos"&&fb.fl>=2||fb.urban&&a.category!=="Zapatos"&&fa.fl>=2?"zapatillas con prenda arreglada":fa.structured&&fb.denim||fb.structured&&fa.denim?"americana con vaquero":"";
  const ev={ids:[a.id,b.id],color:pc.s,colorKind:pc.k||"",small:!BIG.includes(a.category)||!BIG.includes(b.category),style:styleAffinity(fa.ss,fb.ss),formalGap:Math.abs(fa.fl-fb.fl),
   register:REGISTER_OF((fa.fl+fb.fl)/2),seasonClash:!!(a.season&&b.season&&a.season!=="all"&&b.season!=="all"&&a.season!==b.season),
-  thermalClash:fa.heavy&&fb.light||fb.heavy&&fa.light,occasions:fa.occ.filter(o=>fb.occ.includes(o)),mix,declared:fa.declared.concat(fb.declared),uncertain:fa.missing.concat(fb.missing)};
+  thermalClash:fa.heavy&&fb.light||fb.heavy&&fa.light,textureClash:fa.denimMain&&fb.tailoredPrint||fb.denimMain&&fa.tailoredPrint,occasions:fa.occ.filter(o=>fb.occ.includes(o)),mix,declared:fa.declared.concat(fb.declared),uncertain:fa.missing.concat(fb.missing)};
  if(!ma)relCache.ev.set(a,ma=new Map());ma.set(b,ev);let mb=relCache.ev.get(b);if(!mb)relCache.ev.set(b,mb=new Map());mb.set(a,ev);return ev;
 }
 function contextualizePair(ev,ctx){
@@ -1236,6 +1242,8 @@ function contextualizePair(ev,ctx){
  s=Math.min(s,Math.min(color,sheet?Math.max(style,.75):style,sheet?Math.max(formal,.75):formal)+.2); /* eslabón débil también dentro del par: un choque claro (dos estampados, deporte con fiesta) no lo compensan los demás aspectos */
  if(!ev.occasions.length)s*=.8;else if(ctx?.occasion&&!ev.occasions.includes(ctx.occasion))s*=.85;
  const n=relCache.learn.get(pk)||0;s+=Math.max(-.3,Math.min(.3,.1*n)); // lo aprendido del perfil
+ if(ev.textureClash&&!ctx?.likes?.has("denim"))s=Math.min(s,.45); /* vaquero con estampado de sastrería (camisa vaquera + pantalón de cuadros): las dos piezas tienen protagonismo y compiten; convención de estilismo que se relaja si te gusta el vaquero */
+ if(relCache.block.has(pk))s=Math.min(s,.3); /* «no pegan» dicho por la persona: pareja débil */
  const r={s:Math.max(0,Math.min(1,Math.round(s*100)/100)),register:ev.register,contexts:ev.occasions,mix:ev.mix,uncertain:ev.uncertain};
  return r; /* la caché vive en relationOf, por objeto */
 }
@@ -1563,6 +1571,23 @@ function lookTraits(l,resolved){
 }
 const tasteLabel=k=>TASTE_LABELS[k]||(k.startsWith("fam:")?"looks con "+k.slice(4):k.startsWith("style:")?"looks de estilo "+(styleNames[k.slice(6)]||k.slice(6)):k);
 const DISLIKE_WHY={color:"Colores",formal:"Muy arreglado",informal:"Muy informal",hoy:"Hoy no"};
+/* «Casi» (cata n.º 4): una prenda del look no cuadra. Se guarda en feedback (se fusiona por clave entre dispositivos):
+   g:<prenda> = no me gusta la prenda · o:<prenda>|<ocasión> = no es para esa ocasión o sobra · p:<a>|<b> = no pegan juntas */
+const ALMOST_WHY=[["pega","No pega con el resto"],["color","El color"],["ocasion","No es para esta ocasión"],["sobra","Sobra"],["prenda","No me gusta la prenda"]];
+const pairKey=(a,b)=>a<b?a+"|"+b:b+"|"+a;
+function pieceNotes(){const fb=appState.data.feedback||{},n={disliked:new Set(),offOcc:new Set(),pairs:new Set()};
+ for(const [k,v] of Object.entries(fb)){if(!v)continue;if(k.startsWith("g:"))n.disliked.add(k.slice(2));else if(k.startsWith("o:"))n.offOcc.add(k.slice(2));else if(k.startsWith("p:"))n.pairs.add(k.slice(2))}
+ return n}
+function saveAlmost(gsLook,offIds,why,occasion){
+ const fb=appState.data.feedback,w=new Set(why),off=new Set(offIds);
+ for(const id of off){
+  if(w.has("prenda"))fb["g:"+id]="no";
+  if((w.has("ocasion")||w.has("sobra"))&&occasion)fb["o:"+id+"|"+occasion]="no";
+  if(w.has("pega")||w.has("color")||!w.size)for(const g of gsLook)if(g.id!==id&&relatedCats(g,{category:myGarments().find(x=>x.id===id)?.category}))fb["p:"+pairKey(id,g.id)]="no"; /* también entre dos prendas marcadas (revisión de Codex, #169) */
+ }
+}
+/* ¿Guardaría algo? Una sola prenda con «no pega» no tiene pareja que aprender */
+const almostLearns=(gsLook,offIds,why)=>{const w=new Set(why);return offIds.length>0&&(w.has("prenda")||w.has("ocasion")||w.has("sobra")||gsLook.length>1)};
 const COLOR_TRAIT=/^(mono|neutral|color|multicolor|fam:)/;
 /* Sesgo de formalidad aprendido de los 👎 con motivo: >0 prefiere más informal, <0 más arreglado (−1…1) */
 function formalityBias(){const fb=appState.data.feedback||{},ls=myLooks().filter(l=>fb[l.id]==="down"&&(l.dislikeReason==="formal"||l.dislikeReason==="informal")) /* solo 👎 vigentes (revisión de Codex, #143) */,f=ls.filter(l=>l.dislikeReason==="formal").length;return ls.length?(f-(ls.length-f))/Math.max(3,ls.length):0}
@@ -1652,7 +1677,7 @@ function renderLooks(root){
   '<details class="looks-tools"><summary>Más opciones para mis looks</summary><div class="looks-tools-body"><button class="secondary wide" id="aiLooks">Sugerir looks con IA</button>'+tasteCardHtml()+'</div></details>'+
   (looks.length?'<div class="grid">'+looks.map(l=>'<div class="look-tile">'+lookCard(l)+
    '<div class="tile-tools"><button class="chip-button" data-look-fav="'+fx(l.id)+'" aria-label="'+(l.favorite?'Quitar de favoritos':'Añadir a favoritos')+'" aria-pressed="'+!!l.favorite+'">'+(l.favorite?'♥':'♡')+'</button><button class="chip-button" data-look-wear="'+fx(l.id)+'">✓ Llevado</button><button class="chip-button" data-look-swap="'+fx(l.id)+'">↻ Cambiar prenda</button></div>'+
-   '<div class="look-votes"><button class="chip-button'+(fb[l.id]==="up"?' on':'')+'" data-feedback="'+fx(l.id)+'" data-vote="up" aria-label="Me gusta" aria-pressed="'+(fb[l.id]==="up")+'">👍</button><button class="chip-button'+(fb[l.id]==="down"?' on':'')+'" data-feedback="'+fx(l.id)+'" data-vote="down" aria-label="No me gusta" aria-pressed="'+(fb[l.id]==="down")+'">👎</button></div>'+
+   '<div class="look-votes"><button class="chip-button'+(fb[l.id]==="up"?' on':'')+'" data-feedback="'+fx(l.id)+'" data-vote="up" aria-label="Me gusta" aria-pressed="'+(fb[l.id]==="up")+'">👍</button><button class="chip-button'+(fb[l.id]==="down"?' on':'')+'" data-feedback="'+fx(l.id)+'" data-vote="down" aria-label="No me gusta" aria-pressed="'+(fb[l.id]==="down")+'">👎</button><button class="chip-button" data-look-almost="'+fx(l.id)+'" aria-label="Casi: algo no me cuadra">Casi</button></div>'+
    (fb[l.id]==="down"?'<div class="dislike-why" role="group" aria-label="Por qué no te gusta (opcional)"><span>¿Por qué?</span>'+Object.entries(DISLIKE_WHY).map(([k,t])=>'<button class="chip-button small'+(l.dislikeReason===k?' on':'')+'" data-why="'+fx(l.id)+'" data-reason="'+k+'" aria-pressed="'+(l.dislikeReason===k)+'">'+t+'</button>').join("")+'</div>':'')+ 
    '<div class="tile-hints">'+(l.ai?"IA":"Manual")+(lookComplete((l.garmentIds||[]).map(id=>myGarments().find(g=>g.id===id)))?'':' · <span title="'+BASE_MSG+'">Incompleto: falta arriba, abajo o vestido</span>')+'</div></div>').join("")+'</div>':'<div class="empty">Todavía no tienes looks para este filtro.</div>'));
  $("#newLook")?.addEventListener("click",()=>openLook());bindOutfitPhoto(root);$("#aiLooks")?.addEventListener("click",()=>suggestLooks());
@@ -1660,6 +1685,7 @@ function renderLooks(root){
  $$("[data-look]",root).forEach(b=>b.addEventListener("click",()=>openLook(b.dataset.look)));
  $$("[data-look-fav]",root).forEach(b=>b.addEventListener("click",async()=>{const l=myLooks().find(l=>l.id===b.dataset.lookFav);if(l)await mutate(()=>{l.favorite=!l.favorite;l.updatedAt=new Date().toISOString()},"Look actualizado")}));
  $$("[data-look-swap]",root).forEach(b=>b.addEventListener("click",()=>openSwap(b.dataset.lookSwap)));
+ $$("[data-look-almost]",root).forEach(b=>b.addEventListener("click",()=>{const l=myLooks().find(x=>x.id===b.dataset.lookAlmost);if(l)openAlmost(l.garmentIds||[],l.occasion||appState.data.preferences.occasion||"daily")}));
  $$("[data-look-wear]",root).forEach(b=>b.addEventListener("click",()=>{const l=myLooks().find(l=>l.id===b.dataset.lookWear);if(l)promptWear(l.garmentIds,l.id)}));
  $$("[data-feedback]",root).forEach(b=>b.addEventListener("click",async()=>{const id=b.dataset.feedback,l=myLooks().find(x=>x.id===id);await mutate(()=>{if(fb[id]===b.dataset.vote)delete fb[id];else fb[id]=b.dataset.vote;if(l&&fb[id]!=="down"&&l.dislikeReason){delete l.dislikeReason;l.updatedAt=new Date().toISOString()}},"Preferencia guardada")}));
  $$("[data-why]",root).forEach(b=>b.addEventListener("click",async()=>{const l=myLooks().find(x=>x.id===b.dataset.why);if(!l)return;await mutate(()=>{if(l.dislikeReason===b.dataset.reason)delete l.dislikeReason;else l.dislikeReason=b.dataset.reason;l.updatedAt=new Date().toISOString()},b.dataset.reason==="hoy"?"Entendido: no lo tendré en cuenta para tus gustos":"Gracias: lo tendré en cuenta")}));
@@ -1866,7 +1892,7 @@ function scoreOutfit(gs,ctx){
  if(top&&bottom&&vol(top)!=null&&vol(bottom)!=null){const a=vol(top),b=vol(bottom);sil=Math.abs(a-b)===2?1:Math.abs(a-b)===1?.88:a===1?.8:ctx.dress==="comoda"&&a===2?.82:.6;if(Math.abs(a-b)===2)reasons.push("Volúmenes equilibrados: amplio con ajustado")}
  else if(gs.some(g=>g.category==="Vestidos"))sil=.75;
  // Estilo (20): coherencia de estilo; una pieza de otro nivel puede ser intencionada (F03)
- const styled=gs.filter(g=>g.style),aff=[];
+ const styled=gs.filter(g=>g.style).map(sheetStyle),aff=[]; /* la formalidad de la ficha manda sobre el estilo (camisa vaquera «smart» con formalidad informal = informal) */
  const declared=g=>ctx.occasion&&!g.formality&&Array.isArray(g.occasions)&&g.occasions.includes(ctx.occasion); /* la ficha manda: sin formalidad en la ficha pero marcada para esta ocasión, su estilo no resta */
  for(let i=0;i<styled.length;i++)for(let j=i+1;j<styled.length;j++){const x=styled[i],y=styled[j],v=styleAffinity(x,y);aff.push((declared(x)||declared(y))&&occasionFits(x,ctx.occasion)&&occasionFits(y,ctx.occasion)?Math.max(v,.85):v)}
  let style=aff.length?aff.reduce((a,b)=>a+b,0)/aff.length:.75;
@@ -1876,7 +1902,7 @@ function scoreOutfit(gs,ctx){
   if(fit>=.85&&ctx.dress)reasons.push("Encaja con tu estilo de hoy: "+DRESS_LABEL[ctx.dress].toLowerCase());else if(fit>=.85)reasons.push("Arreglado para el trabajo")}
  // Detalles de estilista (banco A/B, #128): doble vaquero sin contraste y prendas llamativas en el trabajo restan un poco
  // La ficha manda: el nombre solo cuenta si falta el dato (revisión de Codex, #134)
- if(!ctx.likes?.has("denim")&&big.filter(isDenimPiece).length>=2&&big.filter(g=>g.category!=="Capas").every(isDenimPiece))style-=.15; // gusto: si te gusta el doble vaquero, no resta
+ if(!ctx.likes?.has("denim")&&big.filter(isDenimPiece).length>=2&&big.filter(g=>g.category!=="Capas").every(isDenimPiece))style-=.25; // gusto: si te gusta el doble vaquero, no resta (sube de .15 a .25 al corregir la camisa vaquera del banco a «informal», 10/10/2026)
  // Animal print y pelo sí valen para la oficina (votos de Noelia, #128); brillos de noche, no
  const isLoud=g=>/lentejuel|sequin|purpurina|glitter|strass|rhinestone/i.test(textOf(g));
  if(ctx.occasion==="work"){const loud=gs.filter(isLoud).length;if(loud)style-=Math.min(.3,.15*loud)}
@@ -1918,7 +1944,8 @@ function engineContext(o={}){
  const p=appState.data.preferences,date=o.date||dayISO(),occasion=o.occasion===undefined?(p.occasion||"daily"):o.occasion,taste=tasteProfile(),dress=o.dress===undefined?(DRESS_TARGET[p.dressStyle]?p.dressStyle:null):o.dress;
  const temp=o.temp??tempFor(date),season=SEASON3(Number(date.slice(5,7))-1),worn=new Map();
  for(const l of logs())for(const id of l.garmentIds||[])worn.set(id,(worn.get(id)||0)+1);
- return {date,occasion,dress,temp,season,extras:o.extras||lookExtras(),avoid:o.avoid||new Set(),worn,
+ const notes=pieceNotes();
+ return {date,occasion,dress,temp,season,extras:o.extras||lookExtras(),avoid:new Set([...(o.avoid||[]),...notes.disliked]) /* «no me gusta la prenda»: se propone mucho menos */,offOcc:new Set([...notes.offOcc].filter(k=>k.endsWith("|"+occasion)).map(k=>k.slice(0,k.lastIndexOf("|")))),worn,
   forgotten:new Set(myGarments().filter(g=>forgottenStatus(g).forgotten).map(g=>g.id)),likes:new Set(taste.likes.map(x=>x.k)),dislikes:new Set(taste.dislikes.map(x=>x.k)),formalBias:formalityBias()};
 }
 /* Completa una base: calzado, capa (regla de temperatura), bolso y un complemento, si combinan con todo.
@@ -2023,6 +2050,7 @@ function completeOutfitGreedy(base,pool,ctx,used=new Map(),firstPick=null){
   if(cat==="Zapatos"&&c.some(x=>!newColorOverflow(x,l,ctx)))c=c.filter(x=>!newColorOverflow(x,l,ctx)); // calzado: sin cuarto color si hay alternativa
   if(cat==="Bolsos"&&l.some(p=>formalLevel(p)>=2))c=c.filter(x=>!isBackpack(x)||formalLevel(x)>=2&&!isOutdoor(x)); // Q3 (#108): mochila de vestir sí
   if(cat==="Bolsos"&&hasSkirtOrDress(l))c=c.filter(x=>!outdoorPack(x)); // sin bolso antes que mochila de montaña con vestido
+  if(cat==="Bolsos"&&ctx.occasion!=="sport")c=c.filter(x=>!outdoorPack(x)); // mochila de montaña solo en deporte (cata n.º 4: «sobra» en looks de ciudad)
   if(cat==="Bolsos"&&["party","event","formal"].includes(ctx.occasion)){const lv=x=>Array.isArray(x.occasions)&&x.occasions.includes(ctx.occasion)?3:formalLevel(x),top=Math.max(0,...c.map(lv));if(top>=2)c=c.filter(x=>lv(x)>=top)} // fiesta: el bolso más arreglado que haya (de fiesta antes que de diario)
   if(cat==="Zapatos"&&beach)c=c.filter(x=>/sandal|chancl|alpargat|zueco/i.test([x.type,x.name,x.subtype].filter(Boolean).join(" ")));
   // P3/P4 (#99): un gorro o sombrero solo con motivo (frío o sol de verano en diario/playa); otros complementos, si suman
@@ -2060,9 +2088,11 @@ function rankOutfits(o={}){
  ensureRelations();const ctx=engineContext(o),max=o.max||3;
  let pool=(o.pool||myGarments()).filter(g=>seasonFits(g,ctx.season)||g.id===o.required);
  ctx.allShoes=pool.filter(g=>g.category==="Zapatos");
- const byOcc=pool.filter(g=>occasionFits(g,ctx.occasion)||g.id===o.required);
+ const byOcc=pool.filter(g=>occasionFits(g,ctx.occasion)&&!ctx.offOcc.has(g.id)||g.id===o.required); /* «no es para esta ocasión» o «sobra», dicho en «Casi» */
  const warn=[];if(ctx.occasion)pool=byOcc;
  const req=o.required?myGarments().find(g=>g.id===o.required):null;
+ /* mochila de montaña obligatoria: solo looks de deporte; en «Combinar prenda» (sin ocasión) se prueban primero (revisión de Codex, #169) */
+ if(req&&outdoorPack(req)&&ctx.occasion!=="sport"){if(ctx.occasion)return [];if(!o.sportTried){const r=rankOutfits({...o,occasion:"sport",sportTried:true});if(r.length)return r}}
  const tops=pool.filter(g=>g.category==="Arriba"),bottoms=pool.filter(g=>g.category==="Abajo");
  let bases=[];
  if(req&&req.category==="Arriba")bases=bottoms.filter(b=>stylesOk(req,b)).map(b=>[req,b]);
@@ -2281,13 +2311,31 @@ function dailyLookHtml(){
   (why?.reasons.length||why?.warnings.length?'<ul class="look-reasons">'+why.reasons.map(r=>'<li>'+fx(r)+'</li>').join("")+why.warnings.map(w=>'<li class="warn">'+fx(w)+'</li>').join("")+'</ul>':'')+
   '<div class="daily-actions">'+(d.worn||logs().some(x=>x.date===dayISO()&&lookSig(x.garmentIds||[])===lookSig(d.ids||[]))?'<span class="badge-ok">✓ Te lo has puesto hoy</span>':'<button type="button" class="primary" id="dailyWear">Me lo pongo</button>')+
   '<button type="button" class="secondary" id="dailyNext">↻ Otro look</button></div>'+
-  '<div class="plan-actions"><button type="button" class="chip-button" id="dailySave">♡ Guardar en Mis looks</button><button type="button" class="chip-button" id="dailySwap">Cambiar una prenda</button></div></section>';
+  '<div class="plan-actions"><button type="button" class="chip-button" id="dailySave">♡ Guardar en Mis looks</button><button type="button" class="chip-button" id="dailySwap">Cambiar una prenda</button><button type="button" class="chip-button" id="dailyAlmost">Casi: algo no me cuadra</button></div></section>';
+}
+/* «Casi»: marcar la prenda que no cuadra y por qué. Sin IA: lo aprende el motor del perfil (pieceNotes) */
+function openAlmost(ids,occasion,onDone){
+ const gs=ids.map(id=>myGarments().find(g=>g.id===id)).filter(Boolean),off=new Set(),why=new Set();if(!gs.length)return;
+ const body=()=>'<div class="section-head"><h2 id="almostSheetTitle">¿Qué no te cuadra?</h2><button type="button" class="secondary" data-close-sheet>Cerrar</button></div>'+
+  '<p class="muted">Toca la prenda (o las prendas) y, si quieres, di por qué. Solo cambia tus propuestas, no las de nadie más.</p>'+
+  '<div class="almost-pieces">'+gs.map(g=>'<button type="button" class="almost-piece'+(off.has(g.id)?' off':'')+'" data-almost-piece="'+fx(g.id)+'" aria-pressed="'+off.has(g.id)+'">'+(validImage(g.image)?'<img src="'+photoUrl(g)+'" alt="" loading="lazy">':'<span aria-hidden="true">◇</span>')+'<span>'+fx(g.name||g.category)+'</span></button>').join("")+'</div>'+
+  '<div class="almost-why" role="group" aria-label="Por qué (opcional)">'+ALMOST_WHY.map(([k,t])=>'<button type="button" class="chip-button'+(why.has(k)?' on':'')+'" data-almost-why="'+k+'" aria-pressed="'+why.has(k)+'">'+t+'</button>').join("")+'</div>'+
+  '<div class="actions"><button type="button" class="primary wide" id="almostSave"'+(off.size?'':' disabled')+'>Guardar</button></div>';
+ const {el,close}=showSheet("almostSheet",body());
+ const bind=()=>{
+  $$("[data-almost-piece]",el).forEach(b=>b.addEventListener("click",()=>{const id=b.dataset.almostPiece;off.has(id)?off.delete(id):off.add(id);redraw()}));
+  $$("[data-almost-why]",el).forEach(b=>b.addEventListener("click",()=>{const k=b.dataset.almostWhy;why.has(k)?why.delete(k):why.add(k);redraw()}));
+  $$("[data-close-sheet]",el).forEach(b=>b.addEventListener("click",close));
+  $("#almostSave",el)?.addEventListener("click",async()=>{if(!almostLearns(gs,[...off],[...why]))return toast("Con una sola prenda, elige «No me gusta la prenda», «No es para esta ocasión» o «Sobra»");const ok=await mutate(()=>saveAlmost(gs,[...off],[...why],occasion),"Gracias: lo tendré en cuenta en tus propuestas");if(ok){close();onDone?.()}});
+ };
+ const redraw=()=>{$(".sheet",el).innerHTML=body();bind()};bind();
 }
 function bindDailyLook(root){
  const p=appState.data.preferences,today=dayISO();
  if(dailyDirty){dailyDirty=false;saveState().catch(()=>{})}
  $("#dailyAdd",root)?.addEventListener("click",()=>setView("wardrobe"));
  $("#dailyNext",root)?.addEventListener("click",async()=>{ensureDailyLook(true);await saveState();render()});
+ $("#dailyAlmost",root)?.addEventListener("click",()=>{const d=p.dailyLook;if(!d?.ids?.length)return;openAlmost(d.ids,p.occasion||"daily",async()=>{ensureDailyLook(true);await saveState();render()})});
  $("#dailyWear",root)?.addEventListener("click",async()=>{const d=p.dailyLook;if(!d?.ids?.length)return;const now=new Date().toISOString();
   await mutate(()=>{logs().unshift({id:uid(),date:today,garmentIds:[...d.ids],lookId:null,updatedAt:now});d.worn=true;d.touched=true},"Registrado: te lo has puesto hoy")});
  $("#dailySave",root)?.addEventListener("click",async()=>{const d=p.dailyLook;if(!d?.ids?.length)return;

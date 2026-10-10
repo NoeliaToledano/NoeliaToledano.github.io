@@ -27,7 +27,7 @@
 "id": "pv-194322157_1",
 "category": "Vestidos",
 "type": "Vestido midi",
-"style": "casual",
+"style": "party",
 "season": "all",
 "pattern": "plain",
 "color": "Rosa",
@@ -36,16 +36,16 @@
 "source": "Marqo/polyvore item_ID 194322157_1 · Day Dresses · balenciaga sleeveless dress",
 "sleeve": "sin mangas",
 "length": "regular",
-"formality": "smartcasual",
+"formality": "party",
 "thickness": "medio",
 "warmth": "bajo",
 "fabric": "mixed",
 "occasions": [
-"work",
+"party",
 "event",
-"daily"
+"formal"
 ],
-"labeledBy": "Claude, revisión visual 09/10/2026"
+"labeledBy": "Claude, revisión visual 09/10/2026 · corregido 10/10/2026 según Noelia: vestido de fiesta, muy de arreglar, no de diario"
 },
 {
 "id": "pv-190213626_2",
@@ -1439,7 +1439,7 @@
 "id": "pv-139611402_1",
 "category": "Arriba",
 "type": "Blusa",
-"style": "smart",
+"style": "casual",
 "season": "all",
 "pattern": "plain",
 "color": "Vaquero",
@@ -1458,7 +1458,7 @@
 ],
 "neckline": "camisero",
 "subtype": "camisa vaquera",
-"labeledBy": "Claude, revisión visual 09/10/2026"
+"labeledBy": "Claude, revisión visual 09/10/2026 · corregido 10/10/2026: camisa vaquera (chambray), estilo informal como su formalidad"
 },
 {
 "id": "pv-166566352_1",

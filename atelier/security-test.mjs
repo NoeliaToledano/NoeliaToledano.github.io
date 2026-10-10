@@ -228,6 +228,49 @@ console.log("PASS: Styling engine (20/100/500 prendas): capas según tiempo, var
   console.log("PASS: Real cold: the look that admits the coat beats a short blazer at 8 °C");
 }
 
+// «Casi» (cata n.º 4): la prenda marcada se aprende por perfil; mochila de montaña solo en deporte
+{
+  const probe=new Function("document","sessionStorage","crypto",src+`
+  const G=(id,category,type,color,extra={})=>({id,name:type+" "+color,category,type,color,style:"casual",season:"all",pattern:"plain",updatedAt:"x",...extra});
+  appState.profile={id:"noelia"};const by=id=>myGarments().find(g=>g.id===id),out={};
+  appState.data=normalizeData({garments:[G("t1","Arriba","Camiseta","Blanco"),G("t2","Arriba","Blusa","Vaquero"),G("j1","Abajo","Vaqueros","Azul"),G("j2","Abajo","Pantalón","Negro"),
+   G("z1","Zapatos","Deportivas","Blanco"),G("z2","Zapatos","Bailarinas","Negro"),G("m","Bolsos","Mochila","Amarillo",{name:"Mochila North Face",formality:"sport"}),G("v","Vestidos","Vestido midi","Rosa")]});
+  const ctx=()=>engineContext({occasion:"daily",temp:24,date:"2026-07-15"}),looks=()=>rankOutfits({max:3,occasion:"daily",temp:24,date:"2026-07-15",extras:{shoes:true,bag:true}}).map(l=>l.ids);
+  out.pack=looks().some(ids=>ids.includes("m"));
+  out.packSport=occasionFits(by("m"),"sport");
+  out.before=relationOf(by("t1"),by("j1"),ctx()).s;
+  saveAlmost([by("t1"),by("j1"),by("z1")],["j1"],["pega"],"daily");ensureRelations();
+  out.after=relationOf(by("t1"),by("j1"),ctx()).s;out.pairGone=looks().every(ids=>!(ids.includes("t1")&&ids.includes("j1")));
+  saveAlmost([by("t2"),by("j2"),by("z2")],["t2"],["prenda"],"daily");out.disliked=looks()[0].includes("t2");
+  saveAlmost([by("v"),by("z1")],["v"],["ocasion"],"daily");out.offOcc=looks().some(ids=>ids.includes("v"));out.otherOcc=rankOutfits({max:5,occasion:"party",temp:24,date:"2026-07-15"}).length>=0;
+  out.keys=Object.keys(appState.data.feedback).sort();
+  // Deshacer (revisión de ChatGPT, #169): quitar la marca restaura la pareja, también tras fusionar con otro dispositivo; la marca vale en todas las ocasiones
+  out.otherOccBlocked=relationOf(by("t1"),by("j1"),engineContext({occasion:"work",temp:17,date:"2026-04-15"})).s<=.3;
+  const prev=JSON.parse(JSON.stringify(appState.data));delete appState.data.feedback["p:j1|t1"];stampChanges(appState.data,prev);
+  const remote=JSON.parse(JSON.stringify(prev));remote.stamps={...(remote.stamps||{}),"f:p:j1|t1":"2000-01-01T00:00:00.000Z"};
+  appState.data=mergeData(appState.data,remote);ensureRelations();out.undone=!("p:j1|t1" in appState.data.feedback);out.restored=relationOf(by("t1"),by("j1"),ctx()).s;
+  // Dos prendas marcadas con «no pega»: también se guarda su pareja; una sola prenda sin pareja no guarda nada
+  saveAlmost([by("t1"),by("j1")],["t1","j1"],["pega"],"daily");out.bothPair="p:j1|t1" in appState.data.feedback;out.single=almostLearns([by("v")],["v"],["pega"]);
+  // Mochila de montaña obligatoria: en diario no hay looks; en «Combinar prenda», looks de deporte si los hay
+  out.packDaily=rankOutfits({max:3,occasion:"daily",temp:24,date:"2026-07-15",required:"m"}).length;
+  // Camisa vaquera con pantalón de cuadros de vestir: compiten (Noelia, 10/10/2026); con un pantalón liso, sí
+  appState.data=normalizeData({garments:[G("cv","Arriba","Camisa","Vaquero",{fabric:"denim",formality:"casual",style:"smart"}),G("pc","Abajo","Pantalón","Beige",{pattern:"checks",formality:"smartcasual",style:"smart"}),G("pn","Abajo","Pantalón","Negro",{formality:"smartcasual",style:"smart"})]});
+  const c2=engineContext({occasion:"work",temp:17,date:"2026-04-15"});out.clash=relationOf(by("cv"),by("pc"),c2).s;out.plain=relationOf(by("cv"),by("pn"),c2).s;
+  return out;`);
+  const r=probe(document,sessionStorage,{randomUUID:()=>"t"});
+  assert.equal(r.pack,false,"Mochila de montaña: no entra como bolso en un look de diario");
+  assert.ok(r.before>=.6&&r.after<=.3&&r.pairGone,"«No pega»: la pareja pasa a débil y no se propone junta ("+r.before+" → "+r.after+")");
+  assert.equal(r.disliked,false,"«No me gusta la prenda»: deja de salir en la primera propuesta");
+  assert.equal(r.offOcc,false,"«No es para esta ocasión»: no se propone en esa ocasión");
+  assert.ok(r.otherOccBlocked,"«No pega» vale en todas las ocasiones");
+  assert.ok(r.undone&&r.restored>=.6,"Quitar la marca restaura la pareja, también tras fusionar con otro dispositivo ("+r.restored+")");
+  assert.ok(r.bothPair&&!r.single,"«No pega» con dos prendas marcadas guarda su pareja; con una sola prenda no hay nada que aprender");
+  assert.equal(r.packDaily,0,"Mochila de montaña obligatoria en diario: sin looks");
+  assert.ok(r.clash<.6&&r.plain>=.6,"Camisa vaquera: no con pantalón de cuadros de vestir ("+r.clash+"), sí con uno liso ("+r.plain+")");
+  assert.deepEqual(r.keys,["g:t2","o:v|daily","p:j1|t1","p:j1|z1"],"Claves guardadas en feedback (se fusionan por clave entre dispositivos)");
+  console.log("PASS: «Casi» learns per profile (pair, garment, occasion); outdoor backpack only for sport");
+}
+
 // Estilos flexibles (#52): deportivas + vaqueros + americana sí; mallas + sudadera en informal; nada de gimnasio en boda ni con vestido de fiesta
 const styleProbe=new Function("document","sessionStorage","crypto",src+`
 const G=(id,category,color,style,extra={})=>({id,name:id,category,color,style,season:"all",pattern:"plain",createdAt:"2026-10-01",updatedAt:"x",...extra});

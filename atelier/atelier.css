@@ -457,3 +457,13 @@ p.notice-card{display:block}
 
 /* Inspiración: tu versión del look bajo las prendas reconocidas */
 .inspo-result{display:grid;gap:6px;margin:12px 0}
+/* «Casi»: marcar la prenda que no cuadra */
+.almost-pieces{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px;margin:12px 0}
+.almost-piece{display:grid;gap:4px;justify-items:center;background:#fff;border:1px solid var(--line);border-radius:14px;padding:8px;cursor:pointer;font-size:12px;color:var(--ink);position:relative;min-width:0}
+.almost-piece img{width:100%;aspect-ratio:1;object-fit:contain;border-radius:8px}
+.almost-piece span{overflow-wrap:anywhere;text-align:center;line-height:1.25}
+.almost-piece.off{border:2px solid #a2402f;box-shadow:0 0 0 3px #f6e4e0}
+.almost-piece.off::after{content:"✕";position:absolute;top:6px;right:9px;font-weight:700;color:#a2402f}
+.almost-why{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.garment-pairs .pair-marks{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.garment-pairs .pair-warn{color:#8a5a12;background:#f5ead6;border-radius:10px;padding:8px 10px}
