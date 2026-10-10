@@ -27,12 +27,16 @@ test("visual focus conflict requires a known third strong focal piece",()=>{
 test("blind pack includes no score or ground-truth preference",()=>{
  const folder=fs.mkdtempSync(path.join(os.tmpdir(),"atelier-ab-"));
  try{
-  const x=path.join(folder,"base.json"),y=path.join(folder,"new.json"),z=path.join(folder,"pack.json"),catalog=path.join(folder,"catalog.json");
+  const x=path.join(folder,"base.json"),y=path.join(folder,"new.json"),z=path.join(folder,"pack.json"),catalog=path.join(folder,"catalog.json"),privateKey=path.join(folder,"answer-key.json");
   fs.writeFileSync(x,JSON.stringify([{wn:"P",occ:"daily",temp:20,i:0,ids:["a","b"],score:99}]));
   fs.writeFileSync(y,JSON.stringify([{wn:"P",occ:"daily",temp:20,i:0,ids:["a","c"],score:4}]));
   fs.writeFileSync(catalog,JSON.stringify(["a","b","c"].map(id=>({id,name:id,image:"data:image/png;base64,iVBORw0KGgo="}))));
-  execFileSync(process.execPath,[new URL("./blind-look-review.mjs",import.meta.url).pathname,x,y,z,catalog]);
+  execFileSync(process.execPath,[new URL("./blind-look-review.mjs",import.meta.url).pathname,x,y,z,catalog,privateKey]);
   const pack=JSON.parse(fs.readFileSync(z,"utf8"));
+  const key=JSON.parse(fs.readFileSync(privateKey,"utf8"));
+  assert.equal(key.pairs.length,1);
+  assert.ok(!JSON.stringify(pack).includes("candidate"));
+  assert.ok(!fs.readFileSync(z.slice(0,-5)+".html","utf8").includes("candidate"));
   assert.equal(pack.pairs.length,1);
   assert.equal(pack.pairs[0].judgement,null);
   assert.ok(!JSON.stringify(pack).includes('"score"'));
@@ -41,5 +45,15 @@ test("blind pack includes no score or ground-truth preference",()=>{
   assert.ok(!html.includes("99")&&!html.includes(">4<"));
   assert.ok(html.includes(">A<")&&html.includes(">B<"));
   assert.deepEqual([...pack.pairs[0].A.garmentIds,...pack.pairs[0].B.garmentIds].sort(),["a","a","b","c"]);
+  pack.pairs[0].judgement=key.pairs[0].candidate;
+  fs.writeFileSync(z,JSON.stringify(pack));
+  const totals=JSON.parse(execFileSync(process.execPath,[new URL("./blind-look-tally.mjs",import.meta.url).pathname,z,privateKey],{encoding:"utf8"}));
+  assert.equal(totals.results.candidate,1);
+  assert.equal(totals.results.baseline,0);
+  assert.equal(totals.candidateWinRate,1);
+  assert.equal(pack.runDigest,key.runDigest);
+  const wrongKey=path.join(folder,"wrong-key.json");
+  fs.writeFileSync(wrongKey,JSON.stringify({...key,runDigest:"wrong"}));
+  assert.throws(()=>execFileSync(process.execPath,[new URL("./blind-look-tally.mjs",import.meta.url).pathname,z,wrongKey],{stdio:"pipe"}),/Command failed/);
  }finally{fs.rmSync(folder,{recursive:true,force:true});}
 });
