@@ -1960,6 +1960,21 @@ const warmthOf=g=>({bajo:0,medio:1,alto:2}[g.warmth]??(g.thickness==="ligero"?0:
 /* Capa según la temperatura: < 15 °C hace falta y mejor de abrigo; 15–19 °C ligera o media; 20–23 °C solo ligera; ≥ 24 °C ninguna */
 function layerRule(temp){return temp<15?{need:true,max:2,prefer:"warm"}:temp<20?{need:false,max:1,prefer:"mid"}:temp<24?{need:false,max:0,prefer:"light"}:{need:false,max:-1}}
 /* Puntuación de un look completo → {score 0–100, reasons[], warnings[]} */
+/* Jerarquía visual conservadora: señales observables, no equivalencias automáticas.
+   Si los metadatos son incompletos, devolvemos desconocido; dos focos pueden ser intencionales. */
+function visualFocusEvidence(gs){
+ const strength=g=>{
+  if(g.patternContrast==="high"&&g.patternPlacement==="allover")return 2;
+  if(g.surfaceSheen==="shiny"&&g.patternContrast==="high")return 2;
+  if(g.surfaceSheen==="shiny"||g.patternContrast==="high"&&g.patternPlacement==="localized")return 1;
+  return 0;
+ };
+ const core=gs.filter(g=>BIG.includes(g.category)),optional=gs.filter(g=>["Accesorios","Bolsos"].includes(g.category));
+ const coreStrong=core.filter(g=>strength(g)===2),optionalStrong=optional.filter(g=>strength(g)===2);
+ return {coreStrong:coreStrong.map(g=>g.id),optionalStrong:optionalStrong.map(g=>g.id),
+  optionalCompetition:coreStrong.length>=2&&optionalStrong.length>0,
+  known:gs.some(g=>g.patternContrast||g.surfaceSheen)};
+}
 function scoreOutfit(gs,ctx){
  const reasons=[],warnings=[],big=gs.filter(g=>BIG.includes(g.category));
  // Color (25): el conjunto principal manda. Bolsos y accesorios no deben
@@ -1983,6 +1998,11 @@ function scoreOutfit(gs,ctx){
  else if(kinds.includes("opposite~"))reasons.push("Un toque de color en contraste");
  else if(big.length&&big.every(g=>colorInfo(g.color,g.pattern).fam==="neutro"))reasons.push("Neutros que combinan entre sí");
  else if(patterns===1&&kinds.some(k=>k.startsWith("neutral-base")))reasons.push("El estampado protagonista, con básicos neutros");
+ // No aprobar complementos invasivos solo porque repiten color: cuando YA existen
+ // al menos dos focos visuales documentados en la ropa, un tercer foco opcional
+ // puede saturar el look. Penalización moderada, nunca prohibición universal.
+ const visualFocus=visualFocusEvidence(gs);
+ if(visualFocus.optionalCompetition){colorAdj-=.06;warnings.push("Valora si el complemento compite con los protagonistas del look");}
  // Silueta (25): equilibrio de volúmenes cuando se conoce el corte
  const vol=g=>({oversize:2,holgado:2,regular:1,recto:1,entallado:0,ajustado:0}[g.fit]);
  const top=gs.find(g=>g.category==="Arriba"),bottom=gs.find(g=>g.category==="Abajo");let sil=.75; // Q1 (#108): sin corte conocido, igual que un vestido
