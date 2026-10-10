@@ -9,7 +9,7 @@ export async function auditPhotoFidelity(page){
    await page.setViewportSize({width,height:844});
    for(const direct of [false,true]){
    for(let count=1;count<=7;count++){
-    const setup=await page.evaluate(async({width,count})=>{
+    const setup=await page.evaluate(async({width,count,direct})=>{
      const host=document.createElement("div");
      host.id="photoRenderAudit";
      host.style.cssText="position:fixed;left:0;right:0;top:0;z-index:2147483647;background:#fff;pointer-events:none";
