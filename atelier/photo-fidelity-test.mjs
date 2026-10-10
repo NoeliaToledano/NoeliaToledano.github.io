@@ -11,7 +11,7 @@ export async function auditPhotoFidelity(page){
     const setup=await page.evaluate(async({width,count})=>{
      const host=document.createElement("div");
      host.id="photoRenderAudit";
-     host.style.cssText="position:fixed;left:0;top:0;width:"+Math.min(width-12,340)+"px;z-index:2147483647;background:#fff;pointer-events:none";
+     host.style.cssText="position:fixed;left:0;right:0;top:0;z-index:2147483647;background:#fff;pointer-events:none";
      document.body.append(host);
      const photo=(background,garment)=>{
       const c=document.createElement("canvas");c.width=90;c.height=150;
@@ -21,18 +21,18 @@ export async function auditPhotoFidelity(page){
       return c.toDataURL("image/png");
      };
      const fixtures=[
-      ["Vestidos","Vestido","#ffffff","#e8d9c1"],
+      ["Vestidos","Vestido","#bcbcbc","#e8d9c1"],
       ["Capas","Abrigo","#999999","#21345b"],
       ["Zapatos","Zapatos","#c5a27d","#151515"],
-      ["Arriba","Camisa","#ffffff","#e8d9c1"],
+      ["Arriba","Camisa","#bcbcbc","#e8d9c1"],
       ["Abajo","Pantalón","#999999","#21345b"],
       ["Bolsos","Bolso","#c5a27d","#151515"],
-      ["Accesorios","Pendientes","#ffffff","#e8d9c1"]
+      ["Accesorios","Pendientes","#bcbcbc","#e8d9c1"]
      ];
      const pieces=fixtures.slice(0,count).map(([category,name,bg,ink],i)=>({
       id:"render-"+i,name,category,image:photo(bg,ink),bgWhite:bg==="#ffffff",bg,ink
      }));
-     host.innerHTML=outfitBoard(pieces);
+     host.innerHTML='<main class="content"><div class="grid"><div class="look-tile"><article class="card"><div aria-hidden="true">'+outfitBoard(pieces)+'</div><div class="card-body">Look de auditoría</div></article></div></div></main>';
      const byName=new Map(pieces.map(g=>[g.name,g]));
      const imgs=[...host.querySelectorAll(".look-mixed-item img")],failures=[],samplePoints=[],expected=[];
      if(window.innerWidth!==width)failures.push("Viewport mismatch: "+window.innerWidth);
