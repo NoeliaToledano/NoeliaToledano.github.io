@@ -37,6 +37,26 @@ try{
  await page.locator("#loginBtn").click();
  await page.getByRole("heading",{name:"Hoy",exact:true}).waitFor({timeout:6000}).catch(async e=>{console.log("LOGIN_DIAGNOSTIC",{error:await page.locator("#authError").textContent(),authVisible:await page.locator("#auth").isVisible(),appVisible:await page.locator("#app").isVisible(),browserErrors:errors});throw e});
 
+ // UX: dynamic dialogs keep keyboard focus inside and restore the invoking control.
+ const dialogFocus=await page.evaluate(async()=>{
+  const launcher=document.createElement("button");launcher.textContent="Abrir prueba de diálogo";
+  document.body.append(launcher);launcher.focus();
+  const popup=showSheet("uxFocusAudit",'<h2 id="uxFocusAuditTitle">Diálogo de prueba</h2><button id="uxFirst">Primero</button><button id="uxLast" data-close-sheet>Último</button>');
+  await new Promise(resolve=>setTimeout(resolve,10));
+  const first=document.querySelector("#uxFirst"),last=document.querySelector("#uxLast");
+  last.focus();
+  last.dispatchEvent(new KeyboardEvent("keydown",{key:"Tab",bubbles:true,cancelable:true}));
+  const wrapForward=document.activeElement===first;
+  first.focus();
+  first.dispatchEvent(new KeyboardEvent("keydown",{key:"Tab",shiftKey:true,bubbles:true,cancelable:true}));
+  const wrapBack=document.activeElement===last;
+  last.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape",bubbles:true,cancelable:true}));
+  const returned=document.activeElement===launcher&&!document.querySelector("#uxFocusAudit");
+  launcher.remove();
+  return {wrapForward,wrapBack,returned};
+ });
+ assert.deepEqual(dialogFocus,{wrapForward:true,wrapBack:true,returned:true},"Dialog keyboard focus must wrap and return");
+
  // Regresión de collages de 1–7 prendas en un navegador móvil:
  // las fotos deben decodificar, no recortarse y conservar la jerarquía.
  const collageAudit=await page.evaluate(async()=>{
