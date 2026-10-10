@@ -1058,7 +1058,7 @@ function openLookEditor(ids,opts={}){
   $$("[data-edit-use]",el).forEach(b=>b.addEventListener("click",()=>{const id=b.dataset.editUse,[kind,val]=st.pick;if(kind==="swap"){st.ids=st.ids.map(x=>x===val?id:x);if(st.orig.includes(val))st.removed.add(val)}else st.ids.push(id);st.removed.delete(id);st.pick=null;redraw()}));
   $("#editSave",el)?.addEventListener("click",async()=>{const ids=[...st.ids],now=new Date().toISOString(),removed=[...st.removed].filter(x=>!ids.includes(x));
    if(!opts.lookId&&myLooks().some(x=>lookSig(x.garmentIds||[])===lookSig(ids)))return toast("Ese look ya está en Mis looks");
-   const ok=await mutate(()=>{if(opts.lookId){const l=myLooks().find(x=>x.id===opts.lookId);if(l){l.garmentIds=ids;l.edited=true;l.removed=[...new Set([...(l.removed||[]),...removed])];l.updatedAt=now}}
+   const ok=await mutate(()=>{if(opts.lookId){const l=myLooks().find(x=>x.id===opts.lookId);if(l){l.garmentIds=ids;l.edited=true;l.removed=removed; /* el conjunto actual (ya incluye lo quitado antes y no lo que se ha vuelto a poner) (revisión de Codex, #183) */l.updatedAt=now}}
     else myLooks().unshift({id:uid(),name:(opts.name||"Mi look").slice(0,80),garmentIds:ids,occasion:opts.occasion||appState.data.preferences.occasion||"daily",ai:false,edited:true,removed,updatedAt:now})},opts.lookId?"Look actualizado":"Guardado en Mis looks como tu look");
    if(ok){close();opts.onSaved?.(ids)}});
  };bind();
