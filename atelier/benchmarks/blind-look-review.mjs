@@ -29,7 +29,8 @@ for(const k of [...a.keys()].sort()){
  if(!b.has(k))continue;
  const left=a.get(k),right=b.get(k),ai=ids(left),bi=ids(right);
  if(!ai.length||!bi.length||ai.join("|")===bi.join("|"))continue;
- // Counterbalance A/B across the whole study while keeping assignments reproducible.\n const reverse=sideByScenario.get(k)==="A";
+ // Counterbalance A/B across the whole study while keeping assignments reproducible.
+ const reverse=sideByScenario.get(k)==="A";
  const id="review-"+String(pairs.length+1).padStart(4,"0");
  answerKey.push({id,candidate:reverse?"A":"B",baseline:reverse?"B":"A"});
  pairs.push({id,scenario:k,
