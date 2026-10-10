@@ -313,6 +313,14 @@ try{
  await page.locator("#garmentPreview").waitFor({state:"visible"});
  await page.locator("#garmentForm button[type=submit]").click();
  await page.getByText("Prenda auditada").waitFor();
+ // Wardrobe prioritises garments and still makes stats/history discoverable.
+ const wardrobeSummary=page.locator(".wardrobe-summary");
+ await wardrobeSummary.locator("summary").waitFor();
+ assert.equal(await wardrobeSummary.evaluate(el=>el.open),false,"Wardrobe metrics start collapsed");
+ const wardrobeTrigger=await wardrobeSummary.locator("summary").evaluate(el=>({height:el.getBoundingClientRect().height,display:getComputedStyle(el).display,text:el.textContent}));
+ assert.ok(wardrobeTrigger.height>=44&&wardrobeTrigger.display==="list-item"&&wardrobeTrigger.text.includes("prendas"),"Wardrobe summary is discoverable and tappable");
+ await wardrobeSummary.locator("summary").click();
+ await wardrobeSummary.locator("#wardrobeHistory").waitFor({state:"visible"});
  await page.reload({waitUntil:"networkidle"});
  await page.locator('[data-view="today"]').click();
  await page.locator('[data-open-week]').first().click();

@@ -572,3 +572,7 @@ p.notice-card{display:block}
 /* UX: secondary look actions stay discreet but discoverable and easy to tap. */
 .look-secondary-actions>summary{min-height:44px;display:list-item;box-sizing:border-box;align-content:center;font-size:12px;line-height:1.5}
 .look-secondary-actions[open]>summary{color:var(--ink);font-weight:600}
+
+/* Clothes first: keep the wardrobe insights behind a discoverable disclosure. */
+.wardrobe-summary>summary{min-height:44px;display:list-item;box-sizing:border-box;align-content:center;line-height:1.45}
+.wardrobe-summary-body>.stats{width:100%;margin:4px 0 8px}
