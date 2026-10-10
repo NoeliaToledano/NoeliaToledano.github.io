@@ -1015,13 +1015,16 @@ async function completeSheetsWithAI(){
  if(!left)return toast("Has llegado al límite de "+AI_LIMITS.analyze+" análisis de hoy. Mañana podrás seguir.");
  if(!todo.length)return toast("No hay fichas que completar con foto");
  sheetFill={done:0,total:todo.length,ok:0};render();
+ let fails=0;
  try{for(const g0 of todo){
   if(appState.profile?.id!==prof)break; /* cambio de perfil: se para */
-  let a=null,d=null;
+  let a=null,d=null,err=false;
   try{const out=await api("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image:g0.image})});const raw=out.garment||out.result||out;
    if(raw?.type!=="underwear"&&raw?.category!=="Interior"){d=mapAnalysis(raw);a=cleanAnalysis(d)}}
-  catch(e){if(e.message==="AI_QUOTA")break;console.error("FILL",e)}
+  catch(e){if(e.message==="AI_QUOTA")break;console.error("FILL",e);err=true}
   if(appState.profile?.id!==prof)break;
+  if(err){sheetFill.done++;if(++fails>=2)break;render();continue} /* un fallo de red no marca la prenda: se podrá reintentar (revisión de Codex, #198); dos seguidos, se para */
+  fails=0;
   const now=new Date().toISOString();
   await mutate(()=>{const g=myGarments().find(x=>x.id===g0.id);if(!g)return;
    if(a){for(const [k,v] of Object.entries(a))if(k!=="confidence"&&k!=="occasions"&&!g[k])g[k]=v;

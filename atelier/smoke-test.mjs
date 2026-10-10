@@ -403,6 +403,14 @@ try{
  assert.ok(fill.before&&fill.filled&&!fill.again,"Completar con IA analiza una vez cada prenda "+JSON.stringify(fill));
  assert.equal(fill.fabric,"cotton");assert.equal(fill.sleeve,"larga");assert.ok(fill.occ?.includes("work"),"Ocasiones de la IA");
  assert.equal(fill.pattern,"plain","No pisa lo que ya estaba escrito");
+ // Un fallo del servidor no marca la prenda: se puede reintentar
+ forceServerError=true;
+ const retry=await page.evaluate(async()=>{const now=new Date().toISOString();const cv=document.createElement("canvas");cv.width=30;cv.height=50;cv.getContext("2d").fillRect(0,0,30,50);
+  appState.data.garments.push({id:"fill-2",name:"Otra por completar",category:"Arriba",color:"Negro",style:"casual",season:"all",image:cv.toDataURL("image/jpeg"),createdAt:now,updatedAt:now});
+  const others=myGarments().filter(g=>g.id!=="fill-2"&&!g.aiFilledAt);others.forEach(g=>g.aiFilledAt="test");
+  await completeSheetsWithAI();others.forEach(g=>delete g.aiFilledAt);const g=myGarments().find(x=>x.id==="fill-2");const r={marked:!!g.aiFilledAt,still:fillCandidates().some(x=>x.id==="fill-2")};
+  appState.data.garments=myGarments().filter(x=>x.id!=="fill-2");tomb("fill-2");await saveState();return r});
+ assert.ok(!retry.marked&&retry.still,"Tras un error 503 la prenda sigue pendiente "+JSON.stringify(retry));
  await page.evaluate(async()=>{appState.data.garments=myGarments().filter(g=>g.id!=="fill-1");tomb("fill-1");await saveState()});
  await page.evaluate(()=>openGarment(myGarments().find(g=>validImage(g.image))?.id));
  forceUnauthorized=true;
