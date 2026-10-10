@@ -69,6 +69,28 @@ try{
   return failures;
  });
  assert.deepEqual(collageAudit,[],"Regresión de composición fotográfica de looks");
+
+ // Premium: verify that long garment names and metadata fit 320/375/430px cards.
+ const cardOverflow=await page.evaluate(()=>{
+  const failures=[];
+  const host=document.createElement("div");
+  host.style.cssText="position:fixed;left:0;top:0;z-index:-1;visibility:hidden;pointer-events:none";
+  document.body.append(host);
+  try{
+   for(const width of [320,375,430]){
+    host.style.width=width+"px";
+    host.innerHTML='<div class="grid"><article class="garment-tile"><div class="card-body"><div class="card-title">Chaqueta-de-invierno-impermeable-extralarga-con-nombre-muy-largo</div><div class="card-meta">Estampado floral multicolor con detalles especiales y descripción extensa</div></div><div class="tile-tools"><button class="chip-button">Editar esta prenda</button><button class="chip-button">Ver detalles adicionales</button></div></article><article class="look-tile"><div class="card-body"><div class="card-title">Look-para-evento-muy-especial-con-titulo-larguisimo</div><div class="card-meta">Descripción de conjunto para diferentes ocasiones</div></div><div class="tile-tools"><button class="chip-button">Guardar conjunto</button><button class="chip-button">Cambiar prendas</button></div></article></div>';
+    const outer=host.getBoundingClientRect();
+    for(const element of host.querySelectorAll(".garment-tile,.look-tile,.card-title,.card-meta,.tile-tools,.tile-tools button")){
+     const box=element.getBoundingClientRect();
+     if(box.right>outer.right+1||box.left<outer.left-1)failures.push(width+"px: "+element.className);
+    }
+   }
+  }finally{host.remove()}
+  return failures;
+ });
+ assert.deepEqual(cardOverflow,[],"Premium cards must not overflow narrow mobile viewports");
+
  // El color de las prendas principales debe pesar más que 3 accesorios neutros:
  // añadir complementos nunca puede disimular una base de colores incompatibles.
  const colorPriority=await page.evaluate(()=>{
