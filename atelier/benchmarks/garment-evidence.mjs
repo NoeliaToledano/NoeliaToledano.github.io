@@ -10,10 +10,10 @@ const value = (v, source) => ({value:v??null,source:v==null?"unknown":KNOWN.has(
 export function garmentEvidence(garment={}) {
   const g=garment&&typeof garment==="object"?garment:{};
   const fabric=finiteString(g.fabric)==="unknown"?null:finiteString(g.fabric);
-  const pattern=finiteString(g.pattern);
+  const pattern=finiteString(g.pattern)==="unknown"?null:finiteString(g.pattern);
   const composition=finiteString(g.composition);
   const advanced=g.materialAttributes&&typeof g.materialAttributes==="object"?g.materialAttributes:{};
-  const extraPatterns=Array.isArray(advanced.patterns)?advanced.patterns.map(finiteString):[];
+  const extraPatterns=Array.isArray(advanced.patterns)?advanced.patterns.map(x=>finiteString(x)==="unknown"?null:finiteString(x)):[];
   const motifs=unique([...extraPatterns,pattern&&pattern!=="plain"?pattern:null]);
   const patternKnown=pattern==="plain"||motifs.length>0;
   const explicitlyPlain=pattern==="plain"&&motifs.length===0;
