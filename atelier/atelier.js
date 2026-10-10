@@ -2375,10 +2375,12 @@ function dayProposals(date,max=3,avoid=new Set(),seen=[],skipNuclei=[]){
  return rankOutfits({date,max,avoid:new Set([...avoid,...near]),seen,skipNuclei}).map(r=>Object.assign(r.garments,{reasons:r.reasons,warnings:r.warnings}));
 }
 function showSheet(id,html,onClose){
- const origin=document.activeElement;
- $("#"+id).forEach(x=>x.remove());
+ const previous=$("#"+id);
+ const origin=previous?previous.__returnFocus||document.activeElement:document.activeElement;
+ if(previous)previous.remove();
  document.body.insertAdjacentHTML("beforeend",'<div id="'+id+'" class="overlay"><section class="sheet" role="dialog" aria-modal="true" aria-labelledby="'+id+'Title" tabindex="-1">'+html+'</section></div>');
  const el=$("#"+id),dialog=el.querySelector('[role="dialog"]');
+ el.__returnFocus=origin;
  const focusable=()=>[...dialog.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')].filter(x=>x.getClientRects().length>0&&!x.closest('[hidden],.hidden,[inert]'));
  const close=()=>{if(!el.isConnected)return;el.remove();onClose?.();if(origin?.isConnected&&typeof origin.focus==="function")origin.focus()};
  el.addEventListener("click",e=>{if(e.target===el)close()});
