@@ -21,12 +21,12 @@ const key=r=>[r.wn||r.size||"wardrobe",r.occ||r.occasion,r.temp??r.temperature,r
 const ids=r=>Array.isArray(r.ids)?r.ids:Array.isArray(r.garments)?r.garments.map(x=>x.id):[];
 const a=new Map(arr.map(r=>[key(r),r])),b=new Map(brr.map(r=>[key(r),r]));
 const hash=s=>{let h=2166136261;for(const c of s){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}return h>>>0};
-const pairs=[],answerKey=[];
+const sharedKeys=[...a.keys()].filter(k=>b.has(k)&&ids(a.get(k)).length&&ids(b.get(k)).length&&ids(a.get(k)).join("|")!==ids(b.get(k)).join("|"));\nconst randomized=[...sharedKeys].sort((x,y)=>hash(x)-hash(y)||x.localeCompare(y));\nconst sideByScenario=new Map(randomized.map((k,i)=>[k,i%2===0?"A":"B"]));\nconst pairs=[],answerKey=[];
 for(const k of [...a.keys()].sort()){
  if(!b.has(k))continue;
  const left=a.get(k),right=b.get(k),ai=ids(left),bi=ids(right);
  if(!ai.length||!bi.length||ai.join("|")===bi.join("|"))continue;
- const reverse=hash(k)%2===1;
+ // Counterbalance A/B across the whole study while keeping assignments reproducible.\n const reverse=sideByScenario.get(k)==="A";
  const id="review-"+String(pairs.length+1).padStart(4,"0");
  answerKey.push({id,candidate:reverse?"A":"B",baseline:reverse?"B":"A"});
  pairs.push({id,scenario:k,
