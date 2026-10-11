@@ -19,7 +19,8 @@ const arr=read(before),brr=read(after);
 if(!Array.isArray(arr)||!Array.isArray(brr))throw Error("Expected reports with looks");
 const key=r=>[r.wn||r.size||"wardrobe",r.occ||r.occasion,r.temp??r.temperature,r.i??Number(String(r.id||"").split("-").at(-1))].join("|");
 const ids=r=>Array.isArray(r.ids)?r.ids:Array.isArray(r.garments)?r.garments.map(x=>x.id):[];
-const a=new Map(arr.map(r=>[key(r),r])),b=new Map(brr.map(r=>[key(r),r]));
+const uniqueByScenario=(rows,label)=>{const result=new Map();for(const row of rows){const k=key(row);if(result.has(k))throw Error("Duplicate "+label+" scenario: "+k);result.set(k,row)}return result};
+const a=uniqueByScenario(arr,"baseline"),b=uniqueByScenario(brr,"candidate");
 const hash=s=>{let h=2166136261;for(const c of s){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}return h>>>0};
 const sharedKeys=[...a.keys()].filter(k=>b.has(k)&&ids(a.get(k)).length&&ids(b.get(k)).length&&ids(a.get(k)).join("|")!==ids(b.get(k)).join("|"));
 const randomized=[...sharedKeys].sort((x,y)=>hash(x)-hash(y)||x.localeCompare(y));
@@ -37,11 +38,12 @@ for(const k of [...a.keys()].sort()){
   A:{garmentIds:reverse?bi:ai},B:{garmentIds:reverse?ai:bi},
   judgement:null,reason:"",context: k.split("|").slice(1,-1).join(" · ")});
 }
+if(!pairs.length)throw Error("No comparable changed looks: cannot create a blind visual study");
 const runDigest=createHash("sha256").update(JSON.stringify(pairs.map(p=>[p.id,p.scenario,p.A.garmentIds,p.B.garmentIds]))).digest("hex");
 // One neutral, score-free visual board per evaluation. Catalog stays local: do not commit personal photos.
 const catalog=JSON.parse(fs.readFileSync(catalogPath,"utf8"));
 if(!Array.isArray(catalog))throw Error("Photo catalog must be an array of garment records");
-const photos=new Map(catalog.map(g=>[g.id,g]));
+const photos=new Map();for(const g of catalog){if(!g?.id||photos.has(g.id))throw Error("Missing or duplicate garment ID in catalog: "+g?.id);photos.set(g.id,g)}
 const esc=x=>String(x??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
 const imageRef=g=>{
  const src=g?.image||g?.file||"";
