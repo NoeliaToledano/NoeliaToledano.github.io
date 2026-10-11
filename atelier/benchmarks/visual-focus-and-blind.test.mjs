@@ -78,3 +78,26 @@ test("blind assignment remains balanced and deterministic for a multi-scenario r
   assert.ok(!JSON.stringify(publicPack).includes("candidate"));
  }finally{fs.rmSync(folder,{recursive:true,force:true});}
 });
+
+test("blind review rejects duplicated scenarios, catalog IDs and zero changed pairs",()=>{
+ const folder=fs.mkdtempSync(path.join(os.tmpdir(),"atelier-ab-integrity-"));
+ try{
+  const before=path.join(folder,"before.json"),after=path.join(folder,"after.json");
+  const catalog=path.join(folder,"catalog.json"),pack=path.join(folder,"public.json"),privateKey=path.join(folder,"private.json");
+  const item=id=>({id,image:"data:image/png;base64,iVBORw0KGgo="});
+  const row=(i,ids)=>({wn:"W",occ:"daily",temp:20,i,ids});
+  const generate=()=>execFileSync(process.execPath,[new URL("./blind-look-review.mjs",import.meta.url).pathname,before,after,pack,catalog,privateKey],{stdio:"pipe"});
+  fs.writeFileSync(catalog,JSON.stringify(["a","b","c"].map(item)));
+  fs.writeFileSync(before,JSON.stringify([row(0,["a","b"]),row(0,["a","c"])]));
+  fs.writeFileSync(after,JSON.stringify([row(0,["b","c"])]));
+  assert.throws(generate,/Command failed/,"duplicate scenario must fail");
+  assert.ok(!fs.existsSync(privateKey));
+  fs.writeFileSync(before,JSON.stringify([row(0,["a","b"])]));
+  fs.writeFileSync(catalog,JSON.stringify([item("a"),item("a"),item("c")]));
+  assert.throws(generate,/Command failed/,"duplicate garment catalog ID must fail");
+  fs.writeFileSync(catalog,JSON.stringify(["a","b","c"].map(item)));
+  fs.writeFileSync(after,JSON.stringify([row(0,["a","b"])]));
+  assert.throws(generate,/Command failed/,"no changed looks must fail");
+  assert.ok(!fs.existsSync(pack));
+ }finally{fs.rmSync(folder,{recursive:true,force:true})}
+});
